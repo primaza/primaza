@@ -1,0 +1,111 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - primaza.io.primaza.io
+  resources:
+  - clusterenvironments
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - primaza.io.primaza.io
+  resources:
+  - clusterenvironments/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - primaza.io.primaza.io
+  resources:
+  - clusterenvironments/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - primaza.io.primaza.io
+  resources:
+  - servicebindings
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - primaza.io.primaza.io
+  resources:
+  - servicebindings/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - primaza.io.primaza.io
+  resources:
+  - servicebindings/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - primaza.io.primaza.io
+  resources:
+  - serviceclaims
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - primaza.io.primaza.io
+  resources:
+  - serviceclaims/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - primaza.io.primaza.io
+  resources:
+  - serviceclaims/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - primaza.io.primaza.io
+  resources:
+  - serviceclasses
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - primaza.io.primaza.io
+  resources:
+  - serviceclasses/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - primaza.io.primaza.io
+  resources:
+  - serviceclasses/status
+  verbs:
+  - get
+  - patch
+  - update

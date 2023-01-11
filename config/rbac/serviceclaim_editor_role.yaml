@@ -1,0 +1,31 @@
+# permissions for end users to edit serviceclaims.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: serviceclaim-editor-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: primaza
+    app.kubernetes.io/part-of: primaza
+    app.kubernetes.io/managed-by: kustomize
+  name: serviceclaim-editor-role
+rules:
+- apiGroups:
+  - primaza.io.primaza.io
+  resources:
+  - serviceclaims
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - primaza.io.primaza.io
+  resources:
+  - serviceclaims/status
+  verbs:
+  - get
