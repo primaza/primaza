@@ -20,22 +20,37 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+type RegisteredServiceConstraints struct {
+    // Environments defines in which environments the RegisteredService may be used.
+    Environments []string `json:"environments,omitempty"`
+}
 
 // RegisteredServiceSpec defines the desired state of RegisteredService
 type RegisteredServiceSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+    // Constraints defines under which circumstances the RegisteredService may
+    // be used.
+    Constraints RegisteredServiceConstraints `json:"constraints,omitempty"`
 
-	// Foo is an example field of RegisteredService. Edit registeredservice_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+    // HealthCheck defines a health check for the underlying service.
+    // HealthCheck 
+
+    // SLA defines the support level for this service.
+    SLA string `json:"sla,omitempty"`
+
+    // ServiceClassIdentity defines a set of attributes that are sufficient to
+    // identify a service class.  A ServiceClaim whose ServiceClassIdentity
+    // field is a subset of a RegisteredService's keys can claim that service. 
+    ServiceClassIdentity []string `json:"serviceClassIdentity"`
+
+    // ServiceEndpointDefinition defines a set of attributes sufficient for a
+    // client to establish a connection to the service.
+    ServiceEndpointDefinition map[string]string `json:"serviceEndpointDefinition"`
 }
 
 // RegisteredServiceStatus defines the observed state of RegisteredService
 type RegisteredServiceStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+    // State describes the current state of the service.
+    State string `json:"state,omitempty"`
 }
 
 //+kubebuilder:object:root=true
