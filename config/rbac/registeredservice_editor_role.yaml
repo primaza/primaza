@@ -12,7 +12,7 @@ metadata:
   name: registeredservice-editor-role
 rules:
 - apiGroups:
-  - primaza.io.primaza.io
+  - primaza.io
   resources:
   - registeredservices
   verbs:
@@ -24,7 +24,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - primaza.io.primaza.io
+  - primaza.io
   resources:
   - registeredservices/status
   verbs:

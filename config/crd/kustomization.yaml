@@ -2,12 +2,12 @@
 # since it depends on service name and namespace that are out of this kustomize package.
 # It should be run by config/default
 resources:
-- bases/primaza.io.primaza.io_clusterenvironments.yaml
-- bases/primaza.io.primaza.io_registeredservices.yaml
-- bases/primaza.io.primaza.io_servicebindings.yaml
-- bases/primaza.io.primaza.io_servicecatalogs.yaml
-- bases/primaza.io.primaza.io_serviceclaims.yaml
-- bases/primaza.io.primaza.io_serviceclasses.yaml
+- bases/primaza.io_clusterenvironments.yaml
+- bases/primaza.io_registeredservices.yaml
+- bases/primaza.io_servicebindings.yaml
+- bases/primaza.io_servicecatalogs.yaml
+- bases/primaza.io_serviceclaims.yaml
+- bases/primaza.io_serviceclasses.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:

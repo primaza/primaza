@@ -1,4 +1,4 @@
-apiVersion: primaza.io.primaza.io/v1alpha1
+apiVersion: primaza.io/v1alpha1
 kind: ServiceBinding
 metadata:
   labels:

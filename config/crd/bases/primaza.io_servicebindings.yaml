@@ -5,20 +5,20 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.10.0
   creationTimestamp: null
-  name: servicecatalogs.primaza.io.primaza.io
+  name: servicebindings.primaza.io
 spec:
-  group: primaza.io.primaza.io
+  group: primaza.io
   names:
-    kind: ServiceCatalog
-    listKind: ServiceCatalogList
-    plural: servicecatalogs
-    singular: servicecatalog
+    kind: ServiceBinding
+    listKind: ServiceBindingList
+    plural: servicebindings
+    singular: servicebinding
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ServiceCatalog is the Schema for the servicecatalogs API
+        description: ServiceBinding is the Schema for the servicebindings API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -33,15 +33,15 @@ spec:
           metadata:
             type: object
           spec:
-            description: ServiceCatalogSpec defines the desired state of ServiceCatalog
+            description: ServiceBindingSpec defines the desired state of ServiceBinding
             properties:
               foo:
-                description: Foo is an example field of ServiceCatalog. Edit servicecatalog_types.go
+                description: Foo is an example field of ServiceBinding. Edit servicebinding_types.go
                   to remove/update
                 type: string
             type: object
           status:
-            description: ServiceCatalogStatus defines the observed state of ServiceCatalog
+            description: ServiceBindingStatus defines the observed state of ServiceBinding
             type: object
         type: object
     served: true

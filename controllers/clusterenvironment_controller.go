@@ -33,9 +33,9 @@ type ClusterEnvironmentReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=primaza.io.primaza.io,resources=clusterenvironments,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=primaza.io.primaza.io,resources=clusterenvironments/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=primaza.io.primaza.io,resources=clusterenvironments/finalizers,verbs=update
+//+kubebuilder:rbac:groups=primaza.io,resources=clusterenvironments,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=primaza.io,resources=clusterenvironments/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=primaza.io,resources=clusterenvironments/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

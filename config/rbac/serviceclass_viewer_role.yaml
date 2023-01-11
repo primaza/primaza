@@ -12,7 +12,7 @@ metadata:
   name: serviceclass-viewer-role
 rules:
 - apiGroups:
-  - primaza.io.primaza.io
+  - primaza.io
   resources:
   - serviceclasses
   verbs:
@@ -20,7 +20,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - primaza.io.primaza.io
+  - primaza.io
   resources:
   - serviceclasses/status
   verbs:
