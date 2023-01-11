@@ -1,0 +1,9 @@
+## Append samples you want in your CSV to this file as resources ##
+resources:
+- primaza.io_v1alpha1_clusterenvironment.yaml
+- primaza.io_v1alpha1_registeredservice.yaml
+- primaza.io_v1alpha1_servicebinding.yaml
+- primaza.io_v1alpha1_servicecatalog.yaml
+- primaza.io_v1alpha1_serviceclaim.yaml
+- primaza.io_v1alpha1_serviceclass.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples

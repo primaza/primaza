@@ -1,0 +1,12 @@
+apiVersion: primaza.io.primaza.io/v1alpha1
+kind: ServiceClaim
+metadata:
+  labels:
+    app.kubernetes.io/name: serviceclaim
+    app.kubernetes.io/instance: serviceclaim-sample
+    app.kubernetes.io/part-of: primaza
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: primaza
+  name: serviceclaim-sample
+spec:
+  # TODO(user): Add fields here
