@@ -33,9 +33,9 @@ type ServiceBindingReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=primaza.io.primaza.io,resources=servicebindings,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=primaza.io.primaza.io,resources=servicebindings/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=primaza.io.primaza.io,resources=servicebindings/finalizers,verbs=update
+//+kubebuilder:rbac:groups=primaza.io,resources=servicebindings,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=primaza.io,resources=servicebindings/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=primaza.io,resources=servicebindings/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

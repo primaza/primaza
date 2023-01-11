@@ -5,21 +5,20 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.10.0
   creationTimestamp: null
-  name: clusterenvironments.primaza.io.primaza.io
+  name: serviceclaims.primaza.io
 spec:
-  group: primaza.io.primaza.io
+  group: primaza.io
   names:
-    kind: ClusterEnvironment
-    listKind: ClusterEnvironmentList
-    plural: clusterenvironments
-    singular: clusterenvironment
+    kind: ServiceClaim
+    listKind: ServiceClaimList
+    plural: serviceclaims
+    singular: serviceclaim
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ClusterEnvironment is the Schema for the clusterenvironments
-          API
+        description: ServiceClaim is the Schema for the serviceclaims API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -34,15 +33,15 @@ spec:
           metadata:
             type: object
           spec:
-            description: ClusterEnvironmentSpec defines the desired state of ClusterEnvironment
+            description: ServiceClaimSpec defines the desired state of ServiceClaim
             properties:
               foo:
-                description: Foo is an example field of ClusterEnvironment. Edit clusterenvironment_types.go
+                description: Foo is an example field of ServiceClaim. Edit serviceclaim_types.go
                   to remove/update
                 type: string
             type: object
           status:
-            description: ClusterEnvironmentStatus defines the observed state of ClusterEnvironment
+            description: ServiceClaimStatus defines the observed state of ServiceClaim
             type: object
         type: object
     served: true

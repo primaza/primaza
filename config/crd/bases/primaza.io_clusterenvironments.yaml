@@ -5,20 +5,21 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.10.0
   creationTimestamp: null
-  name: serviceclasses.primaza.io.primaza.io
+  name: clusterenvironments.primaza.io
 spec:
-  group: primaza.io.primaza.io
+  group: primaza.io
   names:
-    kind: ServiceClass
-    listKind: ServiceClassList
-    plural: serviceclasses
-    singular: serviceclass
+    kind: ClusterEnvironment
+    listKind: ClusterEnvironmentList
+    plural: clusterenvironments
+    singular: clusterenvironment
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ServiceClass is the Schema for the serviceclasses API
+        description: ClusterEnvironment is the Schema for the clusterenvironments
+          API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -33,15 +34,15 @@ spec:
           metadata:
             type: object
           spec:
-            description: ServiceClassSpec defines the desired state of ServiceClass
+            description: ClusterEnvironmentSpec defines the desired state of ClusterEnvironment
             properties:
               foo:
-                description: Foo is an example field of ServiceClass. Edit serviceclass_types.go
+                description: Foo is an example field of ClusterEnvironment. Edit clusterenvironment_types.go
                   to remove/update
                 type: string
             type: object
           status:
-            description: ServiceClassStatus defines the observed state of ServiceClass
+            description: ClusterEnvironmentStatus defines the observed state of ClusterEnvironment
             type: object
         type: object
     served: true
