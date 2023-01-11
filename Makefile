@@ -294,6 +294,7 @@ test-acceptance-setup: setup-venv ## Setup the environment for the acceptance te
 
 .PHONY: test-acceptance
 test-acceptance: test-acceptance-setup ## Runs acceptance tests
+	@(kind get clusters | grep primaza | xargs -I@ kind delete cluster --name @) || true
 	echo "Running acceptance tests"
 	$(PYTHON_VENV_DIR)/bin/behave --junit --junit-directory $(TEST_ACCEPTANCE_OUTPUT_DIR) --no-capture --no-capture-stderr $(TEST_ACCEPTANCE_TAGS_ARG) $(EXTRA_BEHAVE_ARGS) test/acceptance/features
 
@@ -369,3 +370,7 @@ endif
 .PHONY: lint-shell
 lint-shell: $(SHELLCHECK) ## Check shell scripts
 	find . -name vendor -prune -o -name '*.sh' -print | xargs $(SHELLCHECK) -x
+
+.PHONY: lint-shell-fix
+lint-shell-fix: $(SHELLCHECK)
+	find * -name vendor -prune -o -name '*.sh' -type f -print | xargs -I@ sh -c "$(SHELLCHECK) -f diff @ | git apply"

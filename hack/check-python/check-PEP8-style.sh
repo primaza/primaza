@@ -33,7 +33,7 @@ do
 done
 
 
-if [ $fail -eq 0 ]
+if [ "$fail" -eq 0 ]
 then
     echo "All checks passed for $pass source files"
 else
