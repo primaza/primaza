@@ -20,22 +20,23 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+type ServiceCatalogService struct {
+	// Name defines the name of the known service
+	Name string `json:"name"`
+
+	// ServiceClassIdentity defines a set of attributes that uniquely identify
+	// the service.
+	ServiceClassIdentity []string `json:"serviceClassIdentity"`
+
+	// ServiceEndpointDefinitionKeys defines a set of keys listing the
+	// information this service provides to a workload.
+	ServiceEndpointDefinitionKeys []string `json:"serviceEndpointDefinitionKeys"`
+}
 
 // ServiceCatalogSpec defines the desired state of ServiceCatalog
 type ServiceCatalogSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of ServiceCatalog. Edit servicecatalog_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
-}
-
-// ServiceCatalogStatus defines the observed state of ServiceCatalog
-type ServiceCatalogStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Services contains a list of services that are known to Primaza.
+	Services []ServiceCatalogService `json:"services,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -46,8 +47,7 @@ type ServiceCatalog struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ServiceCatalogSpec   `json:"spec,omitempty"`
-	Status ServiceCatalogStatus `json:"status,omitempty"`
+	Spec ServiceCatalogSpec `json:"spec,omitempty"`
 }
 
 //+kubebuilder:object:root=true

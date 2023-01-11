@@ -35,13 +35,32 @@ spec:
           spec:
             description: ServiceCatalogSpec defines the desired state of ServiceCatalog
             properties:
-              foo:
-                description: Foo is an example field of ServiceCatalog. Edit servicecatalog_types.go
-                  to remove/update
-                type: string
-            type: object
-          status:
-            description: ServiceCatalogStatus defines the observed state of ServiceCatalog
+              services:
+                description: Services contains a list of services that are known to
+                  Primaza.
+                items:
+                  properties:
+                    name:
+                      description: Name defines the name of the known service
+                      type: string
+                    serviceClassIdentity:
+                      description: ServiceClassIdentity defines a set of attributes
+                        that uniquely identify the service.
+                      items:
+                        type: string
+                      type: array
+                    serviceEndpointDefinitionKeys:
+                      description: ServiceEndpointDefinitionKeys defines a set of
+                        keys listing the information this service provides to a workload.
+                      items:
+                        type: string
+                      type: array
+                  required:
+                  - name
+                  - serviceClassIdentity
+                  - serviceEndpointDefinitionKeys
+                  type: object
+                type: array
             type: object
         type: object
     served: true
