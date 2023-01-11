@@ -35,13 +35,44 @@ spec:
           spec:
             description: RegisteredServiceSpec defines the desired state of RegisteredService
             properties:
-              foo:
-                description: Foo is an example field of RegisteredService. Edit registeredservice_types.go
-                  to remove/update
+              constraints:
+                description: Constraints defines under which circumstances the RegisteredService
+                  may be used.
+                properties:
+                  environments:
+                    description: Environments defines in which environments the RegisteredService
+                      may be used.
+                    items:
+                      type: string
+                    type: array
+                type: object
+              serviceClassIdentity:
+                description: ServiceClassIdentity defines a set of attributes that
+                  are sufficient to identify a service class.  A ServiceClaim whose
+                  ServiceClassIdentity field is a subset of a RegisteredService's
+                  keys can claim that service.
+                items:
+                  type: string
+                type: array
+              serviceEndpointDefinition:
+                additionalProperties:
+                  type: string
+                description: ServiceEndpointDefinition defines a set of attributes
+                  sufficient for a client to establish a connection to the service.
+                type: object
+              sla:
+                description: SLA defines the support level for this service.
                 type: string
+            required:
+            - serviceClassIdentity
+            - serviceEndpointDefinition
             type: object
           status:
             description: RegisteredServiceStatus defines the observed state of RegisteredService
+            properties:
+              state:
+                description: State describes the current state of the service.
+                type: string
             type: object
         type: object
     served: true
