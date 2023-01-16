@@ -18,9 +18,16 @@ Dockerfile.cross
 # Kubernetes Generated files - skip generated files, except for vendored files
 
 !vendor/**/zz_generated.*
+.kube
 
 # editor and IDE paraphernalia
 .idea
 *.swp
 *.swo
 *~
+
+# output files
+out
+
+# generated files
+**/*/__pycache__
