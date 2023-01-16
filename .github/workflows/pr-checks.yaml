@@ -133,3 +133,21 @@ jobs:
             echo "Please squash all PR commits into a single one (https://git-scm.com/book/en/v2/Git-Tools-Rewriting-History#_squashing)"
             exit 1
           fi
+
+  gosec:
+    name: Run gosec security checks
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Checkout Git Repository
+        uses: actions/checkout@v3
+
+      - name: Run gosec
+        uses: securego/gosec@v2.15.0
+        with:
+          args: '-no-fail -fmt sarif -out gosec.sarif ./...'
+
+      - name: Upload scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: gosec.sarif
