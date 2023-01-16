@@ -4,7 +4,6 @@ import base64
 import json
 import polling2
 import ipaddress
-import re
 import parse
 import binascii
 import yaml
@@ -319,7 +318,7 @@ spec:
     def get_deployment_names_of_given_pattern(self, deployment_name_pattern, namespace):
         return self.search_resource_lst_in_namespace("deployment", deployment_name_pattern, namespace)
 
-    def new_app(self, name, image_name, namespace, bindingRoot=None, asDeploymentConfig=False):
+    def new_app(self, name, image_name, namespace, bindingRoot=None):
         cmd = f"{ctx.cli} create deployment {name} -n {namespace} --image={image_name}"
         if bindingRoot:
             (output, exit_code) = self.cmd.run(f"{ctx.cli} apply -f -",

@@ -67,7 +67,15 @@ PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 
 
 OUTPUT_DIR ?= $(PROJECT_DIR)/out
+$(OUTPUT_DIR):
+	mkdir -p $(OUTPUT_DIR)
 PYTHON_VENV_DIR = $(OUTPUT_DIR)/venv3
+HACK_DIR ?= $(PROJECT_DIR)/hack
+
+GOCACHE ?= "$(OUTPUT_DIR)/.gocache"
+GOFLAGS ?=
+
+GO ?= GOCACHE=$(GOCACHE) GOFLAGS="$(GOFLAGS)" go
 
 .PHONY: all
 all: build
@@ -97,29 +105,29 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+	$(CONTROLLER_GEN) object:headerFile="$(HACK_DIR)/boilerplate.go.txt" paths="./..."
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
-	go fmt ./...
+	$(GO) fmt ./...
 
 .PHONY: vet
 vet: ## Run go vet against code.
-	go vet ./...
+	$(GO) vet ./...
 
 .PHONY: test
 test: manifests generate fmt vet envtest ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test ./... -coverprofile cover.out
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GO) test ./... -coverprofile cover.out
 
 ##@ Build
 
 .PHONY: build
 build: generate fmt vet ## Build manager binary.
-	go build -o bin/manager main.go
+	$(GO) build -o bin/manager main.go
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
-	go run ./main.go
+	$(GO) run ./main.go
 
 # If you wish built the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64 ). However, you must enable docker buildKit for it.
@@ -175,7 +183,7 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 ##@ Build Dependencies
 
 ## Location to install dependencies to
-LOCALBIN ?= $(shell pwd)/bin
+LOCALBIN ?= $(PROJECT_DIR)/bin
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
@@ -197,12 +205,12 @@ $(KUSTOMIZE): $(LOCALBIN)
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
 $(CONTROLLER_GEN): $(LOCALBIN)
-	test -s $(LOCALBIN)/controller-gen || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
+	test -s $(LOCALBIN)/controller-gen || GOBIN=$(LOCALBIN) $(GO) install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
 
 .PHONY: envtest
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
 $(ENVTEST): $(LOCALBIN)
-	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) $(GO) install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
 .PHONY: bundle
 bundle: manifests kustomize ## Generate bundle manifests and metadata, then validate generated files.
@@ -261,7 +269,7 @@ catalog-push: ## Push a catalog image.
 	$(MAKE) docker-push IMG=$(CATALOG_IMG)
 
 
-############## Acceptance Tests
+##@ Acceptance Tests
 
 TEST_ACCEPTANCE_OUTPUT_DIR ?= $(OUTPUT_DIR)/acceptance-tests
 TEST_ACCEPTANCE_CLI ?= kubectl
@@ -275,24 +283,89 @@ TEST_ACCEPTANCE_TAGS_ARG ?= --tags="~@disabled"
 endif
 
 .PHONY: setup-venv
-# Setup virtual environment
-setup-venv:
+setup-venv: ## Setup virtual environment
 	python3 -m venv $(PYTHON_VENV_DIR)
 	$(PYTHON_VENV_DIR)/bin/pip install --upgrade setuptools
 	$(PYTHON_VENV_DIR)/bin/pip install --upgrade pip
 
 .PHONY: test-acceptance-setup
-# Setup the environment for the acceptance tests
-test-acceptance-setup: setup-venv
+test-acceptance-setup: setup-venv ## Setup the environment for the acceptance tests
 	$(PYTHON_VENV_DIR)/bin/pip install -q -r test/acceptance/features/requirements.txt
 
 .PHONY: test-acceptance
-## Runs acceptance tests
-test-acceptance: test-acceptance-setup
+test-acceptance: test-acceptance-setup ## Runs acceptance tests
 	echo "Running acceptance tests"
 	$(PYTHON_VENV_DIR)/bin/behave --junit --junit-directory $(TEST_ACCEPTANCE_OUTPUT_DIR) --no-capture --no-capture-stderr $(TEST_ACCEPTANCE_TAGS_ARG) $(EXTRA_BEHAVE_ARGS) test/acceptance/features
 
 .PHONY: clean
-## Removes temp directories
-clean:
+clean: ## Removes temp directories
 	-rm -rf ${V_FLAG} $(OUTPUT_DIR)
+
+##@ Linters
+
+GOLANGCI_LINT=$(LOCALBIN)/golangci-lint
+GOLANGCI_LINT_VERSION ?= v1.50.1
+
+YAMLLINT_VERSION ?= 1.28.0
+
+SHELLCHECK=$(LOCALBIN)/shellcheck
+SHELLCHECK_VERSION ?= v0.9.0
+
+.PHONY: lint 
+lint: setup-venv lint-go lint-yaml lint-python lint-feature-files lint-conflicts lint-shell ## Runs all linters
+
+YAML_FILES := $(shell find . -path ./vendor -prune -o -path ./config -prune -o -path ./test/performance -prune -o -type f -regex ".*\.y[a]ml" -print)
+.PHONY: lint-yaml
+lint-yaml: setup-venv ${YAML_FILES} ## Checks all yaml files
+	$(Q)$(PYTHON_VENV_DIR)/bin/pip install yamllint==$(YAMLLINT_VERSION)
+	$(Q)$(PYTHON_VENV_DIR)/bin/yamllint -c .yamllint $(YAML_FILES)
+
+GO_LINT_CMD = GOFLAGS="$(GOFLAGS)" GOGC=30 GOCACHE=$(GOCACHE) $(GOLANGCI_LINT) run --concurrency=1 --verbose --deadline=30m --disable-all --enable
+
+.PHONY: lint-go
+lint-go: $(GOLANGCI_LINT) fmt vet ## Checks Go code
+	$(GO_LINT_CMD) gosimple
+	$(GO_LINT_CMD) staticcheck
+	$(GO_LINT_CMD) errcheck
+	$(GO_LINT_CMD) govet
+	$(GO_LINT_CMD) ineffassign
+	$(GO_LINT_CMD) typecheck
+	$(GO_LINT_CMD) unused
+
+$(GOLANGCI_LINT):
+	curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(LOCALBIN) $(GOLANGCI_LINT_VERSION)
+
+.PHONY: lint-python
+lint-python: setup-venv ## Check python code
+	PYTHON_VENV_DIR=$(PYTHON_VENV_DIR) $(HACK_DIR)/check-python/lint-python-code.sh
+
+.PHONY: lint-feature-files
+lint-feature-files: ## Check acceptance tests' feature files
+	$(HACK_DIR)/check-feature-files.sh
+
+.PHONY: lint-conflicts
+lint-conflicts: ## Check for presence of conflict notes in source file
+	$(HACK_DIR)/check-conflicts.sh
+
+.PHONY: shellcheck
+shellcheck: $(SHELLCHECK) ## Download shellcheck locally if necessary.
+$(SHELLCHECK): $(OUTPUT_DIR) 
+ifeq (,$(wildcard $(SHELLCHECK)))
+ifeq (,$(shell which shellcheck 2>/dev/null))
+	@{ \
+	set -e ;\
+	mkdir -p $(dir $(SHELLCHECK)) ;\
+	OS=$(shell go env GOOS) && ARCH=$(shell go env GOARCH | sed -e 's,amd64,x86_64,g') && \
+	curl -Lo $(OUTPUT_DIR)/shellcheck.tar.xz https://github.com/koalaman/shellcheck/releases/download/$(SHELLCHECK_VERSION)/shellcheck-$(SHELLCHECK_VERSION).$${OS}.$${ARCH}.tar.xz ;\
+	tar --directory $(OUTPUT_DIR) -xvf $(OUTPUT_DIR)/shellcheck.tar.xz ;\
+	find $(OUTPUT_DIR) -name shellcheck -exec cp {} $(SHELLCHECK) \; ;\
+	chmod +x $(SHELLCHECK) ;\
+	}
+else
+SHELLCHECK = $(shell which shellcheck)
+endif
+endif
+
+.PHONY: lint-shell
+lint-shell: $(SHELLCHECK) ## Check shell scripts
+	find . -name vendor -prune -o -name '*.sh' -print | xargs $(SHELLCHECK) -x

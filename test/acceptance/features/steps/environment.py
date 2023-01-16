@@ -1,5 +1,4 @@
 import os
-from steps.command import Command
 
 
 class Environment(object):

@@ -1,0 +1,5 @@
+pyflakes==2.4.0
+vulture==2.7
+radon==5.1.0
+flake8_polyfill==1.0.2
+PyYAML==6.0
