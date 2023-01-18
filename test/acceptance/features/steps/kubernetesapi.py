@@ -1,11 +1,11 @@
 import polling2
-from behave import then
+from behave import then, step
 from datetime import datetime
 from kubernetes import client
 
 
-@then(u'On Primaza Cluster "{cluster}", ClusterEnvironment "{ce_name}" state will eventually move to "{state}"')
-@then(u'On Primaza Cluster "{cluster}", ClusterEnvironment "{ce_name}" state will move to "{state}" in "{timeout}" seconds')
+@step(u'On Primaza Cluster "{cluster}", ClusterEnvironment "{ce_name}" state will eventually move to "{state}"')
+@step(u'On Primaza Cluster "{cluster}", ClusterEnvironment "{ce_name}" state will move to "{state}" in "{timeout}" seconds')
 def on_primaza_cluster_check_state(context, cluster, ce_name, state, timeout=60):
     api_client = context.cluster_provider.get_primaza_cluster(cluster).get_api_client()
     cobj = client.CustomObjectsApi(api_client)
@@ -67,7 +67,7 @@ def on_primaza_cluster_check_state_not_change(context, cluster, ce_name,  namesp
         pass
 
 
-@then(u'On Primaza Cluster "{cluster}", RegisteredService "{rs_name}" state will eventually move to "{state}"')
+@step(u'On Primaza Cluster "{cluster}", RegisteredService "{rs_name}" state will eventually move to "{state}"')
 def on_primaza_cluster_check_registered_service_status(context, cluster, rs_name, state):
     api_client = context.cluster_provider.get_primaza_cluster(cluster).get_api_client()
     cobj = client.CustomObjectsApi(api_client)

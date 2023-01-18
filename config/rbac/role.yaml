@@ -10,8 +10,12 @@ rules:
   resources:
   - secrets
   verbs:
+  - create
+  - delete
   - get
   - list
+  - patch
+  - update
   - watch
 - apiGroups:
   - primaza.io
@@ -173,6 +177,18 @@ rules:
   - rbac.authorization.k8s.io
   resources:
   - rolebindings
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - servicebinding.io
+  resources:
+  - servicebindings
   verbs:
   - create
   - delete

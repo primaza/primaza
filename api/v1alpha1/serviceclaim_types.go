@@ -20,22 +20,48 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+type ServiceClaimApplication struct {
+	// API version of the referent.
+	APIVersion string `json:"apiVersion"`
+	// Kind of the referent.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Kind string `json:"kind"`
+	// Name of the referent.
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+	Name string `json:"name,omitempty"`
+	// Selector is a query that selects the workload or workloads to bind the service to
+	Selector *metav1.LabelSelector `json:"selector,omitempty"`
+}
+
+type ServiceClaimApplicationClusterContext struct {
+	ClusterEnvironmentName string `json:"clusterEnvironmentName"`
+	Namespace              string `json:"namespace"`
+}
 
 // ServiceClaimSpec defines the desired state of ServiceClaim
 type ServiceClaimSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// ServiceClassIdentity defines a set of attributes that are sufficient to
+	// identify a service class.  A ServiceClaim whose ServiceClassIdentity
+	// field is a subset of a RegisteredService's keys can claim that service.
+	ServiceClassIdentity []ServiceClassIdentityItem `json:"serviceClassIdentity"`
 
-	// Foo is an example field of ServiceClaim. Edit serviceclaim_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// ServiceEndpointDefinition defines a set of attributes sufficient for a
+	// client to establish a connection to the service.
+	ServiceEndpointDefinitionKeys []string `json:"serviceEndpointDefinitionKeys"`
+
+	Application ServiceClaimApplication `json:"application,omitempty"`
+	// EnvironmentTag allows the controller to search for those application cluster
+	// environments that define such EnvironmentTag
+	EnvironmentTag            string                                `json:"environmentTag,omitempty"`
+	ApplicationClusterContext ServiceClaimApplicationClusterContext `json:"applicationClusterContext,omitempty"`
 }
 
 // ServiceClaimStatus defines the observed state of ServiceClaim
 type ServiceClaimStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	State             string             `json:"state"`
+	ClaimID           string             `json:"claimID,omitempty"`
+	RegisteredService string             `json:"registeredService,omitempty"`
+	Conditions        []metav1.Condition `json:"conditions,omitempty"`
 }
 
 //+kubebuilder:object:root=true

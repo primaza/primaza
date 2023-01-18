@@ -1,5 +1,6 @@
+import base64
 import yaml
-from behave import given
+from behave import given, step
 from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes, serialization
@@ -83,6 +84,31 @@ class PrimazaCluster(Cluster):
         """
         pass
 
+    def read_custom_resource_status(self, group: str, version: str, plural: str, name: str) -> str:
+        api_client = self.get_api_client()
+        namespace = self.primaza_namespace
+        api_instance = client.CustomObjectsApi(api_client)
+
+        try:
+            api_response = api_instance.get_namespaced_custom_object_status(group, version, namespace, plural, name)
+            return api_response
+        except ApiException as e:
+            print("Exception when calling CustomObjectsApi->get_namespaced_custom_object_status: %s\n" % e)
+            raise e
+
+    def read_secret_resource_data(self, secret_name: str, key: str) -> str:
+        api_client = self.get_api_client()
+        namespace = self.primaza_namespace
+
+        corev1 = client.CoreV1Api(api_client)
+        try:
+            secret = corev1.read_namespaced_secret(name=secret_name, namespace=namespace)
+            b64value = secret.data[key]
+            return base64.b64decode(b64value)
+        except ApiException as e:
+            if e.reason != "Not Found":
+                raise e
+
 
 # Behave steps
 @given('Primaza Cluster "{cluster_name}" is running')
@@ -112,3 +138,28 @@ def ensure_primaza_cluster_has_invalid_worker_clustercontext(context, primaza_cl
 
     cc_kubeconfig_yaml = yaml.safe_dump(cc_kubeconfig)
     primaza_cluster.create_clustercontext_secret(secret_name, cc_kubeconfig_yaml)
+
+
+@step(u'On Primaza Cluster "{primaza_cluster_name}", Primaza ClusterContext secret "{secret_name}" is published')
+def ensure_primaza_cluster_has_clustercontext(context, primaza_cluster_name: str, secret_name: str):
+    primaza_cluster = context.cluster_provider.get_primaza_cluster(primaza_cluster_name)
+
+    cc_kubeconfig = primaza_cluster.get_admin_kubeconfig(True)
+    primaza_cluster.create_clustercontext_secret(secret_name, cc_kubeconfig)
+
+
+@step(u'On Primaza Cluster "{primaza_cluster_name}", the status of ServiceClaim "{service_claim_name}" is "{status}"')
+def ensure_status_of_service_claim(context, primaza_cluster_name: str, service_claim_name: str, status: str):
+    primaza_cluster = context.cluster_provider.get_primaza_cluster(primaza_cluster_name)
+    group = "primaza.io"
+    version = "v1alpha1"
+    plural = "serviceclaims"
+    response = primaza_cluster.read_custom_resource_status(group, version, plural, service_claim_name)
+    assert response["status"]["state"] == status
+
+
+@step(u'On Primaza Cluster, "{primaza_cluster_name}", the secret "{secret_name}" has the key "{key}" with value "{value}"')
+def ensure_secret_key_has_the_right_value(context, primaza_cluster_name: str, secret_name: str, key: str, value: str):
+    primaza_cluster = context.cluster_provider.get_primaza_cluster(primaza_cluster_name)
+    response = primaza_cluster.read_secret_resource_data(secret_name, key)
+    assert response == bytes(value, 'utf-8')

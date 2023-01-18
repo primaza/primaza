@@ -22,7 +22,7 @@ class ClusterProvisioner(object):
         """
         pass
 
-    def kubeconfig(self) -> str:
+    def kubeconfig(self, _internal: bool = False) -> str:
         """
         returns the admin kubeconfig
         """
