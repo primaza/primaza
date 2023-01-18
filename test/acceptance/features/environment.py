@@ -12,13 +12,13 @@ before_all(context), after_all(context)
     These run before and after the whole shooting match.
 """
 
-import os
 
 from steps.command import Command
 from steps.cluster import Kubernetes
 from steps.environment import ctx
 
 cmd = Command()
+
 
 def before_all(_context):
     _context.kubernetes = Kubernetes()

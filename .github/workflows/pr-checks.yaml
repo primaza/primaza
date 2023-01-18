@@ -1,12 +1,12 @@
 name: PR checks
 
-on:
+on: # yamllint disable-line rule:truthy
   pull_request:
     branches:
       - main
 
 env:
-  GO111MODULE: on
+  GO111MODULE: "on"
   MINIKUBE_WANTUPDATENOTIFICATION: false
   MINIKUBE_WANTREPORTERRORPROMPT: false
   SDK_VERSION: "1.25.0"
@@ -16,6 +16,49 @@ env:
   TEST_RESULTS: "out/acceptance-tests"
 
 jobs:
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: "^1.19"
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+          architecture: "x64"
+
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Lint Go
+        if: success() || failure()
+        run: make lint-go
+
+      - name: Lint YAML files
+        if: success() || failure()
+        run: make lint-yaml
+
+      - name: Lint Python
+        if: success() || failure()
+        run: make lint-python
+
+      - name: Lint Gherkin (feature) files
+        if: success() || failure()
+        run: make lint-feature-files
+
+      - name: Lint conflicts in source files
+        if: success() || failure()
+        run: make lint-conflicts
+
+      - name: Lint shell scripts
+        if: success() || failure()
+        run: make lint-shell
+
   unit:
     name: Unit Tests
     runs-on: ubuntu-20.04

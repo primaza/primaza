@@ -21,36 +21,36 @@ import (
 )
 
 type RegisteredServiceConstraints struct {
-    // Environments defines in which environments the RegisteredService may be used.
-    Environments []string `json:"environments,omitempty"`
+	// Environments defines in which environments the RegisteredService may be used.
+	Environments []string `json:"environments,omitempty"`
 }
 
 // RegisteredServiceSpec defines the desired state of RegisteredService
 type RegisteredServiceSpec struct {
-    // Constraints defines under which circumstances the RegisteredService may
-    // be used.
-    Constraints RegisteredServiceConstraints `json:"constraints,omitempty"`
+	// Constraints defines under which circumstances the RegisteredService may
+	// be used.
+	Constraints RegisteredServiceConstraints `json:"constraints,omitempty"`
 
-    // HealthCheck defines a health check for the underlying service.
-    // HealthCheck 
+	// HealthCheck defines a health check for the underlying service.
+	// HealthCheck
 
-    // SLA defines the support level for this service.
-    SLA string `json:"sla,omitempty"`
+	// SLA defines the support level for this service.
+	SLA string `json:"sla,omitempty"`
 
-    // ServiceClassIdentity defines a set of attributes that are sufficient to
-    // identify a service class.  A ServiceClaim whose ServiceClassIdentity
-    // field is a subset of a RegisteredService's keys can claim that service. 
-    ServiceClassIdentity []string `json:"serviceClassIdentity"`
+	// ServiceClassIdentity defines a set of attributes that are sufficient to
+	// identify a service class.  A ServiceClaim whose ServiceClassIdentity
+	// field is a subset of a RegisteredService's keys can claim that service.
+	ServiceClassIdentity []string `json:"serviceClassIdentity"`
 
-    // ServiceEndpointDefinition defines a set of attributes sufficient for a
-    // client to establish a connection to the service.
-    ServiceEndpointDefinition map[string]string `json:"serviceEndpointDefinition"`
+	// ServiceEndpointDefinition defines a set of attributes sufficient for a
+	// client to establish a connection to the service.
+	ServiceEndpointDefinition map[string]string `json:"serviceEndpointDefinition"`
 }
 
 // RegisteredServiceStatus defines the observed state of RegisteredService
 type RegisteredServiceStatus struct {
-    // State describes the current state of the service.
-    State string `json:"state,omitempty"`
+	// State describes the current state of the service.
+	State string `json:"state,omitempty"`
 }
 
 //+kubebuilder:object:root=true
