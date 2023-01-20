@@ -18,7 +18,7 @@ spec:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: RegisteredService is the Schema for the registeredservices API
+        description: RegisteredService is the Schema for the registeredservices API.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -46,20 +46,81 @@ spec:
                       type: string
                     type: array
                 type: object
+              healthcheck:
+                description: HealthCheck defines a health check for the underlying
+                  service.
+                properties:
+                  container:
+                    description: Container defines a container that will run a check
+                      against the ServiceEndpointDefinition to determine connectivity
+                      and access.
+                    properties:
+                      command:
+                        description: Command to execute in the container to run the
+                          test
+                        type: string
+                      image:
+                        description: Container image with the client to run the test
+                        type: string
+                    required:
+                    - command
+                    - image
+                    type: object
+                required:
+                - container
+                type: object
               serviceClassIdentity:
                 description: ServiceClassIdentity defines a set of attributes that
                   are sufficient to identify a service class.  A ServiceClaim whose
                   ServiceClassIdentity field is a subset of a RegisteredService's
                   keys can claim that service.
                 items:
-                  type: string
+                  description: ServiceClassIdentityItem defines an attribute that
+                    is necessary to identify a service class.
+                  properties:
+                    name:
+                      description: Name of the service class identity attribute.
+                      type: string
+                    value:
+                      description: Value of the service class identity attribute.
+                      type: string
+                  required:
+                  - name
+                  - value
+                  type: object
                 type: array
               serviceEndpointDefinition:
-                additionalProperties:
-                  type: string
                 description: ServiceEndpointDefinition defines a set of attributes
                   sufficient for a client to establish a connection to the service.
-                type: object
+                items:
+                  description: ServiceEndpointDefinitionItem defines an attribute
+                    that is necessary for a client to connect to a service
+                  properties:
+                    name:
+                      description: Name of the service endpoint definition attribute.
+                      type: string
+                    value:
+                      description: Value of the service endpoint definition attribute.
+                        It is mutually exclusive with ValueFromSecret.
+                      type: string
+                    valueFromSecret:
+                      description: Value reference of the service endpoint definition
+                        attribute. It is mutually exclusive with Value
+                      properties:
+                        key:
+                          description: Key of the secret reference field
+                          type: string
+                        name:
+                          description: Name of the secret reference
+                          type: string
+                      required:
+                      - key
+                      - name
+                      type: object
+                  required:
+                  - name
+                  type: object
+                type: array
               sla:
                 description: SLA defines the support level for this service.
                 type: string
@@ -68,7 +129,7 @@ spec:
             - serviceEndpointDefinition
             type: object
           status:
-            description: RegisteredServiceStatus defines the observed state of RegisteredService
+            description: RegisteredServiceStatus defines the observed state of RegisteredService.
             properties:
               state:
                 description: State describes the current state of the service.
