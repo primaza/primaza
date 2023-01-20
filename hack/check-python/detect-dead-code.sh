@@ -37,7 +37,7 @@ for directory in $directories; do
     check_files "$files"
 done
 
-if [ $fail -eq 0 ]; then
+if [ "$fail" -eq 0 ]; then
     echo "All checks passed for $pass source files"
 else
     ((total = pass + fail))

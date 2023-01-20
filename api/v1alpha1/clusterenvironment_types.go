@@ -20,23 +20,47 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // ClusterEnvironmentSpec defines the desired state of ClusterEnvironment
 type ClusterEnvironmentSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// The environment associated to the ClusterEnvironment instance
+	EnvironmentName string `json:"environmentName"`
 
-	// Foo is an example field of ClusterEnvironment. Edit clusterenvironment_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// Name of the Secret where connection (kubeconfig) information to target cluster is stored
+	ClusterContextSecret string `json:"clusterContextSecret"`
+
+	// Description of the ClusterEnvironment
+	Description string `json:"description,omitempty"`
+
+	// Labels
+	Labels []string `json:"labels,omitempty"`
+
+	// Namespaces in target cluster where applications are deployed
+	ApplicationNamespaces string `json:"applicationNamespaces,omitempty"`
+
+	// Namespaces in target cluster where services are discovered
+	ServiceNamespaces string `json:"serviceNamespaces,omitempty"`
+
+	// Cluster Admin's contact information
+	ContactInfo string `json:"contactInfo,omitempty"`
 }
 
 // ClusterEnvironmentStatus defines the observed state of ClusterEnvironment
 type ClusterEnvironmentStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// The State of the cluster environment
+	//+kubebuilder:validation:Enum=Online;Offline
+	//+kubebuilder:default:=Offline
+	State ClusterEnvironmentState `json:"state"`
+
+	// Status Conditions
+	Conditions []metav1.Condition `json:"conditions"`
 }
+
+type ClusterEnvironmentState string
+
+const (
+	ClusterEnvironmentStateOnline  ClusterEnvironmentState = "Online"
+	ClusterEnvironmentStateOffline ClusterEnvironmentState = "Offline"
+)
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status

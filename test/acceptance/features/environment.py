@@ -13,18 +13,19 @@ before_all(context), after_all(context)
 """
 
 
+from behave import fixture, use_fixture
 from steps.command import Command
-from steps.cluster import Kubernetes
-from steps.environment import ctx
+from steps.kind import KindProvider
 
 cmd = Command()
 
 
-def before_all(_context):
-    _context.kubernetes = Kubernetes()
+@fixture
+def use_kind(context, _timeout=30, **_kwargs):
+    context.cluster_provider = KindProvider()
+    yield context.cluster_provider
+    context.cluster_provider.delete_clusters()
 
 
-def before_scenario(_context, _scenario):
-    output, code = cmd.run(
-        f'{ctx.cli} get ns default -o jsonpath="{{.metadata.name}}"')
-    assert code == 0, f"Checking connection to OS cluster by getting the 'default' project failed: {output}"
+def before_scenario(context, _scenario):
+    use_fixture(use_kind, context, timeout=30)

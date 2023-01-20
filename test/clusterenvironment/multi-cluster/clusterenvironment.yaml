@@ -1,0 +1,14 @@
+apiVersion: primaza.io/v1alpha1
+kind: ClusterEnvironment
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterenvironment
+    app.kubernetes.io/instance: clusterenvironment-primaza
+    app.kubernetes.io/part-of: primaza
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: primaza
+  name: clusterenvironment-primaza-worker
+spec:
+  name: primaza-worker
+  environmentName: dev
+  clusterContextSecret: primaza-worker-kubeconfig
