@@ -19,6 +19,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
+  controller: true
   domain: primaza.io
   group: primaza.io
   kind: RegisteredService

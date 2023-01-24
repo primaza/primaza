@@ -431,7 +431,7 @@ func (in *ServiceCatalogService) DeepCopyInto(out *ServiceCatalogService) {
 	*out = *in
 	if in.ServiceClassIdentity != nil {
 		in, out := &in.ServiceClassIdentity, &out.ServiceClassIdentity
-		*out = make([]string, len(*in))
+		*out = make([]ServiceClassIdentityItem, len(*in))
 		copy(*out, *in)
 	}
 	if in.ServiceEndpointDefinitionKeys != nil {

@@ -65,3 +65,20 @@ def on_primaza_cluster_check_state_not_change(context, cluster, ce_name,  namesp
         assert state is not None, f'Cluster Environment state is defined {state}, wanted undefined'
     except polling2.TimeoutException:
         pass
+
+
+@then(u'On Primaza Cluster "{cluster}", RegisteredService "{rs_name}" state will eventually move to "{state}"')
+def on_primaza_cluster_check_registered_service_status(context, cluster, rs_name, state):
+    api_client = context.cluster_provider.get_primaza_cluster(cluster).get_api_client()
+    cobj = client.CustomObjectsApi(api_client)
+
+    polling2.poll(
+        target=lambda: cobj.get_namespaced_custom_object_status(
+            group="primaza.io",
+            version="v1alpha1",
+            namespace="primaza-system",
+            plural="registeredservices",
+            name=rs_name).get("status", {}).get("state", None),
+        check_success=lambda x: x is not None and x == state,
+        step=5,
+        timeout=30)

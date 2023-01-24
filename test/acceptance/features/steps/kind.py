@@ -60,12 +60,18 @@ nodes:
         output, exit_code = self.exec(f'kind delete cluster --name {self.cluster_name}')
         return output, exit_code
 
-    def kubeconfig(self):
-        cmd = f"""
+    def kubeconfig(self, internal=False):
+        # To be used for test client to cluster communication
+        cmd = f"kind get kubeconfig --name {self.cluster_name}"
+
+        # To be used for cluster to cluster communication
+        if internal:
+            cmd = f"""
 kind get kubeconfig --name {self.cluster_name} | \
 sed "s/server: https:\\/\\/127\\.0\\.0\\.1:[0-9]*$/\
 server: https:\\/\\/$(docker container inspect {self.cluster_name}-control-plane --format {{{{.NetworkSettings.Networks.kind.IPAddress}}}}:6443)/g"
-        """
+            """
+
         output, exit_code = self.exec(cmd)
         assert exit_code == 0, f"error retrieving kubeconfig for cluster '{self.cluster_name}'"
         return output

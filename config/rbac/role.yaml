@@ -41,6 +41,32 @@ rules:
 - apiGroups:
   - primaza.io
   resources:
+  - registeredservices
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - primaza.io
+  resources:
+  - registeredservices/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - primaza.io
+  resources:
+  - registeredservices/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - primaza.io
+  resources:
   - servicebindings
   verbs:
   - create
