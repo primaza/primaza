@@ -171,6 +171,7 @@ spec:
         output, exit_code = self.cmd.run(
             f'{ctx.cli} expose deployment {name} -n {namespace} --port={port} --type=NodePort')
         assert exit_code == 0, f"Could not expose deployment: {output}"
+        return output
 
     def get_service_host(self, name, namespace):
         addr = self.get_node_address()
@@ -259,8 +260,8 @@ spec:
         assert exit_code == 0, f"cmd-{cmd} result for getting docker image repository is {output} with exit code-{exit_code} not equal to 0"
         return output
 
-    def wait_for_build_pod_status(self, build_pod_name, namespace, wait_for_status="Succeeded", timeout=780):
-        cmd = f'{ctx.cli} get pod {build_pod_name} -n {namespace} -o "jsonpath={{.status.phase}}"'
+    def wait_for_pod_status(self, pod_name, namespace, wait_for_status="Succeeded", timeout=780):
+        cmd = f'{ctx.cli} get pod {pod_name} -n {namespace} -o "jsonpath={{.status.phase}}"'
         status_found, output, exit_status = self.cmd.run_wait_for_status(
             cmd, wait_for_status, timeout=timeout)
         return status_found, output
@@ -340,6 +341,8 @@ spec:
     def new_app(self, name, image_name, namespace):
         output, exit_code = self.cmd.run(f"{ctx.cli} apply -f -", self.deployment_template.format(name=name, image_name=image_name, namespace=namespace))
         assert exit_code == 0, f"Non-zero exit code ({exit_code}) returned when attempting to create a new app \n: {output}"
+        output, exit_code = self.cmd.run(f"{ctx.cli} wait --for=jsonpath=\'{{.status.phase}}\'=Running pod -l app=myapp -n {namespace}")
+        assert exit_code == 0, f"Non-zero exit code ({exit_code}) returned when waiting for new app to rollout \n: {output}"
 
     def set_label(self, name, label, namespace):
         cmd = f"{ctx.cli} label deployments {name} '{label}' -n {namespace}"
@@ -359,6 +362,17 @@ spec:
         output, exit_code = self.cmd.run(
             f'{ctx.cli} wait --for=condition={condition}={value} {resource}/{name} --timeout={timeout}s -n {namespace}')
         assert exit_code == 0, f"Condition {condition}={value} for {resource}/{name} in {namespace} namespace was not met\n: {output}"
+
+    def check_file_content_from_myapp(self, namespace, file_path):
+        output, exit_code = self.cmd.run(
+            f'{ctx.cli} exec $({ctx.cli} get pod -l app=myapp -n {namespace} -o name) -n {namespace} -- cat {file_path}')
+        return output
+
+    def file_exists_in_myapp(self, namespace, file_path):
+        output, exit_code = self.cmd.run(
+            f'{ctx.cli} exec $({ctx.cli} get pod -l app=myapp -n {namespace} -o name) -n {namespace} -- test -f {file_path}')
+        return exit_code
+
 
 # Behave steps
 
@@ -566,3 +580,31 @@ def namespace_is_created_primaza_cluster(context, cluster, namespace):
         tf.flush()
 
         Kubernetes(kubeconfig=tf.name).create_namespace(namespace)
+
+
+@step(u'On Primaza Cluster "{cluster}", file "{file_path}" is unavailable in application pod running in namespace "{namespace}"')
+def check_file_unavailable(context, cluster, file_path, namespace):
+    with tempfile.NamedTemporaryFile() as tf:
+        kubeconfig = context.cluster_provider.get_primaza_cluster(cluster).get_admin_kubeconfig()
+        tf.write(kubeconfig.encode("utf-8"))
+        tf.flush()
+        exit_code = Kubernetes(kubeconfig=tf.name).file_exists_in_myapp(namespace, file_path)
+        assert exit_code == 1
+
+
+@step(u'On Primaza Cluster "{cluster}", in demo application\'s pod running in namespace "{namespace}" file "{file_path}" has content "{content}"')
+def on_primaza_check_file_content(context, cluster, file_path, namespace, content):
+    with tempfile.NamedTemporaryFile() as tf:
+        kubeconfig = context.cluster_provider.get_primaza_cluster(cluster).get_admin_kubeconfig()
+        tf.write(kubeconfig.encode("utf-8"))
+        tf.flush()
+        polling2.poll(lambda: Kubernetes(kubeconfig=tf.name).check_file_content_from_myapp(namespace, file_path) == content, step=20, timeout=120)
+
+
+@step(u'On Worker Cluster "{cluster}", in demo application\'s pod running in namespace "{namespace}" file "{file_path}" has content "{content}"')
+def on_worker_cluster_check_file_available(context, cluster, file_path, namespace, content):
+    with tempfile.NamedTemporaryFile() as tf:
+        kubeconfig = context.cluster_provider.get_worker_cluster(cluster).get_admin_kubeconfig()
+        tf.write(kubeconfig.encode("utf-8"))
+        tf.flush()
+        polling2.poll(lambda: Kubernetes(kubeconfig=tf.name).check_file_content_from_myapp(namespace, file_path) == content, step=20, timeout=120)

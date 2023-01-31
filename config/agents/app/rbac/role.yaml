@@ -59,6 +59,7 @@ rules:
   - list
   - get
   - watch
+  - update
 - apiGroups:
   - primaza.io
   resources:
@@ -67,4 +68,10 @@ rules:
   - get
   - list
   - watch
+  - update
+- apiGroups:
+  - primaza.io
+  resources:
+  - servicebindings/finalizers
+  verbs:
   - update

@@ -33,7 +33,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+)
+
+const (
+	conditionGetAppsFailureReason   = "ErrorFetchApplications"
+	conditionGetSecretFailureReason = "ErrorFetchSecret"
+	conditionBindingSuccessful      = "Successful"
+	conditionBindingFailure         = "Binding Failure"
 )
 
 // ServiceBindingReconciler reconciles a ServiceBinding object
@@ -46,7 +54,10 @@ type ServiceBindingReconciler struct {
 // which is used as the volume mount path.  In the absence of this
 // environment variable, `/bindings` is used as the volume mount path.
 // Refer: https://github.com/servicebinding/spec#reconciler-implementation
-const ServiceBindingRoot = "SERVICE_BINDING_ROOT"
+const (
+	ServiceBindingRoot      = "SERVICE_BINDING_ROOT"
+	ServiceBindingFinalizer = "servicebindings.primaza.io/finalizer"
+)
 
 //+kubebuilder:rbac:groups=primaza.io,resources=servicebindings,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=primaza.io,resources=servicebindings/status,verbs=get;update;patch
@@ -78,6 +89,63 @@ func (r *ServiceBindingReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	l.Info("ServiceBinding object retrieved", "ServiceBinding", serviceBinding)
 
 	secretName := serviceBinding.Spec.ServiceEndpointDefinitionSecret
+
+	l.Info("Check If service binding is deleted")
+	if serviceBinding.HasDeletionTimestamp() {
+		if controllerutil.ContainsFinalizer(&serviceBinding, ServiceBindingFinalizer) {
+			applications, err := r.getApplication(ctx, req, serviceBinding, secretName)
+			if err != nil {
+				// error retrieving the application(s), so setting the service binding status to false and reconcile
+				err := r.setStatus(ctx, secretName, serviceBinding, metav1.ConditionFalse, conditionGetAppsFailureReason, primazaiov1alpha1.ServiceBindingStateMalformed, err.Error())
+				return ctrl.Result{}, err
+			}
+			err = r.unbindApplications(ctx, req, serviceBinding, applications...)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			//Remove finalizer from service binding
+			if finalizerBool := controllerutil.RemoveFinalizer(&serviceBinding, ServiceBindingFinalizer); !finalizerBool {
+				l.Error(errors.New("Finalizer not removed for service binding"), "Finalizer not removed for service binding")
+				return ctrl.Result{}, errors.New("Finalizer not removed for service binding")
+			}
+			if err := r.Update(ctx, &serviceBinding); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		return ctrl.Result{}, nil
+	}
+
+	applications, err := r.getApplication(ctx, req, serviceBinding, secretName)
+	if err != nil {
+		// error retrieving the application(s), so setting the service binding status to false and reconcile
+		err := r.setStatus(ctx, secretName, serviceBinding, metav1.ConditionFalse, conditionGetAppsFailureReason, primazaiov1alpha1.ServiceBindingStateMalformed, err.Error())
+		return ctrl.Result{}, err
+	}
+
+	psSecret := &v1.Secret{}
+	secretLookupKey := client.ObjectKey{Name: serviceBinding.Spec.ServiceEndpointDefinitionSecret, Namespace: req.NamespacedName.Namespace}
+	if secErr := r.Get(ctx, secretLookupKey, psSecret); secErr != nil {
+		// error retrieving the application(s), so setting the service binding status to false and reconcile
+		err := r.setStatus(ctx, secretName, serviceBinding, metav1.ConditionFalse, conditionGetSecretFailureReason, primazaiov1alpha1.ServiceBindingStateMalformed, secErr.Error())
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		err = r.unbindApplications(ctx, req, serviceBinding, applications...)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, secErr
+	}
+
+	l.Info("Add Finalizer if needed")
+	// add finalizer if needed
+	if !controllerutil.ContainsFinalizer(&serviceBinding, ServiceBindingFinalizer) {
+		controllerutil.AddFinalizer(&serviceBinding, ServiceBindingFinalizer)
+		if err := r.Update(ctx, &serviceBinding); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
 	volumeName := serviceBinding.Name
 	mountPathDir := serviceBinding.Name
 	sp := &v1.SecretProjection{
@@ -99,18 +167,19 @@ func (r *ServiceBindingReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		l.Error(err, "unable to convert volumeProjection to an unstructured object")
 		return ctrl.Result{}, err
 	}
-	secretLookupKey := client.ObjectKey{Name: serviceBinding.Spec.ServiceEndpointDefinitionSecret, Namespace: req.NamespacedName.Namespace}
-	psSecret := &v1.Secret{}
-	if err := r.Get(ctx, secretLookupKey, psSecret); err != nil {
+
+	if err := ctrl.SetControllerReference(&serviceBinding, psSecret, r.Scheme); err != nil {
 		return ctrl.Result{}, err
 	}
-	applications, err := r.getApplication(ctx, req, serviceBinding, secretName)
+
+	err = r.bindApplications(ctx, req, serviceBinding, psSecret, mountPathDir, volumeName, unstructuredVolume, applications...)
 	if err != nil {
-		// error retrieving the application(s), so setting the service binding status to false and reconcile
-		_, err := r.setStatus(ctx, psSecret.Name, serviceBinding, "False", "failure", "Malformed", err.Error())
 		return ctrl.Result{}, err
 	}
-	return r.bindApplications(ctx, req, serviceBinding, psSecret, mountPathDir, volumeName, unstructuredVolume, applications...)
+	if err := r.Update(ctx, psSecret); err != nil {
+		return ctrl.Result{}, err
+	}
+	return ctrl.Result{}, r.Update(ctx, psSecret)
 }
 
 func (r *ServiceBindingReconciler) prepareContainerWithMounts(ctx context.Context,
@@ -189,7 +258,7 @@ func (r *ServiceBindingReconciler) prepareContainerWithMounts(ctx context.Contex
 }
 
 func (r *ServiceBindingReconciler) bindApplications(ctx context.Context, req ctrl.Request,
-	sb primazaiov1alpha1.ServiceBinding, psSecret *v1.Secret, mountPathDir, volumeName string, unstructuredVolume map[string]interface{}, applications ...unstructured.Unstructured) (ctrl.Result, error) {
+	sb primazaiov1alpha1.ServiceBinding, psSecret *v1.Secret, mountPathDir, volumeName string, unstructuredVolume map[string]interface{}, applications ...unstructured.Unstructured) error {
 
 	l := log.FromContext(ctx)
 
@@ -200,64 +269,43 @@ func (r *ServiceBindingReconciler) bindApplications(ctx context.Context, req ctr
 			el = append(el, err)
 		}
 	}
-
-	var conditionStatus metav1.ConditionStatus
-	var reason, state, message string
 	l.Info("set the status of the service binding")
 	if len(el) != 0 {
 		cerr := errors.Join(el...)
-		conditionStatus = "False"
-		state = "Malformed"
-		reason = "failure"
-		message = cerr.Error()
-		_, err := r.setStatus(ctx, psSecret.Name, sb, conditionStatus, reason, state, message)
+		err := r.setStatus(ctx, psSecret.Name, sb, metav1.ConditionFalse, conditionBindingFailure, primazaiov1alpha1.ServiceBindingStateMalformed, cerr.Error())
 		if err != nil {
-			return ctrl.Result{}, err
+			return err
 		}
-		return ctrl.Result{}, cerr
+		return cerr
 	}
-	conditionStatus = "True"
-	reason = "Success"
-	state = "Ready"
-	_, err := r.setStatus(ctx, psSecret.Name, sb, conditionStatus, reason, state, message)
+	err := r.setStatus(ctx, psSecret.Name, sb, metav1.ConditionTrue, conditionBindingSuccessful, primazaiov1alpha1.ServiceBindingStateReady, "")
 	if err != nil {
-		return ctrl.Result{}, err
+		return err
 	}
-	return ctrl.Result{}, nil
+	return nil
 }
 
 func (r *ServiceBindingReconciler) setStatus(ctx context.Context, secretName string,
-	sb primazaiov1alpha1.ServiceBinding, conditionStatus metav1.ConditionStatus, reason, state, message string) (ctrl.Result, error) {
+	sb primazaiov1alpha1.ServiceBinding, conditionStatus metav1.ConditionStatus, reason, state, message string) error {
 	l := log.FromContext(ctx)
-	conditionFound := false
-	for k, cond := range sb.Status.Conditions {
-		if cond.Type == primazaiov1alpha1.ServiceBindingConditionReady {
-			cond.Status = conditionStatus
-			sb.Status.Conditions[k].Status = cond.Status
-			conditionFound = true
-		}
+	c := metav1.Condition{
+		LastTransitionTime: metav1.NewTime(time.Now()),
+		Type:               primazaiov1alpha1.ServiceBindingConditionReady,
+		Status:             conditionStatus,
+		Reason:             reason,
+		Message:            message,
 	}
-
-	if !conditionFound {
-		c := metav1.Condition{
-			LastTransitionTime: metav1.NewTime(time.Now()),
-			Type:               primazaiov1alpha1.ConditionReady,
-			Status:             conditionStatus,
-			Reason:             reason,
-			Message:            message,
-		}
-		meta.SetStatusCondition(&sb.Status.Conditions, c)
-		sb.Status.State = state
-	}
+	meta.SetStatusCondition(&sb.Status.Conditions, c)
+	sb.Status.State = state
 
 	l.Info("updating the service binding status")
 	if err := r.Status().Update(ctx, &sb); err != nil {
 		l.Error(err, "unable to update the service binding", "ServiceBinding", sb)
-		return ctrl.Result{}, err
+		return err
 	}
 	l.Info("service binding status updated", "ServiceBinding", sb)
 
-	return ctrl.Result{}, nil
+	return nil
 }
 
 func (r *ServiceBindingReconciler) getApplication(ctx context.Context, req ctrl.Request,
@@ -403,5 +451,124 @@ func (r *ServiceBindingReconciler) updateContainerInfo(ctx context.Context, cont
 func (r *ServiceBindingReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&primazaiov1alpha1.ServiceBinding{}).
+		Owns(&v1.Secret{}).
 		Complete(r)
+}
+
+func (r *ServiceBindingReconciler) removeVolumeMountFromContainer(ctx context.Context, sb primazaiov1alpha1.ServiceBinding, containers []interface{}, volumeName, mountPathDir, secretName string) error {
+	l := log.FromContext(ctx)
+	for i := range containers {
+		container := &containers[i]
+		l.Info("updating container", "container", container)
+		c := &v1.Container{}
+		u := (*container).(map[string]interface{})
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u, c); err != nil {
+			return err
+		}
+
+		for i, volumeMount := range c.VolumeMounts {
+			if volumeMount.Name == volumeName {
+				c.VolumeMounts = append(c.VolumeMounts[:i], c.VolumeMounts[i+1:]...)
+			}
+		}
+		for i, env := range c.Env {
+			if env.Name == ServiceBindingRoot {
+				c.Env = append(c.Env[:i], c.Env[(i+1):]...)
+			}
+		}
+
+		nu, err := runtime.DefaultUnstructuredConverter.ToUnstructured(c)
+		if err != nil {
+			return err
+		}
+
+		containers[i] = nu
+	}
+	return nil
+}
+
+func (r *ServiceBindingReconciler) removeVolumeMount(ctx context.Context, sb primazaiov1alpha1.ServiceBinding, application unstructured.Unstructured, volumeName, mountPathDir, secretName string) error {
+	l := log.FromContext(ctx)
+	l.Info("Prepare removing application mounting")
+
+	containersPaths := [][]string{}
+	volumesPath := []string{"spec", "template", "spec", "volumes"}
+
+	containersPaths = append(containersPaths,
+		[]string{"spec", "template", "spec", "containers"},
+		[]string{"spec", "template", "spec", "initContainers"},
+	)
+	l.Info("referencing the volume in an unstructured object")
+	volumes, found, err := unstructured.NestedSlice(application.Object, volumesPath...)
+	if err != nil {
+		l.Error(err, "unable to reference the volumes in the application object")
+		return err
+	}
+	//check if volume not found in application object
+	if !found {
+		l.Info("volumes not found in the application object")
+		return nil
+	}
+	for i, volume := range volumes {
+		l.Info("Volume", "volume", volume)
+		if volume.(map[string]interface{})["name"].(string) == volumeName {
+			volumes = append(volumes[:i], volumes[i+1:]...)
+		}
+	}
+
+	l.Info("setting the updated volumes into the application using the unstructured object")
+	if err := unstructured.SetNestedSlice(application.Object, volumes, volumesPath...); err != nil {
+		return err
+	}
+	l.Info("application object after setting the update volume", "Application", application)
+
+	for _, containersPath := range containersPaths {
+		l.Info("referencing containers in an unstructured object")
+		containers, found, err := unstructured.NestedSlice(application.Object, containersPath...)
+		if err != nil {
+			l.Error(err, "unable to reference containers in the application object")
+			return err
+		}
+		if !found {
+			e := &field.Error{Type: field.ErrorTypeRequired, Field: strings.Join(containersPath, "."), Detail: "no containers"}
+			l.Info("containers not found in the application object", "error", e)
+		}
+
+		l.Info("remove volume mounts from containers", "containers", containers)
+		if err = r.removeVolumeMountFromContainer(ctx, sb, containers, mountPathDir, volumeName, secretName); err != nil {
+			return err
+		}
+
+		l.Info("setting the updated containers into the application using the unstructured object")
+		if err := unstructured.SetNestedSlice(application.Object, containers, containersPath...); err != nil {
+			return err
+		}
+		l.Info("application object after setting the updated containers", "Application", application)
+	}
+
+	l.Info("updating the application with updated volumes and volumeMounts")
+	if err := r.Update(ctx, &application); err != nil {
+		l.Error(err, "unable to update the application", "application", application)
+		return err
+	}
+	return nil
+}
+
+func (r *ServiceBindingReconciler) unbindApplications(ctx context.Context, req ctrl.Request,
+	serviceBinding primazaiov1alpha1.ServiceBinding, applications ...unstructured.Unstructured) error {
+	var el []error
+	volumeName := serviceBinding.Name
+	mountPathDir := serviceBinding.Name
+	secretName := serviceBinding.Spec.ServiceEndpointDefinitionSecret
+	for _, application := range applications {
+		err := r.removeVolumeMount(ctx, serviceBinding, application, volumeName, mountPathDir, secretName)
+		if err != nil {
+			el = append(el, err)
+		}
+	}
+	if len(el) != 0 {
+		cerr := errors.Join(el...)
+		return cerr
+	}
+	return nil
 }

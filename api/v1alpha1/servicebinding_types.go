@@ -67,21 +67,17 @@ type ServiceBindingStatus struct {
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
+	// +kubebuilder:validation:Enum=Ready;Malformed
 	// The state of the service binding observed
-	// +optional
-	State string `json:"state"`
+	// +kubebuilder:default:=Malformed
+	State string `json:"state,omitempty"`
 }
 
 // ConditionReady specifies that the resource is ready.
 // For long-running resources.
-const ConditionReady string = "Ready"
-const ConditionMalformed string = "Malformed"
-
-// Values for ConditionReady
 const (
-	ConditionTrue    metav1.ConditionStatus = "True"
-	ConditionFalse   metav1.ConditionStatus = "False"
-	ConditionUnknown metav1.ConditionStatus = "Unknown"
+	ServiceBindingStateReady     string = "Ready"
+	ServiceBindingStateMalformed string = "Malformed"
 )
 
 //+kubebuilder:object:root=true
