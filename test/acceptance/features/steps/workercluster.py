@@ -38,7 +38,7 @@ class WorkerCluster(Cluster):
                 .setenv("KUBECONFIG", t.name) \
                 .setenv("GOCACHE", os.getenv("GOCACHE", "/tmp/gocache")) \
                 .setenv("GOPATH", os.getenv("GOPATH", "/tmp/go")) \
-                .run("make install")
+                .run("make primaza install")
 
             print(out)
             assert err == 0, "error installing Primaza's manifests"

@@ -100,7 +100,7 @@ class PrimazaKind(PrimazaCluster):
         self.__deploy_primaza(kubeconfig_path, img)
 
     def __install_crd_and_build_image(self, kubeconfig_path: str, img: str):
-        out, err = self.__build_install_primaza_base_cmd(kubeconfig_path, img).run("make install docker-build")
+        out, err = self.__build_install_primaza_base_cmd(kubeconfig_path, img).run("make primaza install docker-build")
         print(out)
         assert err == 0, "error installing manifests and building primaza controller"
 
@@ -110,7 +110,7 @@ class PrimazaKind(PrimazaCluster):
         assert err == 0, f"error loading Primaza's controller into kind cluster {self.cluster_name}"
 
     def __deploy_primaza(self, kubeconfig_path: str, img: str):
-        out, err = self.__build_install_primaza_base_cmd(kubeconfig_path, img).run("make deploy")
+        out, err = self.__build_install_primaza_base_cmd(kubeconfig_path, img).run("make primaza deploy")
         print(out)
         assert err == 0, f"error deploying Primaza's controller into cluster {self.cluster_name}"
 
