@@ -18,25 +18,71 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
-
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 // ServiceBindingSpec defines the desired state of ServiceBinding
 type ServiceBindingSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of ServiceBinding. Edit servicebinding_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// ServiceEndpointDefinitionSecret is the name of the secret to project into the application
+	// +required
+	ServiceEndpointDefinitionSecret string `json:"serviceEndpointDefinitionSecret"`
+
+	// Application resource to inject the binding info.
+	// It could be any process running within a container.
+	// From the spec:
+	// A Service Binding resource **MUST** define a `.spec.application`
+	// which is an `ObjectReference`-like declaration to a `PodSpec`-able
+	// resource.  A `ServiceBinding` **MAY** define the application
+	// reference by-name or by-[label selector][ls]. A name and selector
+	// **MUST NOT** be defined in the same reference.
+	// +required
+	Application *Application `json:"application"`
+
+	// Env creates environment variables based on the Secret values
+	Env []Environment `json:"env,omitempty"`
 }
 
-// ServiceBindingStatus defines the observed state of ServiceBinding
+// Environment represents a key to Secret data keys and name of the environment variable
+type Environment struct {
+	// Name of the environment variable
+	Name string `json:"name"`
+
+	// Secret data key
+	Key string `json:"key"`
+}
+
+// These are valid conditions of ServiceBinding.
+const (
+	// ServiceBindingReady means the ServiceBinding has projected the secret
+	//  and the Workload is ready to start. It does not indicate the condition
+	// of either the Service or the Workload resources referenced.
+	ServiceBindingConditionReady = "Ready"
+)
+
+// ServiceBindingStatus defines the observed state of ServiceBinding.
+// +k8s:openapi-gen=true
 type ServiceBindingStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// The status of the service binding along with reason and type
+	// +optional
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+
+	// The state of the service binding observed
+	// +optional
+	State string `json:"state"`
 }
+
+// ConditionReady specifies that the resource is ready.
+// For long-running resources.
+const ConditionReady string = "Ready"
+const ConditionMalformed string = "Malformed"
+
+// Values for ConditionReady
+const (
+	ConditionTrue    metav1.ConditionStatus = "True"
+	ConditionFalse   metav1.ConditionStatus = "False"
+	ConditionUnknown metav1.ConditionStatus = "Unknown"
+)
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
@@ -46,7 +92,9 @@ type ServiceBinding struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ServiceBindingSpec   `json:"spec,omitempty"`
+	Spec ServiceBindingSpec `json:"spec,omitempty"`
+
+	// Observed status of the service binding within the namespace
 	Status ServiceBindingStatus `json:"status,omitempty"`
 }
 
@@ -59,6 +107,36 @@ type ServiceBindingList struct {
 	Items           []ServiceBinding `json:"items"`
 }
 
+// Application resource to inject the binding info.
+// It could be any process running within a container.
+type Application struct {
+	// API version of the referent.
+	APIVersion string `json:"apiVersion"`
+
+	// Kind of the referent.
+	Kind string `json:"kind"`
+
+	// Name of the referent.
+	// Mutually exclusive with Selector.
+	// +optional
+	Name string `json:"name,omitempty"`
+
+	// Selector of the referents.
+	// Mutually exclusive with Name.
+	// +optional
+	Selector *metav1.LabelSelector `json:"selector,omitempty"`
+
+	Containers []intstr.IntOrString `json:"containers,omitempty"`
+}
+
 func init() {
 	SchemeBuilder.Register(&ServiceBinding{}, &ServiceBindingList{})
+}
+
+func (sb *ServiceBinding) HasDeletionTimestamp() bool {
+	return !sb.DeletionTimestamp.IsZero()
+}
+
+func (sb *ServiceBinding) GetSpec() interface{} {
+	return &sb.Spec
 }

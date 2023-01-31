@@ -25,6 +25,16 @@ rules:
   - get
   - list
   - watch
+  - update
+- apiGroups:
+  - primaza.io
+  resources:
+  - servicebindings/status
+  verbs:
+  - get
+  - list
+  - watch
+  - update
 - apiGroups:
   - apps
   resources:
@@ -41,3 +51,20 @@ rules:
   - events
   verbs:
   - create
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - list
+  - get
+  - watch
+- apiGroups:
+  - primaza.io
+  resources:
+  - serviceclaims
+  verbs:
+  - get
+  - list
+  - watch
+  - update

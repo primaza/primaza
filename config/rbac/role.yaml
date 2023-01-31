@@ -84,12 +84,6 @@ rules:
 - apiGroups:
   - primaza.io
   resources:
-  - servicebindings/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - primaza.io
-  resources:
   - servicebindings/status
   verbs:
   - get

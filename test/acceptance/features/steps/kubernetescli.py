@@ -38,9 +38,6 @@ spec:
       containers:
       - name: myapp
         image: {image_name}
-        env:
-        - name: SERVICE_BINDING_ROOT
-          value: {bindingRoot}
 '''
 
     def __init__(self, kubeconfig=None):
@@ -81,6 +78,13 @@ spec:
         else:
             print('Resource list is empty under namespace - {}'.format(namespace))
             return None
+
+    def create_namespace(self, namespace):
+        cmd = f'{ctx.cli} create ns {namespace}'
+        output, exit_status = self.cmd.run(cmd)
+        if exit_status == 0:
+            return output
+        return None
 
     def is_resource_in(self, resource_type, resource_name=None):
         if resource_name is None:
@@ -333,15 +337,9 @@ spec:
     def get_deployment_names_of_given_pattern(self, deployment_name_pattern, namespace):
         return self.search_resource_lst_in_namespace("deployment", deployment_name_pattern, namespace)
 
-    def new_app(self, name, image_name, namespace, bindingRoot=None):
-        cmd = f"{ctx.cli} create deployment {name} -n {namespace} --image={image_name}"
-        if bindingRoot:
-            (output, exit_code) = self.cmd.run(f"{ctx.cli} apply -f -",
-                                               self.deployment_template.format(name=name, image_name=image_name,
-                                                                               namespace=namespace, bindingRoot=bindingRoot))
-        else:
-            (output, exit_code) = self.cmd.run(cmd)
-        assert exit_code == 0, f"Non-zero exit code ({exit_code}) returned when attempting to create a new app using following command line {cmd}\n: {output}"
+    def new_app(self, name, image_name, namespace):
+        output, exit_code = self.cmd.run(f"{ctx.cli} apply -f -", self.deployment_template.format(name=name, image_name=image_name, namespace=namespace))
+        assert exit_code == 0, f"Non-zero exit code ({exit_code}) returned when attempting to create a new app \n: {output}"
 
     def set_label(self, name, label, namespace):
         cmd = f"{ctx.cli} label deployments {name} '{label}' -n {namespace}"
@@ -491,7 +489,6 @@ def condition_is_met_for_resource(context, condition, value, resource, name, tim
 @step(u'On Primaza Cluster "{primaza_cluster}", Resource is updated')
 def on_primaza_cluster_apply_yaml(context, primaza_cluster):
     resource = substitute_scenario_id(context, context.text)
-
     with tempfile.NamedTemporaryFile() as tf:
         kubeconfig = context.cluster_provider.get_primaza_cluster(primaza_cluster).get_admin_kubeconfig()
         tf.write(kubeconfig.encode("utf-8"))
@@ -527,3 +524,45 @@ def on_primaza_cluster_delete_registered_service(context, primaza_cluster, prima
         tf.flush()
 
         Kubernetes(kubeconfig=tf.name).delete_by_name("registeredservice", primaza_rs, "primaza-system")
+
+
+@step(u'On Worker Cluster "{worker_cluster}", Resource is created')
+@step(u'On Worker Cluster "{worker_cluster}", Resource is updated')
+def on_worker_cluster_apply_yaml(context, worker_cluster):
+    resource = substitute_scenario_id(context, context.text)
+    with tempfile.NamedTemporaryFile() as tf:
+        kubeconfig = context.cluster_provider.get_worker_cluster(worker_cluster).get_admin_kubeconfig()
+        tf.write(kubeconfig.encode("utf-8"))
+        tf.flush()
+
+        Kubernetes(kubeconfig=tf.name).apply(resource)
+
+
+@step(u'On Primaza Cluster "{primaza_cluster}", test application "{app_name}" is running in namespace "{namespace}"')
+def application_is_running(context, primaza_cluster, app_name, namespace):
+    with tempfile.NamedTemporaryFile() as tf:
+        kubeconfig = context.cluster_provider.get_primaza_cluster(primaza_cluster).get_admin_kubeconfig()
+        tf.write(kubeconfig.encode("utf-8"))
+        tf.flush()
+
+        Kubernetes(kubeconfig=tf.name).new_app(app_name, "quay.io/service-binding/generic-test-app:20220216", namespace)
+
+
+@step(u'On Worker Cluster "{worker_cluster}", test application "{app_name}" is running in namespace "{namespace}"')
+def application_is_running_on_worker(context, worker_cluster, app_name, namespace):
+    with tempfile.NamedTemporaryFile() as tf:
+        kubeconfig = context.cluster_provider.get_worker_cluster(worker_cluster).get_admin_kubeconfig()
+        tf.write(kubeconfig.encode("utf-8"))
+        tf.flush()
+
+        Kubernetes(kubeconfig=tf.name).new_app(app_name, "quay.io/service-binding/generic-test-app:20220216", namespace)
+
+
+@step(u'On Primaza Cluster "{cluster}", namespace "{namespace}" exists')
+def namespace_is_created_primaza_cluster(context, cluster, namespace):
+    with tempfile.NamedTemporaryFile() as tf:
+        kubeconfig = context.cluster_provider.get_primaza_cluster(cluster).get_admin_kubeconfig()
+        tf.write(kubeconfig.encode("utf-8"))
+        tf.flush()
+
+        Kubernetes(kubeconfig=tf.name).create_namespace(namespace)
