@@ -9,8 +9,8 @@ include make/*.mk
 
 ifneq ($(words $(MAKECMDGOALS)),0)
 TARGET := $(word 1,$(MAKECMDGOALS))
-ifeq ($(TARGET),primaza)
 
+ifeq ($(TARGET),primaza)
 .PHONY: primaza
 ifeq ($(words $(MAKECMDGOALS)),1)
 primaza: help
@@ -26,16 +26,28 @@ else ifeq ($(TARGET),agentapp)
 ifeq ($(words $(MAKECMDGOALS)),1)
 agentapp: help
 else
-angetapp:
+agentapp:
 endif
 	@:
 
 include make/agents/app/*.mk
+
+else ifeq ($(TARGET),agentsvc)
+.PHONY: agentsvc
+ifeq ($(words $(MAKECMDGOALS)),1)
+agentsvc: help
+else
+agentsvc:
+endif
+	@:
+
+include make/agents/svc/*.mk
 
 else
 undefine TARGET
 endif
 
 endif
+
 
 
