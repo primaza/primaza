@@ -45,9 +45,23 @@ spec:
                       type: string
                     serviceClassIdentity:
                       description: ServiceClassIdentity defines a set of attributes
-                        that uniquely identify the service.
+                        that are sufficient to identify a service class.  A ServiceClaim
+                        whose ServiceClassIdentity field is a subset of a RegisteredService's
+                        keys can claim that service.
                       items:
-                        type: string
+                        description: ServiceClassIdentityItem defines an attribute
+                          that is necessary to identify a service class.
+                        properties:
+                          name:
+                            description: Name of the service class identity attribute.
+                            type: string
+                          value:
+                            description: Value of the service class identity attribute.
+                            type: string
+                        required:
+                        - name
+                        - value
+                        type: object
                       type: array
                     serviceEndpointDefinitionKeys:
                       description: ServiceEndpointDefinitionKeys defines a set of

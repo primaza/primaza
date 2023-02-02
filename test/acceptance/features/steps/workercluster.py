@@ -139,7 +139,7 @@ class WorkerCluster(Cluster):
         certificate = v1csr.status.certificate
 
         # building kubeconfig
-        kubeconfig = self.cluster_provisioner.kubeconfig()
+        kubeconfig = self.cluster_provisioner.kubeconfig(internal=True)
         kcd = yaml.safe_load(kubeconfig)
         kcd["contexts"][0]["context"]["user"] = csr
         kcd["users"][0]["name"] = csr

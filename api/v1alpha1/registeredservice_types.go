@@ -30,55 +30,44 @@ type RegisteredServiceConstraints struct {
 // HealthCheckContainer defines the container information to be used to
 // run helth checks for the service.
 type HealthCheckContainer struct {
-    // Container image with the client to run the test
-    Image string `json:"image"`
-    // Command to execute in the container to run the test
-    Command string `json:"command"`
-
+	// Container image with the client to run the test
+	Image string `json:"image"`
+	// Command to execute in the container to run the test
+	Command string `json:"command"`
 }
 
 // RegisteredServiceHealthCheck defines metadata that can be used check
 // the health of a service and report status.
 type RegisteredServiceHealthCheck struct {
-    // Container defines a container that will run a check against the 
-    // ServiceEndpointDefinition to determine connectivity and access.
-    Container HealthCheckContainer `json:"container"`
-}
-
-// ServiceClassIdentityItem defines an attribute that is necessary to
-// identify a service class.
-type ServiceClassIdentityItem struct {
-    // Name of the service class identity attribute.
-    Name string `json:"name"`
-
-    // Value of the service class identity attribute.
-    Value string `json:"value"`
+	// Container defines a container that will run a check against the
+	// ServiceEndpointDefinition to determine connectivity and access.
+	Container HealthCheckContainer `json:"container"`
 }
 
 // ServiceEndpointDefinitionSecretRef defines a reference to
 // one of the keys of a secret. This reference can then be used
-// when defining a ServiceEndpointDefinitionItem 
+// when defining a ServiceEndpointDefinitionItem
 type ServiceEndpointDefinitionSecretRef struct {
-    // Name of the secret reference
-    Name string `json:"name"`
+	// Name of the secret reference
+	Name string `json:"name"`
 
-    // Key of the secret reference field
-    Key string `json:"key"`
+	// Key of the secret reference field
+	Key string `json:"key"`
 }
 
 // ServiceEndpointDefinitionItem defines an attribute that is necessary for
 // a client to connect to a service
 type ServiceEndpointDefinitionItem struct {
-    // Name of the service endpoint definition attribute.
-    Name string `json:"name"`
+	// Name of the service endpoint definition attribute.
+	Name string `json:"name"`
 
-    // Value of the service endpoint definition attribute. It is mutually
-    // exclusive with ValueFromSecret.
-    Value string `json:"value,omitempty"`
+	// Value of the service endpoint definition attribute. It is mutually
+	// exclusive with ValueFromSecret.
+	Value string `json:"value,omitempty"`
 
-    // Value reference of the service endpoint definition attribute. It is mutually
-    // exclusive with Value
-    ValueFromSecret ServiceEndpointDefinitionSecretRef `json:"valueFromSecret,omitempty"`
+	// Value reference of the service endpoint definition attribute. It is mutually
+	// exclusive with Value
+	ValueFromSecret ServiceEndpointDefinitionSecretRef `json:"valueFromSecret,omitempty"`
 }
 
 // RegisteredServiceSpec defines the desired state of RegisteredService
@@ -88,19 +77,19 @@ type RegisteredServiceSpec struct {
 	Constraints RegisteredServiceConstraints `json:"constraints,omitempty"`
 
 	// HealthCheck defines a health check for the underlying service.
-    HealthCheck  RegisteredServiceHealthCheck `json:"healthcheck,omitempty"`
+	HealthCheck RegisteredServiceHealthCheck `json:"healthcheck,omitempty"`
 
 	// SLA defines the support level for this service.
 	SLA string `json:"sla,omitempty"`
 
-    // ServiceClassIdentity defines a set of attributes that are sufficient to
+	// ServiceClassIdentity defines a set of attributes that are sufficient to
 	// identify a service class.  A ServiceClaim whose ServiceClassIdentity
-	// field is a subset of a RegisteredService's keys can claim that service. 
-    ServiceClassIdentity []ServiceClassIdentityItem `json:"serviceClassIdentity"`
+	// field is a subset of a RegisteredService's keys can claim that service.
+	ServiceClassIdentity []ServiceClassIdentityItem `json:"serviceClassIdentity"`
 
-    // ServiceEndpointDefinition defines a set of attributes sufficient for a
+	// ServiceEndpointDefinition defines a set of attributes sufficient for a
 	// client to establish a connection to the service.
-    ServiceEndpointDefinition []ServiceEndpointDefinitionItem `json:"serviceEndpointDefinition"`
+	ServiceEndpointDefinition []ServiceEndpointDefinitionItem `json:"serviceEndpointDefinition"`
 }
 
 // RegisteredServiceStatus defines the observed state of RegisteredService.
@@ -120,6 +109,12 @@ type RegisteredService struct {
 	Spec   RegisteredServiceSpec   `json:"spec,omitempty"`
 	Status RegisteredServiceStatus `json:"status,omitempty"`
 }
+
+const (
+	RegisteredServiceStateAvailable   string = "Available"
+	RegisteredServiceStateUnreachable string = "Unreachable"
+	RegisteredServiceStateClaimed     string = "Claimed"
+)
 
 //+kubebuilder:object:root=true
 

@@ -24,9 +24,10 @@ type ServiceCatalogService struct {
 	// Name defines the name of the known service
 	Name string `json:"name"`
 
-	// ServiceClassIdentity defines a set of attributes that uniquely identify
-	// the service.
-	ServiceClassIdentity []string `json:"serviceClassIdentity"`
+	// ServiceClassIdentity defines a set of attributes that are sufficient to
+	// identify a service class.  A ServiceClaim whose ServiceClassIdentity
+	// field is a subset of a RegisteredService's keys can claim that service.
+	ServiceClassIdentity []ServiceClassIdentityItem `json:"serviceClassIdentity"`
 
 	// ServiceEndpointDefinitionKeys defines a set of keys listing the
 	// information this service provides to a workload.
