@@ -119,6 +119,12 @@ vet: ## Run go vet against code.
 test: manifests generate fmt vet envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GO) test ./... -coverprofile cover.out
 
+.PHONY: test-acceptance-wip
+test-acceptance-wip: test-acceptance-setup ## Runs acceptance tests for WIP tagged scenarios
+	@(kind get clusters | grep primaza | xargs -I@ kind delete cluster --name @) || true
+	echo "Running work in progress acceptance tests"
+	$(PYTHON_VENV_DIR)/bin/behave --junit --junit-directory $(TEST_ACCEPTANCE_OUTPUT_DIR) --no-capture --no-capture-stderr $(TEST_ACCEPTANCE_TAGS_ARG) $(EXTRA_BEHAVE_ARGS) --wip --stop test/acceptance/features
+
 ##@ Build
 
 .PHONY: build
