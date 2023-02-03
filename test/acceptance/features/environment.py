@@ -16,8 +16,37 @@ before_all(context), after_all(context)
 from behave import fixture, use_fixture
 from steps.command import Command
 from steps.kind import KindProvider
+import os
 
 cmd = Command()
+
+
+class Runner(object):
+    def __init__(self, num_runners: int = 1, runner_id: int = 0):
+        assert num_runners >= 1
+        assert runner_id < num_runners
+        assert runner_id >= 0
+
+        self.num_runners = num_runners
+        self.runner_id = runner_id
+        self.job_id = 0
+
+    def should_skip(self) -> bool:
+        return (self.job_id + self.runner_id) % self.num_runners != 0
+
+    def next_job(self):
+        self.job_id += 1
+
+
+def get_envvar_int(name: str, default: int = 0) -> int:
+    n = os.environ.get(name)
+    if n is None:
+        return default
+    try:
+        x = int(n)
+    except ValueError:
+        print(f"Failed to parse envvar {name} (value: {n}) as an integer")
+    return x
 
 
 @fixture
@@ -27,5 +56,18 @@ def use_kind(context, _timeout=30, **_kwargs):
     context.cluster_provider.delete_clusters()
 
 
-def before_scenario(context, _scenario):
+def before_all(context):
+    context.runner = Runner(
+        get_envvar_int("RUNS", 1),
+        get_envvar_int("RUN_ID"))
+
+
+def before_scenario(context, scenario):
+    if context.runner.should_skip():
+        scenario.skip("Scenario {scenario.name} not assigned to this runner!")
+        return
     use_fixture(use_kind, context, timeout=30)
+
+
+def after_scenario(context, _scenario):
+    context.runner.next_job()
