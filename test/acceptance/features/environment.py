@@ -14,16 +14,23 @@ before_all(context), after_all(context)
 
 
 from behave import fixture, use_fixture
-from steps.command import Command
 from steps.kind import KindProvider
 
-cmd = Command()
+
+def is_development(context):
+    return "wip" in context.tags and context._config.stop
 
 
 @fixture
 def use_kind(context, _timeout=30, **_kwargs):
     context.cluster_provider = KindProvider()
     yield context.cluster_provider
+
+    # if development configuration is found and scenario failed, skip cleanup
+    if is_development(context) and context.failed:
+        print("wip, stop config and context.failed found: not cleaning up")
+        return
+
     context.cluster_provider.delete_clusters()
 
 
