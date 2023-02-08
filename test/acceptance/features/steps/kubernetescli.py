@@ -11,7 +11,7 @@ import yaml
 from steps.environment import ctx
 from steps.command import Command
 from steps.util import substitute_scenario_id
-from behave import register_type, step, when
+from behave import register_type, step
 
 
 class Kubernetes(object):
@@ -477,7 +477,7 @@ def condition_is_met_for_resource(context, condition, value, resource, name, tim
         resource, name, context.namespace.name, condition, value, timeout=timeout)
 
 
-@when(u'On Primaza Cluster "{primaza_cluster}", Resource is created')
+@step(u'On Primaza Cluster "{primaza_cluster}", Resource is created')
 def on_primaza_cluster_apply_yaml(context, primaza_cluster):
     resource = substitute_scenario_id(context, context.text)
 

@@ -93,6 +93,32 @@ rules:
 - apiGroups:
   - primaza.io
   resources:
+  - servicecatalogs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - primaza.io
+  resources:
+  - servicecatalogs/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - primaza.io
+  resources:
+  - servicecatalogs/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - primaza.io
+  resources:
   - serviceclaims
   verbs:
   - create
