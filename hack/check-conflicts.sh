@@ -26,9 +26,9 @@ while IFS='' read -r file; do
     check_file "$file" || ((overall_failed++))
 done < <(git ls-tree --full-tree -r HEAD --name-only | grep -v "vendor/" )
 
-if [ $overall_failed -eq 0 ]; then
+if [ "${overall_failed}" -eq 0 ]; then
     echo -e "\nNone of the tracked or staged files contain strings indicating a git conflict... PASS\n"
 else
     echo -e "\nThe above listed files contains strings indicating a git conflict... FAIL\n"
 fi
-exit $overall_failed
+exit "${overall_failed}"
