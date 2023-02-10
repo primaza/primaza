@@ -157,7 +157,12 @@ class WorkerCluster(Cluster):
                 client.V1PolicyRule(
                     api_groups=["apps"],
                     resources=["deployments"],
-                    verbs=["get", "list", "watch", "create", "update", "patch", "delete"]),
+                    verbs=["create"]),
+                client.V1PolicyRule(
+                    api_groups=["apps"],
+                    resources=["deployments"],
+                    verbs=["delete"],
+                    resource_names=["primaza-controller-agentapp", "primaza-controller-agentsvc"]),
                 client.V1PolicyRule(
                     api_groups=["primaza.io"],
                     resources=["servicebindings"],

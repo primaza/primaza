@@ -1,0 +1,29 @@
+# permissions for end users to edit servicebindings.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: service-agent-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: primaza
+    app.kubernetes.io/part-of: primaza
+    app.kubernetes.io/managed-by: kustomize
+  name: service-agent-role
+rules:
+- apiGroups:
+  - primaza.io
+  resources:
+  - registeredservices
+  verbs:
+  - create
+  - delete
+  - patch
+  - update
+- apiGroups:
+  - primaza.io
+  resources:
+  - registeredservices/status
+  verbs:
+  - get
+  - update

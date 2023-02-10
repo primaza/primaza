@@ -32,7 +32,7 @@ Feature: Register a cloud service in Primaza cluster
         And On Primaza Cluster "primaza-main", ServiceCatalog "primaza-service-catalog" will contain RegisteredService "primaza-rsdb"
 
 
-Scenario: Cloud Service Registration, no Healthcheck provided and ServiceCatalog exists
+    Scenario: Cloud Service Registration, no Healthcheck provided and ServiceCatalog exists
         Given Primaza Cluster "primaza-main" is running
         And   On Primaza Cluster "primaza-main", Resource is created
         """
@@ -86,7 +86,7 @@ Scenario: Cloud Service Registration, no Healthcheck provided and ServiceCatalog
         And On Primaza Cluster "primaza-main", ServiceCatalog "primaza-service-catalog" will contain RegisteredService "primaza-rsdb"
 
 
-Scenario: Cloud Service Registration, no Healthcheck provided, ServiceCatalog exists, and Registered Service deleted
+    Scenario: Cloud Service Registration, no Healthcheck provided, ServiceCatalog exists, and Registered Service deleted
         Given Primaza Cluster "primaza-main" is running
         And   On Primaza Cluster "primaza-main", Resource is created
         """
@@ -140,7 +140,7 @@ Scenario: Cloud Service Registration, no Healthcheck provided, ServiceCatalog ex
         Then On Primaza Cluster "primaza-main", ServiceCatalog "primaza-service-catalog" will not contain RegisteredService "primaza-rsdb"
 
 
-Scenario: Cloud Service Registration, no Healthcheck provided, ServiceCatalog does not exists, and Registered Service deleted
+    Scenario: Cloud Service Registration, no Healthcheck provided, ServiceCatalog does not exists, and Registered Service deleted
         Given Primaza Cluster "primaza-main" is running
         And   On Primaza Cluster "primaza-main", Resource is created
         """
