@@ -90,7 +90,7 @@ class PrimazaKind(PrimazaCluster):
         img = "primaza-controller:latest"
 
         kubeconfig = self.cluster_provisioner.kubeconfig()
-        with tempfile.NamedTemporaryFile(prefix=f"kubeconfig-primaza-{self.cluster_name}-") as t:
+        with tempfile.NamedTemporaryFile(prefix=f"kubeconfig-{self.cluster_name}-") as t:
             t.write(kubeconfig.encode("utf-8"))
             self.__build_load_and_deploy_primaza(t.name, img)
 
@@ -123,5 +123,27 @@ class PrimazaKind(PrimazaCluster):
 
 
 class WorkerKind(WorkerCluster):
+    __agentapp_loaded: bool = False
+
     def __init__(self, cluster_name, version=None):
         super().__init__(KindClusterProvisioner(cluster_name, version), cluster_name)
+
+    def create_application_namespace(self, namespace: str):
+        self.configure_application_cluster()
+        super().create_application_namespace(namespace)
+
+    def configure_application_cluster(self):
+        if self.__agentapp_loaded:
+            return
+
+        self.__load_agentapp_image()
+
+        self.__agentapp_loaded = True
+
+    def __load_agentapp_image(self):
+        cmd = f'make agentapp docker-build && kind load docker-image --name {self.cluster_name} $IMG'
+        output, exit_code = Command().setenv("IMG", "agentapp:latest").run(cmd)
+        print(output)
+
+        if exit_code != 0:
+            raise Exception("error loading agentapp image")
