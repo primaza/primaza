@@ -7,6 +7,8 @@
     * [Claiming a Service](#claiming-a-service)
         * [Claiming from Primaza cluster](#claiming-from-primaza-cluster)
         * [Claiming from Worker cluster](#claiming-from-worker-cluster)
+* [Service agent](#service-agent)
+    * [Service Discovery](#service-discovery)
 
 <!-- vim-markdown-toc -->
 # Agents
@@ -54,6 +56,25 @@ More specifically, an application agent requires the following resources to exis
 <!-- TODO: -->
 
 ### Claiming from Worker cluster
+
+<!-- TODO: -->
+
+# Service agent
+
+Service agents are installed int Cluster Enviuronment's service namespaces.
+Namespaces on worker cluster need to be previously configured to allow, agents to run properly.
+Application agents just need to access resources in the namespace they are published into.
+
+More specifically, an application agent requires the following resources to exists into the namespace:
+
+* A Role granting
+    * full access to `leases.coordination.k8s.io`
+    * create right for `events`
+* A Service Account for the agent
+* A RoleBinding that binds the ServiceAccount to the Role
+
+
+## Service Discovery
 
 <!-- TODO: -->
 
