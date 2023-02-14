@@ -36,6 +36,15 @@ type RegisteredServiceReconciler struct {
 	Scheme *runtime.Scheme
 }
 
+func ServiceInCatalog(sc primazaiov1alpha1.ServiceCatalog, serviceName string) int {
+	for i, service := range sc.Spec.Services {
+		if service.Name == serviceName {
+			return i
+		}
+	}
+	return -1
+}
+
 //+kubebuilder:rbac:groups=primaza.io,resources=registeredservices,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=primaza.io,resources=registeredservices/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=primaza.io,resources=registeredservices/finalizers,verbs=update
@@ -56,8 +65,37 @@ func (r *RegisteredServiceReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	log := log.FromContext(ctx)
 
 	var rs primazaiov1alpha1.RegisteredService
-	if err := r.Client.Get(ctx, req.NamespacedName, &rs); err != nil {
-		log.Error(err, "Error fetching RegiteredService")
+	err := r.Client.Get(ctx, req.NamespacedName, &rs)
+	if err != nil && errors.IsNotFound(err) {
+		log.Info("Registered Service not found, handling delete event")
+		var sc primazaiov1alpha1.ServiceCatalog
+		err = r.Get(ctx, types.NamespacedName{
+			Name:      "primaza-service-catalog",
+			Namespace: req.NamespacedName.Namespace, // "primaza-system",
+		}, &sc)
+		if err != nil {
+			log.Error(err, "Error fetching Service Catalog")
+			return ctrl.Result{}, err
+		}
+
+		si := ServiceInCatalog(sc, req.Name)
+
+		if si == -1 {
+			log.Info("Registered Service is being deleted but no catalog entry found")
+			return ctrl.Result{}, nil
+		}
+
+		sc.Spec.Services = append(sc.Spec.Services[:si], sc.Spec.Services[si+1:]...)
+		log.Info("Updating Service Catalog")
+		if err := r.Update(ctx, &sc); err != nil {
+			// Service Catalog update failed
+			return ctrl.Result{}, err
+		}
+
+		return ctrl.Result{}, nil
+
+	} else if err != nil {
+		log.Error(err, "Error fetching RegisteredService")
 		return ctrl.Result{}, err
 	}
 
@@ -82,7 +120,7 @@ func (r *RegisteredServiceReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	rs.Status = status
 
 	log.Info("Updating status of RegisteredService")
-	err := r.Status().Update(context.Background(), &rs)
+	err = r.Status().Update(ctx, &rs)
 	if err != nil {
 		log.Error(err, "RegisteredService Status Failed")
 		return ctrl.Result{}, err
@@ -135,7 +173,7 @@ func (r *RegisteredServiceReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		} else if err != nil {
 			// Error that isn't due to the ServiceCatalog not found
 			return ctrl.Result{}, err
-		} else {
+		} else if ServiceInCatalog(sc, scs.Name) == -1 {
 			log.Info("Updating Service Catalog")
 			sc.Spec.Services = append(sc.Spec.Services, scs)
 			err = r.Update(ctx, &sc)
