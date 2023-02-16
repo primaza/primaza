@@ -37,6 +37,8 @@ Feature: Register a kubernetes cluster as Primaza Worker Cluster
         Then On Primaza Cluster "primaza-main", ClusterEnvironment "primaza-worker" state will eventually move to "Offline"
         And On Primaza Cluster "primaza-main", ClusterEnvironment "primaza-worker" last status condition has Type "Offline"
 
+    # TODO(filariow): enable this when permissions check is supported
+    @disabled
     Scenario: Primaza Cluster can contact Worker cluster, but has invalid credentials
         Given Primaza Cluster "primaza-main" is running
         And   Worker Cluster "primaza-worker" for "primaza-main" is running

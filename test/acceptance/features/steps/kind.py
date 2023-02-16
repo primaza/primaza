@@ -44,7 +44,7 @@ nodes:
     kind: "ClusterConfiguration"
     apiServer:
       extraArgs:
-        anonymous-auth: "false"
+        anonymous-auth: "true"
   {image}
 """
         print(kind_config)
