@@ -68,7 +68,7 @@ nodes:
         output, exit_code = self.exec(f'kind delete cluster --name {self.cluster_name}')
         return output, exit_code
 
-    def kubeconfig(self, internal=False):
+    def kubeconfig(self, internal: bool = False) -> str:
         # To be used for test client to cluster communication
         cmd = f"kind get kubeconfig --name {self.cluster_name}"
 

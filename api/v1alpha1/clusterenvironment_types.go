@@ -47,7 +47,7 @@ type ClusterEnvironmentSpec struct {
 // ClusterEnvironmentStatus defines the observed state of ClusterEnvironment
 type ClusterEnvironmentStatus struct {
 	// The State of the cluster environment
-	//+kubebuilder:validation:Enum=Online;Offline
+	//+kubebuilder:validation:Enum=Online;Offline;Partial
 	//+kubebuilder:default:=Offline
 	State ClusterEnvironmentState `json:"state"`
 
@@ -59,6 +59,7 @@ type ClusterEnvironmentState string
 
 const (
 	ClusterEnvironmentStateOnline  ClusterEnvironmentState = "Online"
+	ClusterEnvironmentStatePartial ClusterEnvironmentState = "Partial"
 	ClusterEnvironmentStateOffline ClusterEnvironmentState = "Offline"
 )
 

@@ -23,7 +23,7 @@ def on_primaza_cluster_check_state(context, cluster, ce_name, state, timeout=60)
 
 
 @then(u'On Primaza Cluster "{cluster}", ClusterEnvironment "{ce_name}" last status condition has Type "{ctype}"')
-def on_primaza_cluster_check_status_condition(context, cluster, ce_name, ctype):
+def on_primaza_cluster_check_last_status_condition(context, cluster, ce_name, ctype):
     api_client = context.cluster_provider.get_primaza_cluster(cluster).get_api_client()
     cobj = client.CustomObjectsApi(api_client)
 
@@ -44,6 +44,28 @@ def on_primaza_cluster_check_status_condition(context, cluster, ce_name, ctype):
             last_applied = condition
 
     assert last_applied["type"] == ctype, f'Cluster Environment last condition type is not matching: wanted "{ctype}", found "{last_applied["type"]}"'
+
+
+@then(u'On Primaza Cluster "{cluster}", ClusterEnvironment "{ce_name}" status condition with Type "{ctype}" has Status "{cstatus}"')
+def on_primaza_cluster_check_status_condition(context, cluster: str, ce_name: str, ctype: str, cstatus: str):
+    api_client = context.cluster_provider.get_primaza_cluster(cluster).get_api_client()
+    cobj = client.CustomObjectsApi(api_client)
+
+    ce_status = cobj.get_namespaced_custom_object_status(
+        group="primaza.io",
+        version="v1alpha1",
+        namespace="primaza-system",
+        plural="clusterenvironments",
+        name=ce_name)
+    ce_conditions = ce_status.get("status", {}).get("conditions", None)
+    assert ce_conditions is not None and len(ce_conditions) > 0, "Cluster Environment status conditions are empty or not defined"
+
+    for condition in ce_conditions:
+        if condition["type"] == ctype:
+            assert condition["status"] == cstatus, f'Cluster Environment condition with type "{ctype}" has status {condition["status"]}, wanted {cstatus}'
+            return
+
+    assert False, f"Cluster Environment does not have a condition with type {ctype}: {ce_conditions}"
 
 
 @then(u'On Primaza Cluster "{cluster}", ClusterEnvironment "{ce_name}" in namespace "{namespace}" state remains not present')

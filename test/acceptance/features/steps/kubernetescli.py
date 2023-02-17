@@ -513,6 +513,17 @@ def on_primaza_cluster_apply_yaml(context, primaza_cluster):
 
 @step(u'On Primaza Cluster "{primaza_cluster}", Resource is deleted')
 def on_primaza_cluster_delete_yaml(context, primaza_cluster: str):
+    kubeconfig = context.cluster_provider.get_primaza_cluster(primaza_cluster).get_admin_kubeconfig()
+    __on_cluster_delete_yaml(context, kubeconfig)
+
+
+@step(u'On Worker Cluster "{worker_cluster}", Resource is deleted')
+def on_worker_cluster_delete_yaml(context, worker_cluster: str):
+    kubeconfig = context.cluster_provider.get_worker_cluster(worker_cluster).get_admin_kubeconfig()
+    __on_cluster_delete_yaml(context, kubeconfig)
+
+
+def __on_cluster_delete_yaml(context, kubeconfig: str):
     resource = substitute_scenario_id(context, context.text)
 
     metadata = yaml.full_load(resource)["metadata"]
@@ -520,7 +531,6 @@ def on_primaza_cluster_delete_yaml(context, primaza_cluster: str):
     ns = metadata["namespace"] if "namespace" in metadata else None
 
     with tempfile.NamedTemporaryFile() as tf:
-        kubeconfig = context.cluster_provider.get_primaza_cluster(primaza_cluster).get_admin_kubeconfig()
         tf.write(kubeconfig.encode("utf-8"))
         tf.flush()
 
