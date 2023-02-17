@@ -14,8 +14,7 @@ endif
 .PHONY: setup-venv
 setup-venv: ## Setup virtual environment
 	python3 -m venv $(PYTHON_VENV_DIR)
-	$(PYTHON_VENV_DIR)/bin/pip install --upgrade setuptools
-	$(PYTHON_VENV_DIR)/bin/pip install --upgrade pip
+	$(PYTHON_VENV_DIR)/bin/pip install --upgrade pip wheel setuptools
 
 .PHONY: test-acceptance-setup
 test-acceptance-setup: setup-venv ## Setup the environment for the acceptance tests
