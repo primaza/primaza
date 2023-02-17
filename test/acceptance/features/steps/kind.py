@@ -132,6 +132,8 @@ class PrimazaKind(PrimazaCluster):
 
     def __build_install_base_cmd(self, kubeconfig_path: str, img: str) -> Command:
         return Command() \
+            .setenv("HOME", os.getenv("HOME")) \
+            .setenv("USER", os.getenv("USER")) \
             .setenv("KUBECONFIG", kubeconfig_path) \
             .setenv("GOCACHE", os.getenv("GOCACHE", "/tmp/gocache")) \
             .setenv("GOPATH", os.getenv("GOPATH", "/tmp/go")) \
