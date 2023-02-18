@@ -15,6 +15,7 @@ before_all(context), after_all(context)
 
 from behave import fixture, use_fixture
 from steps.kind import KindProvider
+from steps.util import scenario_id
 
 
 def is_development(context):
@@ -23,7 +24,7 @@ def is_development(context):
 
 @fixture
 def use_kind(context, _timeout=30, **_kwargs):
-    context.cluster_provider = KindProvider()
+    context.cluster_provider = KindProvider(prefix=f"{scenario_id(context)}-")
     yield context.cluster_provider
 
     # if development configuration is found and scenario failed, skip cleanup

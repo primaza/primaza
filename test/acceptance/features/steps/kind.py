@@ -8,14 +8,22 @@ from steps.workercluster import WorkerCluster
 
 
 class KindProvider(ClusterProvider):
-    def __init__(self):
-        pass
+    __prefix: str | None = None
+
+    def __init__(self, prefix: str | None = None):
+        if prefix is not None:
+            self.__prefix = prefix
 
     def build_primaza_cluster(self, name, version):
-        return PrimazaKind(name, version)
+        return PrimazaKind(self.__cluster_name(name), version)
 
     def build_worker_cluster(self, name, version):
-        return WorkerKind(name, version)
+        return WorkerKind(self.__cluster_name(name), version)
+
+    def __cluster_name(self, name: str) -> str:
+        if self.__prefix is None:
+            return name
+        return f"{self.__prefix}{name}"
 
     def join_networks(self, _cluster1, _cluster2):
         """
