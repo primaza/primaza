@@ -35,10 +35,10 @@ type ClusterEnvironmentSpec struct {
 	Labels []string `json:"labels,omitempty"`
 
 	// Namespaces in target cluster where applications are deployed
-	ApplicationNamespaces string `json:"applicationNamespaces,omitempty"`
+	ApplicationNamespaces []string `json:"applicationNamespaces,omitempty"`
 
 	// Namespaces in target cluster where services are discovered
-	ServiceNamespaces string `json:"serviceNamespaces,omitempty"`
+	ServiceNamespaces []string `json:"serviceNamespaces,omitempty"`
 
 	// Cluster Admin's contact information
 	ContactInfo string `json:"contactInfo,omitempty"`
