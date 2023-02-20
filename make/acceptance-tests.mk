@@ -2,7 +2,7 @@
 
 TEST_ACCEPTANCE_OUTPUT_DIR ?= $(OUTPUT_DIR)/acceptance-tests
 TEST_ACCEPTANCE_CLI ?= kubectl
-
+TEST_ACCEPTANCE_PARALLEL ?= 4
 TEST_ACCEPTANCE_TAGS ?=
 
 ifdef TEST_ACCEPTANCE_TAGS
@@ -26,6 +26,12 @@ test-acceptance: test-acceptance-setup ## Runs acceptance tests
 	@(kind get clusters | grep primaza | xargs -I@ kind delete cluster --name @) || true
 	echo "Running acceptance tests"
 	$(PYTHON_VENV_DIR)/bin/behave --junit --junit-directory $(TEST_ACCEPTANCE_OUTPUT_DIR) --no-capture --no-capture-stderr $(TEST_ACCEPTANCE_TAGS_ARG) $(EXTRA_BEHAVE_ARGS) test/acceptance/features
+
+.PHONY: test-acceptance-x
+test-acceptance-x: test-acceptance-setup ## Runs acceptance tests for WIP tagged scenarios
+	@(kind get clusters | grep primaza | xargs -I@ kind delete cluster --name @) || true
+	echo "Running acceptance tests in $(TEST_ACCEPTANCE_PARALLEL) parallel processes"
+	FEATURES_PATH=test/acceptance/features $(PYTHON_VENV_DIR)/bin/behavex -o $(TEST_ACCEPTANCE_OUTPUT_DIR) --no-capture --no-capture-stderr $(TEST_ACCEPTANCE_TAGS_ARG) $(EXTRA_BEHAVE_ARGS) --parallel-processes $(TEST_ACCEPTANCE_PARALLEL)
 
 .PHONY: clean
 clean: ## Removes temp directories
