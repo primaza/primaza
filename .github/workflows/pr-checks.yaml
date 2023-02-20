@@ -102,7 +102,7 @@ jobs:
       - name: Setup-cli
         uses: ./.github/actions/setup-cli
         with:
-          start-minikube: true
+          start-minikube: false
 
       - name: Acceptance tests
         timeout-minutes: 60
