@@ -85,15 +85,15 @@ def on_primaza_cluster_check_registered_service_status(context, cluster, rs_name
 
 
 def registered_service_in_catalog(rs_name, catalog):
-    print(catalog)
-    for service in catalog["spec"]["services"]:
-        if service["name"] == rs_name:
-            return True
+    if "spec" in catalog and "services" in catalog["spec"]:
+        for service in catalog["spec"]["services"]:
+            if service["name"] == rs_name:
+                return True
     return False
 
 
 @then(u'On Primaza Cluster "{cluster}", ServiceCatalog "{catalog_name}" will contain RegisteredService "{rs_name}"')
-def on_primaza_cluster_check_service_catalog_updated(context, cluster, catalog_name, rs_name):
+def on_primaza_cluster_check_service_catalog_augmented(context, cluster, catalog_name, rs_name):
     api_client = context.cluster_provider.get_primaza_cluster(cluster).get_api_client()
     cobj = client.CustomObjectsApi(api_client)
 
@@ -105,5 +105,22 @@ def on_primaza_cluster_check_service_catalog_updated(context, cluster, catalog_n
             plural="servicecatalogs",
             name=catalog_name),
         check_success=lambda x: x is not None and registered_service_in_catalog(rs_name, x),
+        step=5,
+        timeout=20)
+
+
+@then(u'On Primaza Cluster "{cluster}", ServiceCatalog "{catalog_name}" will not contain RegisteredService "{rs_name}"')
+def on_primaza_cluster_check_service_catalog_reduced(context, cluster, catalog_name, rs_name):
+    api_client = context.cluster_provider.get_primaza_cluster(cluster).get_api_client()
+    cobj = client.CustomObjectsApi(api_client)
+
+    polling2.poll(
+        target=lambda: cobj.get_namespaced_custom_object(
+            group="primaza.io",
+            version="v1alpha1",
+            namespace="primaza-system",
+            plural="servicecatalogs",
+            name=catalog_name),
+        check_success=lambda x: x is not None and not registered_service_in_catalog(rs_name, x),
         step=5,
         timeout=20)

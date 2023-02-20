@@ -153,6 +153,16 @@ spec:
         assert exit_code == 0, f"Non-zero exit code ({exit_code}) while deleting a YAML: {output}"
         return output
 
+    def delete_by_name(self, res_type, res_name, namespace=None):
+        if namespace is not None:
+            ns_arg = f"-n {namespace}"
+        else:
+            ns_arg = ""
+        (output, exit_code) = self.cmd.run(
+            f"{ctx.cli} delete {res_type} {res_name} {ns_arg}")
+        assert exit_code == 0, f"Non-zero exit code ({exit_code}) while deleting a Custom Resource: {output}"
+        return output
+
     def expose_service_route(self, name, namespace, port=""):
         output, exit_code = self.cmd.run(
             f'{ctx.cli} expose deployment {name} -n {namespace} --port={port} --type=NodePort')
@@ -488,3 +498,14 @@ def on_primaza_cluster_apply_yaml(context, primaza_cluster):
         tf.flush()
 
         Kubernetes(kubeconfig=tf.name).apply(resource)
+
+
+@step(u'On Primaza Cluster "{primaza_cluster}", RegisteredService "{primaza_rs}" is deleted')
+def on_primaza_cluster_delete_registered_service(context, primaza_cluster, primaza_rs):
+
+    with tempfile.NamedTemporaryFile() as tf:
+        kubeconfig = context.cluster_provider.get_primaza_cluster(primaza_cluster).get_admin_kubeconfig()
+        tf.write(kubeconfig.encode("utf-8"))
+        tf.flush()
+
+        Kubernetes(kubeconfig=tf.name).delete_by_name("registeredservice", primaza_rs, "primaza-system")
