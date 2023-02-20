@@ -478,6 +478,7 @@ def condition_is_met_for_resource(context, condition, value, resource, name, tim
 
 
 @step(u'On Primaza Cluster "{primaza_cluster}", Resource is created')
+@step(u'On Primaza Cluster "{primaza_cluster}", Resource is updated')
 def on_primaza_cluster_apply_yaml(context, primaza_cluster):
     resource = substitute_scenario_id(context, context.text)
 
