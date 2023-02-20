@@ -38,7 +38,9 @@ spec:
             properties:
               applicationNamespaces:
                 description: Namespaces in target cluster where applications are deployed
-                type: string
+                items:
+                  type: string
+                type: array
               clusterContextSecret:
                 description: Name of the Secret where connection (kubeconfig) information
                   to target cluster is stored
@@ -60,7 +62,9 @@ spec:
                 type: array
               serviceNamespaces:
                 description: Namespaces in target cluster where services are discovered
-                type: string
+                items:
+                  type: string
+                type: array
             required:
             - clusterContextSecret
             - environmentName
