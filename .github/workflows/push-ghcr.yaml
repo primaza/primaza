@@ -1,0 +1,66 @@
+name: Create and publish a Docker image
+
+on:  # yamllint disable-line rule:truthy
+  push:
+    branches: ['main']
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Primaza Docker image
+        run: |
+          IMG=$IMG_BASE:$(git rev-parse --short HEAD) make primaza docker-build && \
+            docker tag "$IMG_BASE:$(git rev-parse --short HEAD)" "$IMG_BASE:latest"
+        env:
+          IMG_BASE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Build AgentApp Docker image
+        run: |
+          IMG=$IMG_BASE:$(git rev-parse --short HEAD) make agentapp docker-build && \
+            docker tag "$IMG_BASE:$(git rev-parse --short HEAD)" "$IMG_BASE:latest"
+        env:
+          IMG_BASE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-agentapp
+
+      - name: Build AgentSvc Docker image
+        run: |
+          IMG=$IMG_BASE:$(git rev-parse --short HEAD) make agentsvc docker-build && \
+            docker tag "$IMG_BASE:$(git rev-parse --short HEAD)" "$IMG_BASE:latest"
+        env:
+          IMG_BASE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-agentsvc
+
+      - name: Push Docker images
+        run: |
+          set -e
+
+          # push built images
+          docker push "$IMG_BASE_PRIMAZA:$(git rev-parse --short HEAD)"
+          docker push "$IMG_BASE_AGENTSVC:$(git rev-parse --short HEAD)"
+          docker push "$IMG_BASE_AGENTAPP:$(git rev-parse --short HEAD)"
+
+          # push latest tag for currently built images
+          docker push "$IMG_BASE_PRIMAZA:latest"
+          docker push "$IMG_BASE_AGENTSVC:latest"
+          docker push "$IMG_BASE_AGENTAPP:latest"
+        env:
+          IMG_BASE_PRIMAZA: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          IMG_BASE_AGENTAPP: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-agentapp
+          IMG_BASE_AGENTSVC: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-agentsvc
