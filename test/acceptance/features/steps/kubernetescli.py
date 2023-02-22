@@ -500,6 +500,24 @@ def on_primaza_cluster_apply_yaml(context, primaza_cluster):
         Kubernetes(kubeconfig=tf.name).apply(resource)
 
 
+@step(u'On Primaza Cluster "{primaza_cluster}", Resource is deleted')
+def on_primaza_cluster_delete_yaml(context, primaza_cluster: str):
+    resource = substitute_scenario_id(context, context.text)
+
+    metadata = yaml.full_load(resource)["metadata"]
+    metadata_name = metadata["name"]
+    ns = metadata["namespace"] if "namespace" in metadata else None
+
+    with tempfile.NamedTemporaryFile() as tf:
+        kubeconfig = context.cluster_provider.get_primaza_cluster(primaza_cluster).get_admin_kubeconfig()
+        tf.write(kubeconfig.encode("utf-8"))
+        tf.flush()
+
+        output = Kubernetes(kubeconfig=tf.name).delete(resource, ns)
+        result = re.search(rf'.*{metadata_name}.*(deleted)', output)
+        assert result is not None, f"Unable to delete CR '{metadata_name}': {output}"
+
+
 @step(u'On Primaza Cluster "{primaza_cluster}", RegisteredService "{primaza_rs}" is deleted')
 def on_primaza_cluster_delete_registered_service(context, primaza_cluster, primaza_rs):
 

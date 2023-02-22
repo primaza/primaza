@@ -3,7 +3,7 @@ kind: RoleBinding
 metadata:
   labels:
     app.kubernetes.io/name: rolebinding
-    app.kubernetes.io/instance: agentsvc-rolebinding
+    app.kubernetes.io/instance: agentapp-rolebinding
     app.kubernetes.io/component: rbac
     app.kubernetes.io/created-by: primaza
     app.kubernetes.io/part-of: primaza
@@ -12,7 +12,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: agentsvc-role
+  name: agentapp-role
 subjects:
 - kind: ServiceAccount
-  name: controller-agentsvc
+  name: primaza-controller-agentapp
