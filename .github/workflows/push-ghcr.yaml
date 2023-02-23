@@ -35,23 +35,32 @@ jobs:
 
       - name: Build Primaza Docker image
         run: |
-          IMG=$IMG_BASE:$(git rev-parse --short HEAD) make primaza docker-build && \
-            docker tag "$IMG_BASE:$(git rev-parse --short HEAD)" "$IMG_BASE:latest"
+          IMG="${IMG_BASE}:$(git rev-parse --short HEAD)" \
+            DOCKER_BUILD_ARGS="--label org.opencontainers.image.source=https://github.com/${REPO}/${IMG_NAME} -t ${IMG_BASE}:latest" \
+            make primaza docker-build
         env:
+          REPO: ${{ github.actor }}
+          IMG_NAME: ${{ env.IMAGE_NAME }}
           IMG_BASE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
       - name: Build AgentApp Docker image
         run: |
-          IMG=$IMG_BASE:$(git rev-parse --short HEAD) make agentapp docker-build && \
-            docker tag "$IMG_BASE:$(git rev-parse --short HEAD)" "$IMG_BASE:latest"
+          IMG="${IMG_BASE}:$(git rev-parse --short HEAD)" \
+            DOCKER_BUILD_ARGS="--label org.opencontainers.image.source=https://github.com/${REPO}/${IMG_NAME} -t ${IMG_BASE}:latest" \
+            make agentapp docker-build
         env:
+          REPO: ${{ github.actor }}
+          IMG_NAME: ${{ env.IMAGE_NAME }}-agentapp
           IMG_BASE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-agentapp
 
       - name: Build AgentSvc Docker image
         run: |
-          IMG=$IMG_BASE:$(git rev-parse --short HEAD) make agentsvc docker-build && \
-            docker tag "$IMG_BASE:$(git rev-parse --short HEAD)" "$IMG_BASE:latest"
+          IMG="${IMG_BASE}:$(git rev-parse --short HEAD)" \
+            DOCKER_BUILD_ARGS="--label org.opencontainers.image.source=https://github.com/${REPO}/${IMG_NAME} -t ${IMG_BASE}:latest" \
+            make agentsvc docker-build
         env:
+          REPO: ${{ github.actor }}
+          IMG_NAME: ${{ env.IMAGE_NAME }}-agentsvc
           IMG_BASE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-agentsvc
 
       - name: Push Docker images
