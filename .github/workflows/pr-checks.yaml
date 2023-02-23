@@ -77,13 +77,30 @@ jobs:
         run: |
           make test
 
+  features:
+    name: Acceptance Tests Features
+    runs-on: ubuntu-20.04
+    outputs:
+      features: ${{ steps.features.outputs.features }}
+    steps:
+      - name: Checkout Git Repository
+        uses: actions/checkout@v3
+
+      - id: features
+        run: |
+          cd test/acceptance/features
+          FEATURES=$(ls *.feature | jq -R -s -c 'split("\n")[:-1]')
+          echo "features=$FEATURES" >> $GITHUB_OUTPUT
+
   acceptance:
     name: Acceptance Tests
     runs-on: ubuntu-20.04
     timeout-minutes: 90
 
-    env:
-      EXTRA_BEHAVE_ARGS: "--tags=~@disable-github-actions"
+    needs: features
+    strategy:
+      matrix:
+        feature: ${{ fromJSON(needs.features.outputs.features) }}
 
     steps:
       - name: Checkout Git Repository
@@ -107,14 +124,24 @@ jobs:
 
       - name: Acceptance tests
         timeout-minutes: 60
-        run: |
-          make test-acceptance
+        run: make test-acceptance
+        env:
+          EXTRA_BEHAVE_ARGS: -i test/acceptance/features/${{ matrix.feature }} --tags=~@disable-github-actions
 
       - uses: actions/upload-artifact@v3
         if: ${{ steps.check-skip-acceptance.outputs.can_skip != 'true' && always() }}
         with:
           name: acceptance-test-results
           path: ${{ env.TEST_RESULTS }}
+
+  wait-acceptance:
+    needs: acceptance
+    name: Wait for Acceptance Tests
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: None
+      run: exit 0
 
   single-commit:
     name: Single commit PR
