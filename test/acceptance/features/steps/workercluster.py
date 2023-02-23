@@ -54,6 +54,8 @@ class WorkerCluster(Cluster):
             t.flush()
 
             out, err = Command() \
+                .setenv("HOME", os.getenv("HOME")) \
+                .setenv("USER", os.getenv("USER")) \
                 .setenv("KUBECONFIG", t.name) \
                 .setenv("GOCACHE", os.getenv("GOCACHE", "/tmp/gocache")) \
                 .setenv("GOPATH", os.getenv("GOPATH", "/tmp/go")) \

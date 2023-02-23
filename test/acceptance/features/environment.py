@@ -16,6 +16,7 @@ before_all(context), after_all(context)
 from behave import fixture, use_fixture
 from steps.kind import KindProvider
 from steps.util import scenario_id
+import os
 
 
 def is_development(context):
@@ -37,3 +38,8 @@ def use_kind(context, _timeout=30, **_kwargs):
 
 def before_scenario(context, _scenario):
     use_fixture(use_kind, context, timeout=30)
+
+
+def before_all(context):
+    assert os.getenv("HOME") is not None, "Need $HOME set to run tests"
+    assert os.getenv("USER") is not None, "Need $USER set to run tests"
