@@ -101,6 +101,14 @@ class PrimazaKind(PrimazaCluster):
         with tempfile.NamedTemporaryFile(prefix=f"kubeconfig-{self.cluster_name}-") as t:
             t.write(kubeconfig.encode("utf-8"))
             self.__build_load_and_deploy_primaza(t.name, img)
+            self.__install_servicebinding_crd(t.name, img)
+
+    # TODO: remove this when SBO is no longer needed
+    def __install_servicebinding_crd(self, kubeconfig_path: str, img: str):
+        sb = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "resources", "servicebinding.io_servicebindings.yaml")
+        out, err = self.__build_install_primaza_base_cmd(kubeconfig_path, img).run(f"kubectl apply -f {sb}")
+        print(out)
+        assert err == 0, f"error installing ServiceBinding CRD: {sb}"
 
     def __build_load_and_deploy_primaza(self, kubeconfig_path: str, img: str):
         self.__install_crd_and_build_image(kubeconfig_path, img)

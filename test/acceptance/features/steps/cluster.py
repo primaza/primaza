@@ -36,8 +36,8 @@ class Cluster(object):
         """
         self.cluster_provisioner.delete()
 
-    def get_admin_kubeconfig(self):
+    def get_admin_kubeconfig(self, internal=False):
         """
         Returns the cluster admin kubeconfig
         """
-        return self.cluster_provisioner.kubeconfig()
+        return self.cluster_provisioner.kubeconfig(internal)

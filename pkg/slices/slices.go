@@ -33,3 +33,14 @@ func SubtractStr(s1, s2 []string) []string {
 	}
 	return rs
 }
+
+// ItemContains return true if the slice containes
+// the given string
+func ItemContains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
