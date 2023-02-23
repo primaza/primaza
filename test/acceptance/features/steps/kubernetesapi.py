@@ -124,3 +124,37 @@ def on_primaza_cluster_check_service_catalog_reduced(context, cluster, catalog_n
         check_success=lambda x: x is not None and not registered_service_in_catalog(rs_name, x),
         step=5,
         timeout=20)
+
+
+@step(u'On Primaza Cluster "{cluster}", ServiceBinding "{name}" on namespace "{namespace}" state will eventually move to "{state}"')
+def on_primaza_cluster_check_service_binding_status(context, cluster, name, namespace, state, timeout=60):
+    api_client = context.cluster_provider.get_primaza_cluster(cluster).get_api_client()
+    cobj = client.CustomObjectsApi(api_client)
+
+    polling2.poll(
+        target=lambda: cobj.get_namespaced_custom_object_status(
+            group="primaza.io",
+            version="v1alpha1",
+            namespace=namespace,
+            plural="servicebindings",
+            name=name).get("status", {}).get("state", None),
+        check_success=lambda x: x is not None and x == state,
+        step=5,
+        timeout=timeout)
+
+
+@step(u'On Worker Cluster "{cluster}", ServiceBinding "{name}" on namespace "{namespace}" state will eventually move to "{state}"')
+def on_worker_cluster_check_service_binding_status(context, cluster, name, namespace, state, timeout=60):
+    api_client = context.cluster_provider.get_worker_cluster(cluster).get_api_client()
+    cobj = client.CustomObjectsApi(api_client)
+
+    polling2.poll(
+        target=lambda: cobj.get_namespaced_custom_object_status(
+            group="primaza.io",
+            version="v1alpha1",
+            namespace=namespace,
+            plural="servicebindings",
+            name=name).get("status", {}).get("state", None),
+        check_success=lambda x: x is not None and x == state,
+        step=5,
+        timeout=timeout)

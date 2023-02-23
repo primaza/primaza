@@ -9,6 +9,7 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from kubernetes import client
 from kubernetes.client.rest import ApiException
 from steps.cluster import Cluster
+import polling2
 
 
 class PrimazaCluster(Cluster):
@@ -109,6 +110,30 @@ class PrimazaCluster(Cluster):
             if e.reason != "Not Found":
                 raise e
 
+    def is_app_agent_deployed(self, namespace: str) -> bool:
+        api_client = self.get_api_client()
+        appsv1 = client.AppsV1Api(api_client)
+
+        appsv1.read_namespaced_deployment(name="primaza-controller-agentapp", namespace=namespace)
+        return True
+
+    def is_svc_agent_deployed(self, namespace: str) -> bool:
+        api_client = self.get_api_client()
+        appsv1 = client.AppsV1Api(api_client)
+
+        appsv1.read_namespaced_deployment(name="primaza-controller-agentsvc", namespace=namespace)
+        return True
+
+    def deploy_agentapp(self, namespace: str):
+        """
+        Deploys Application Agent into a cluster's namespace
+        """
+
+    def deploy_agentsvc(self, namespace: str):
+        """
+        Deploys the Service Agent into a cluster's namespace
+        """
+
 
 # Behave steps
 @given('Primaza Cluster "{cluster_name}" is running')
@@ -163,3 +188,23 @@ def ensure_secret_key_has_the_right_value(context, primaza_cluster_name: str, se
     primaza_cluster = context.cluster_provider.get_primaza_cluster(primaza_cluster_name)
     response = primaza_cluster.read_secret_resource_data(secret_name, key)
     assert response == bytes(value, 'utf-8')
+
+
+@step(u'On Primaza Cluster "{cluster_name}", Primaza Service Agent is deployed into namespace "{namespace}"')
+def service_agent_is_deployed(context, cluster_name: str, namespace: str):
+    primaza_cluster = context.cluster_provider.get_primaza_cluster(cluster_name)  # type: PrimazaCluster
+    primaza_cluster.deploy_agentsvc(namespace)
+    polling2.poll(
+        target=lambda: primaza_cluster.is_svc_agent_deployed(namespace),
+        step=1,
+        timeout=30)
+
+
+@step(u'On Primaza Cluster "{cluster_name}", Primaza Application Agent is deployed into namespace "{namespace}"')
+def application_agent_is_deployed(context, cluster_name: str, namespace: str):
+    primaza_cluster = context.cluster_provider.get_primaza_cluster(cluster_name)  # type: PrimazaCluster
+    primaza_cluster.deploy_agentapp(namespace)
+    polling2.poll(
+        target=lambda: primaza_cluster.is_app_agent_deployed(namespace),
+        step=1,
+        timeout=30)

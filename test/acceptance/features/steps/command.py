@@ -17,6 +17,10 @@ class Command(object):
         assert path is not None, "PATH needs to be set in the environment"
         self.setenv("PATH", path)
 
+        home = os.getenv("HOME")
+        assert home is not None, "HOME needs to be set in the environment"
+        self.setenv("HOME", home)
+
     def setenv(self, key, value):
         assert key is not None and value is not None, f"Name or value of the environment variable cannot be None: [{key} = {value}]"
         self.env[key] = value

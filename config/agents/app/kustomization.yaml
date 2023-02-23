@@ -3,3 +3,7 @@ kind: Kustomization
 resources:
 - rbac/
 - agentapp.yaml
+images:
+- name: controller
+  newName: agentapp
+  newTag: latest
