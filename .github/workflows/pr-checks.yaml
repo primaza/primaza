@@ -99,6 +99,7 @@ jobs:
 
     needs: features
     strategy:
+      fail-fast: false
       matrix:
         feature: ${{ fromJSON(needs.features.outputs.features) }}
 
