@@ -92,6 +92,19 @@ def registered_service_in_catalog(rs_name, catalog):
     return False
 
 
+@step(u'On Primaza Cluster "{primaza_cluster}", RegisteredService "{primaza_rs}" state moves to "{state}"')
+def on_primaza_cluster_claim_registered_service(context, primaza_cluster, primaza_rs, state):
+    api_client = context.cluster_provider.get_primaza_cluster(primaza_cluster).get_api_client()
+    cobj = client.CustomObjectsApi(api_client)
+    cobj.patch_namespaced_custom_object_status(
+            group="primaza.io",
+            version="v1alpha1",
+            namespace="primaza-system",
+            plural="registeredservices",
+            name=primaza_rs,
+            body={"status": {"state": state}})
+
+
 @then(u'On Primaza Cluster "{cluster}", ServiceCatalog "{catalog_name}" will contain RegisteredService "{rs_name}"')
 def on_primaza_cluster_check_service_catalog_augmented(context, cluster, catalog_name, rs_name):
     api_client = context.cluster_provider.get_primaza_cluster(cluster).get_api_client()
