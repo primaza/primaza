@@ -11,7 +11,8 @@ import yaml
 from steps.environment import ctx
 from steps.command import Command
 from steps.util import substitute_scenario_id
-from behave import register_type, step
+from behave import register_type, step, then
+from steps.workercluster import WorkerCluster
 
 
 class Kubernetes(object):
@@ -86,7 +87,12 @@ spec:
             return output
         return None
 
-    def is_resource_in(self, resource_type, resource_name=None):
+    def resource_exists(self, resource_type: str, resource_name: str, namespace: str):
+        cmd = f'{ctx.cli} get {resource_type} {resource_name} -n {namespace}'
+        _, exit_code = self.cmd.run(cmd)
+        return exit_code == 0
+
+    def is_resource_in(self, resource_type, resource_name=None, namespace=None):
         if resource_name is None:
             _, exit_code = self.cmd.run(f'{ctx.cli} get {resource_type}')
         else:
@@ -618,3 +624,16 @@ def on_worker_cluster_check_file_available(context, cluster, file_path, namespac
         tf.write(kubeconfig.encode("utf-8"))
         tf.flush()
         polling2.poll(lambda: Kubernetes(kubeconfig=tf.name).check_file_content_from_myapp(namespace, file_path) == content, step=20, timeout=120)
+
+
+@then(u'On Worker Cluster "{cluster_name}", Resource "{resource_type}" with name "{resource_name}" exists in namespace "{namespace}"')
+def on_worker_cluster_check_resource_exists(context, cluster_name: str, resource_type: str, resource_name: str, namespace: str):
+    cluster = context.cluster_provider.get_worker_cluster(cluster_name)  # type: WorkerCluster
+
+    with tempfile.NamedTemporaryFile() as tf:
+        kubeconfig = cluster.get_admin_kubeconfig()
+        tf.write(kubeconfig.encode("utf-8"))
+        tf.flush()
+
+        k = Kubernetes(kubeconfig=tf.name)
+        polling2.poll(lambda: k.resource_exists(resource_type, resource_name, namespace), step=1, timeout=60)
