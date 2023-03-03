@@ -46,7 +46,7 @@ Primaza defines the following entities and controllers to provide the above desc
 Entities:
 * [Cluster Environment](./docs/entities/clusterenvironment.md): represents an development environment on a kubernetes Cluster.
 * [Registered Service](./docs/entities/registeredservice.md): represents running instance of a software service.
-* Service Binding
+* [Service Binding](./docs/entities/servicebinding.md): projects secrets referenced by ServiceBinding resources to application compute resources.
 * Service Claim
 * Service Catalog
 
