@@ -190,13 +190,17 @@ class WorkerCluster(Cluster):
     def __create_application_agent_identity(self, namespace: str):
         rules = [
             client.V1PolicyRule(
+                api_groups=[""],
+                resources=["secrets"],
+                verbs=["get", "list"]),
+            client.V1PolicyRule(
                 api_groups=["apps"],
                 resources=["deployments"],
                 verbs=["get", "list", "watch", "update", "patch"]),
             client.V1PolicyRule(
                 api_groups=["primaza.io"],
-                resources=["servicebindings", "serviceclaims"],
-                verbs=["get", "list", "watch"])
+                resources=["servicebindings", "servicebindings/status", "serviceclaims"],
+                verbs=["get", "list", "watch", "update", "patch"])
         ]
         self.__create_agent_identity(namespace, "agentapp", rules)
 
@@ -382,6 +386,17 @@ class WorkerCluster(Cluster):
         """
         Deploys the Service Agent into a cluster's namespace
         """
+
+    def read_custom_resource_status(self, group: str, version: str, plural: str, name: str, namespace: str) -> str:
+        api_client = self.get_api_client()
+        api_instance = client.CustomObjectsApi(api_client)
+
+        try:
+            api_response = api_instance.get_namespaced_custom_object_status(group, version, namespace, plural, name)
+            return api_response
+        except ApiException as e:
+            print("Exception when calling CustomObjectsApi->get_namespaced_custom_object_status: %s\n" % e)
+            raise e
 
 
 # Behave steps
