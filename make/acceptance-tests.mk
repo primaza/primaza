@@ -26,6 +26,11 @@ test-acceptance: test-acceptance-setup ## Runs acceptance tests
 	echo "Running acceptance tests"
 	$(PYTHON_VENV_DIR)/bin/behave --junit --junit-directory $(TEST_ACCEPTANCE_OUTPUT_DIR) --no-capture --no-capture-stderr $(TEST_ACCEPTANCE_TAGS_ARG) $(EXTRA_BEHAVE_ARGS) test/acceptance/features
 
+.PHONY: test-acceptance-dr
+test-acceptance-dr: test-acceptance-setup ## Runs acceptance tests
+	echo "Running acceptance tests dry-run"
+	$(PYTHON_VENV_DIR)/bin/behave --dry-run --junit --junit-directory $(TEST_ACCEPTANCE_OUTPUT_DIR) --no-capture --no-capture-stderr $(TEST_ACCEPTANCE_TAGS_ARG) $(EXTRA_BEHAVE_ARGS) test/acceptance/features
+
 .PHONY: test-acceptance-x
 test-acceptance-x: test-acceptance-setup kustomize controller-gen opm ## Runs acceptance tests in parallel
 	@(kind get clusters | grep primaza | xargs -I@ kind delete cluster --name @) || true
