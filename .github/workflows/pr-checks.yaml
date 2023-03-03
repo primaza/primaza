@@ -128,6 +128,7 @@ jobs:
         run: make test-acceptance
         env:
           EXTRA_BEHAVE_ARGS: -i test/acceptance/features/${{ matrix.feature }} --tags=~@disable-github-actions
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/upload-artifact@v3
         if: ${{ steps.check-skip-acceptance.outputs.can_skip != 'true' && always() }}
