@@ -20,22 +20,56 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+// ServiceClassConstraints defines the constraints for which a
+// RegisteredService may be used.
+type ServiceClassConstraints struct {
+	// Environments defines the environments that the RegisteredService may be
+	// used in.
+	Environments []string `json:"environments,omitempty"`
+}
+
+type ServiceClassMapping struct {
+	// Name of the data referred to
+	Name string `json:"name"`
+
+	// JsonPath defines where data lives in the service resource.  This query
+	// must resolve to a single value (e.g. not an array of values).
+	JsonPath string `json:"jsonPath"`
+}
+
+// ServiceClassResource defines
+type ServiceClassResource struct {
+	// APIVersion of the underlying service resource
+	APIVersion string `json:"apiVersion"`
+
+	// Kind of the underlying service resource
+	Kind string `json:"kind"`
+
+	// ServiceEndpointDefinitionMapping defines how a key-value mapping projected
+	// into services may be constructed.
+	ServiceEndpointDefinitionMapping []ServiceClassMapping `json:"serviceEndpointDefinitionMapping"`
+}
 
 // ServiceClassSpec defines the desired state of ServiceClass
 type ServiceClassSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Constraints defines under which circumstances the ServiceClass may
+	// be used.
+	// +optional
+	Constraints *ServiceClassConstraints `json:"constraints,omitempty"`
 
-	// Foo is an example field of ServiceClass. Edit serviceclass_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// Resource defines the resource type to be used to convert into Registered
+	// Services
+	Resource ServiceClassResource `json:"resource"`
+
+	// ServiceClassIdentity defines a set of attributes that are sufficient to
+	// identify a service class.  A ServiceClaim whose ServiceClassIdentity
+	// field is a subset of a RegisteredService's keys can claim that service.
+	ServiceClassIdentity []ServiceClassIdentityItem `json:"serviceClassIdentity"`
 }
 
 // ServiceClassStatus defines the observed state of ServiceClass
 type ServiceClassStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	Conditions metav1.ConditionStatus `json:"conditions,omitempty"`
 }
 
 //+kubebuilder:object:root=true

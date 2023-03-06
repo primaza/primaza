@@ -21,19 +21,18 @@ import (
 	"errors"
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
+	"github.com/primaza/primaza/pkg/primaza/clustercontext"
 	"github.com/primaza/primaza/pkg/primaza/controlplane"
 	"github.com/primaza/primaza/pkg/primaza/workercluster"
 	"github.com/primaza/primaza/pkg/slices"
@@ -55,8 +54,6 @@ const (
 	ClientCreationErrorReason   = "ClientCreationError"
 	PermissionsNotGrantedReason = "PermissionsNotGranted"
 )
-
-var errClusterContextSecretNotFound = fmt.Errorf("Cluster Context Secret not found")
 
 // ClusterEnvironmentReconciler reconciles a ClusterEnvironment object
 type ClusterEnvironmentReconciler struct {
@@ -122,7 +119,7 @@ func (r *ClusterEnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.R
 	// get cluster config
 	cfg, err := r.getClusterRESTConfig(ctx, ce)
 	if err != nil {
-		if errors.Is(err, errClusterContextSecretNotFound) {
+		if errors.Is(err, clustercontext.ErrSecretNotFound) {
 			c := workercluster.ConnectionStatus{
 				State:   primazaiov1alpha1.ClusterEnvironmentStateOffline,
 				Reason:  ClientCreationErrorReason,
@@ -286,26 +283,7 @@ func (r *ClusterEnvironmentReconciler) updateClusterEnvironmentStatus(ctx contex
 }
 
 func (r *ClusterEnvironmentReconciler) getClusterRESTConfig(ctx context.Context, ce *primazaiov1alpha1.ClusterEnvironment) (*rest.Config, error) {
-	kc, err := r.getKubeconfig(ctx, ce)
-	if err != nil {
-		return nil, err
-	}
-
-	return clientcmd.RESTConfigFromKubeConfig(kc)
-}
-
-func (r *ClusterEnvironmentReconciler) getKubeconfig(ctx context.Context, ce *primazaiov1alpha1.ClusterEnvironment) ([]byte, error) {
-	sn := ce.Spec.ClusterContextSecret
-	k := client.ObjectKey{Namespace: ce.Namespace, Name: sn}
-	var s corev1.Secret
-	if err := r.Client.Get(ctx, k, &s); err != nil {
-		if apierrors.IsNotFound(err) {
-			return nil, errors.Join(errClusterContextSecretNotFound, err)
-		}
-		return nil, err
-	}
-
-	return s.Data["kubeconfig"], nil
+	return clustercontext.GetClusterRESTConfig(ctx, r.Client, ce.Namespace, ce.Spec.ClusterContextSecret)
 }
 
 func (r *ClusterEnvironmentReconciler) finalizeClusterEnvironment(ctx context.Context, ce *primazaiov1alpha1.ClusterEnvironment) error {

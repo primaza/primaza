@@ -35,13 +35,79 @@ spec:
           spec:
             description: ServiceClassSpec defines the desired state of ServiceClass
             properties:
-              foo:
-                description: Foo is an example field of ServiceClass. Edit serviceclass_types.go
-                  to remove/update
-                type: string
+              constraints:
+                description: Constraints defines under which circumstances the ServiceClass
+                  may be used.
+                properties:
+                  environments:
+                    description: Environments defines the environments that the RegisteredService
+                      may be used in.
+                    items:
+                      type: string
+                    type: array
+                type: object
+              resource:
+                description: Resource defines the resource type to be used to convert
+                  into Registered Services
+                properties:
+                  apiVersion:
+                    description: APIVersion of the underlying service resource
+                    type: string
+                  kind:
+                    description: Kind of the underlying service resource
+                    type: string
+                  serviceEndpointDefinitionMapping:
+                    description: ServiceEndpointDefinitionMapping defines how a key-value
+                      mapping projected into services may be constructed.
+                    items:
+                      properties:
+                        jsonPath:
+                          description: JsonPath defines where data lives in the service
+                            resource.  This query must resolve to a single value (e.g.
+                            not an array of values).
+                          type: string
+                        name:
+                          description: Name of the data referred to
+                          type: string
+                      required:
+                      - jsonPath
+                      - name
+                      type: object
+                    type: array
+                required:
+                - apiVersion
+                - kind
+                - serviceEndpointDefinitionMapping
+                type: object
+              serviceClassIdentity:
+                description: ServiceClassIdentity defines a set of attributes that
+                  are sufficient to identify a service class.  A ServiceClaim whose
+                  ServiceClassIdentity field is a subset of a RegisteredService's
+                  keys can claim that service.
+                items:
+                  description: ServiceClassIdentityItem defines an attribute that
+                    is necessary to identify a service class.
+                  properties:
+                    name:
+                      description: Name of the service class identity attribute.
+                      type: string
+                    value:
+                      description: Value of the service class identity attribute.
+                      type: string
+                  required:
+                  - name
+                  - value
+                  type: object
+                type: array
+            required:
+            - resource
+            - serviceClassIdentity
             type: object
           status:
             description: ServiceClassStatus defines the observed state of ServiceClass
+            properties:
+              conditions:
+                type: string
             type: object
         type: object
     served: true
