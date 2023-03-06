@@ -195,7 +195,7 @@ def on_worker_cluster_check_service_binding_status(context, cluster, name, names
         timeout=timeout)
 
 
-@then(u'On Worker Cluster "{cluster}", Service Class "{sc_class}" exists in "{serviceclass_namespace}"')
+@step(u'On Worker Cluster "{cluster}", Service Class "{sc_class}" exists in "{serviceclass_namespace}"')
 def on_worker_cluster_check_service_class_exists_on_serviceclass_namespace(context, cluster, sc_class, serviceclass_namespace):
     api_client = context.cluster_provider.get_worker_cluster(cluster).get_api_client()
     cobj = client.CustomObjectsApi(api_client)
@@ -261,3 +261,23 @@ def on_worker_cluster_check_service_catalog_exists_on_application_namespace(cont
         check_success=lambda x: x is not None,
         step=5,
         timeout=60)
+
+
+@then(u'On Worker Cluster "{cluster}", Service Class "{service_class}" does not exists in "{namespace}"')
+def on_worker_cluster_check_service_class_not_exists_in_service_namespace(context, cluster, service_class, namespace):
+    api_client = context.cluster_provider.get_worker_cluster(cluster).get_api_client()
+    cobj = client.CustomObjectsApi(api_client)
+    try:
+        polling2.poll(
+            target=lambda: cobj.get_namespaced_custom_object(
+                group="primaza.io",
+                version="v1alpha1",
+                namespace=namespace,
+                plural="serviceclasses",
+                name=service_class),
+            check_success=lambda x: x is not None,
+            step=1,
+            timeout=10)
+        raise Exception(f"not expecting service class '{service_class}' to be found in namespace '{namespace}'")
+    except Exception:
+        pass

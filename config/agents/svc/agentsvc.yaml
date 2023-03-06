@@ -1,7 +1,21 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    control-plane: controller-manager
+    app.kubernetes.io/name: namespace
+    app.kubernetes.io/instance: system
+    app.kubernetes.io/component: manager
+    app.kubernetes.io/created-by: primaza
+    app.kubernetes.io/part-of: primaza
+    app.kubernetes.io/managed-by: kustomize
+  name: system
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: primaza-controller-agentsvc
+  namespace: system
   labels:
     control-plane: primaza-controller-agentsvc
     app.kubernetes.io/name: deployment
@@ -23,7 +37,7 @@ spec:
         control-plane: primaza-controller-agentsvc
     spec:
       # TODO(user): Uncomment the following code to configure the nodeAffinity expression
-      # according to the platforms which are supported by your solution. 
+      # according to the platforms which are supported by your solution.
       # It is considered best practice to support multiple architectures. You can
       # build your manager image using the makefile target docker-buildx.
       # affinity:
@@ -90,5 +104,14 @@ spec:
           requests:
             cpu: 10m
             memory: 64Mi
-      serviceAccountName: primaza-controller-agentsvc
+        volumeMounts:
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: cert
+          readOnly: true
+      serviceAccountName: primaza-agentsvc
       terminationGracePeriodSeconds: 10
+      volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: webhook-server-cert
