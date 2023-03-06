@@ -210,7 +210,11 @@ spec:
                   type: object
                 type: array
               state:
+                default: Malformed
                 description: The state of the service binding observed
+                enum:
+                - Ready
+                - Malformed
                 type: string
             type: object
         type: object
