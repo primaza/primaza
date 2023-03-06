@@ -16,10 +16,10 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/agents/svc && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUSTOMIZE) build config/agents/svc | kubectl apply  -n $(NAMESPACE) -f -
+	cd config/agents/svc && $(KUSTOMIZE) edit set image agentsvc=${IMG} && $(KUSTOMIZE) edit set namespace $(NAMESPACE)
+	$(KUSTOMIZE) build $(KUSTOMIZE_ARGS) config/agents/svc | kubectl apply -f -
 	kubectl rollout status deploy/primaza-controller-agentsvc -n $(NAMESPACE) -w --timeout=120s
 
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/agents/svc | kubectl delete --ignore-not-found=$(ignore-not-found) -n $(NAMESPACE) -f -
+	$(KUSTOMIZE) build $(KUSTOMIZE_ARGS) config/agents/svc | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
