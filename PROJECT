@@ -54,4 +54,11 @@ resources:
   kind: ServiceClass
   path: github.com/primaza/primaza/api/v1alpha1
   version: v1alpha1
+  webhooks:
+    validation: true
+    webhookVersion: v1
+- controller: true
+  domain: primaza.io
+  kind: RegisteredService
+  version: v1alpha1
 version: "3"

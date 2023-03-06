@@ -73,7 +73,6 @@ func createAgentSvcDeployment(ctx context.Context, cli *kubernetes.Clientset, na
 	if err != nil {
 		return nil, fmt.Errorf("error creating deployment: %w", err)
 	}
-
 	return r, nil
 }
 
@@ -81,19 +80,20 @@ const agentSvcDeployment string = `
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: primaza-controller-agentsvc
   labels:
+    app.kubernetes.io/component: manager
+    app.kubernetes.io/created-by: primaza
+    app.kubernetes.io/instance: primaza-controller-agentsvc
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: deployment
+    app.kubernetes.io/part-of: primaza
     control-plane: primaza-controller-agentsvc
-    svc.kubernetes.io/name: deployment
-    svc.kubernetes.io/instance: primaza-controller-agentsvc
-    svc.kubernetes.io/component: agentsvc-manager
-    svc.kubernetes.io/created-by: primaza
-    svc.kubernetes.io/part-of: primaza
+  name: primaza-controller-agentsvc
 spec:
+  replicas: 1
   selector:
     matchLabels:
       control-plane: primaza-controller-agentsvc
-  replicas: 1
   template:
     metadata:
       annotations:
@@ -101,32 +101,25 @@ spec:
       labels:
         control-plane: primaza-controller-agentsvc
     spec:
-      securityContext:
-        runAsNonRoot: true
       containers:
-      - command:
-        - /manager
-        args:
+      - args:
         - --leader-elect
+        command:
+        - /manager
+        env:
+        - name: WATCH_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
         image: agentsvc:latest
         imagePullPolicy: IfNotPresent
-        name: manager
-        env:
-          - name: WATCH_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - "ALL"
         livenessProbe:
           httpGet:
             path: /healthz
             port: 8081
           initialDelaySeconds: 15
           periodSeconds: 20
+        name: manager
         readinessProbe:
           httpGet:
             path: /readyz
@@ -140,6 +133,22 @@ spec:
           requests:
             cpu: 10m
             memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: cert
+          readOnly: true
+      securityContext:
+        runAsNonRoot: true
       serviceAccountName: primaza-agentsvc
       terminationGracePeriodSeconds: 10
+      volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: webhook-server-cert
 `

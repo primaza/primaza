@@ -1,7 +1,8 @@
 from behave import given
 from steps.primazacluster import PrimazaCluster
 from steps.workercluster import WorkerCluster
-from typing import Dict
+from steps.cluster import Cluster
+from typing import Dict, Optional
 
 
 class ClustersStore(object):
@@ -30,6 +31,13 @@ class ClusterProvider(object):
         Returns the running Worker cluster with name `name`
         """
         return self.clusters.workers[name]
+
+    def get_cluster(self, name: str) -> Optional[Cluster]:
+        cluster = self.clusters.primaza.get(name)
+        if cluster is not None:
+            return cluster
+
+        return self.clusters.workers.get(name)
 
     def create_primaza_cluster(self, cluster_name: str, version: str = None) -> PrimazaCluster:
         """

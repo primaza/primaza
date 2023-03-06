@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
+	"github.com/primaza/primaza/controllers/agents/svc"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -94,6 +95,16 @@ func main() {
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
+		os.Exit(1)
+	}
+
+	serviceClassController := svc.NewServiceClassReconciler(mgr)
+	if err = serviceClassController.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ServiceClass")
+		os.Exit(1)
+	}
+	if err = (&primazaiov1alpha1.ServiceClass{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "ServiceClass")
 		os.Exit(1)
 	}
 

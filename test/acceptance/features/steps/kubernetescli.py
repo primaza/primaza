@@ -8,6 +8,7 @@ import parse
 import binascii
 import tempfile
 import yaml
+import os
 from steps.environment import ctx
 from steps.command import Command
 from steps.util import substitute_scenario_id
@@ -93,11 +94,16 @@ spec:
         return exit_code == 0
 
     def is_resource_in(self, resource_type, resource_name=None, namespace=None):
+        if namespace is not None:
+            namespace_cmd = f" -n {namespace}"
+        else:
+            namespace_cmd = ""
+
         if resource_name is None:
-            _, exit_code = self.cmd.run(f'{ctx.cli} get {resource_type}')
+            _, exit_code = self.cmd.run(f'{ctx.cli} get {resource_type} {namespace_cmd}')
         else:
             _, exit_code = self.cmd.run(
-                f'{ctx.cli} get {resource_type} {resource_name}')
+                f'{ctx.cli} get {resource_type} {resource_name} {namespace_cmd}')
 
         return exit_code == 0
 
@@ -256,8 +262,12 @@ spec:
         return json_output
 
     def get_resource_info_by_jq(self, resource_type, name, namespace, jq_expression, wait=False, interval=5, timeout=120):
+        if namespace is not None:
+            namespace_f = f"-n {namespace}"
+        else:
+            namespace_f = ""
         output, exit_code = self.cmd.run(
-            f'{ctx.cli} get {resource_type} {name} -n {namespace} -o json | jq  \'{jq_expression}\'')
+            f'{ctx.cli} get {resource_type} {name} {namespace_f} -o json | jq  \'{jq_expression}\'')
         return output
 
     def get_docker_image_repository(self, name, namespace):
@@ -414,26 +424,6 @@ def check_secret_key_with_ip_value(context, secret_key):
         step=5, timeout=120, ignore_exceptions=(ValueError,))
 
 
-@step(u'The Custom Resource is present')
-def apply_yaml(context, user=None):
-    kubernetes = context.kubernetes
-    resource = substitute_scenario_id(context, context.text)
-    metadata = yaml.full_load(resource)["metadata"]
-    metadata_name = metadata["name"]
-    if "namespace" in metadata:
-        ns = metadata["namespace"]
-    else:
-        if "namespace" in context:
-            ns = context.namespace.name
-        else:
-            ns = None
-    output = kubernetes.apply(resource, ns, user)
-    result = re.search(
-        rf'.*{metadata_name}.*(created|unchanged|configured)', output)
-    assert result is not None, f"Unable to apply YAML for CR '{metadata_name}': {output}"
-    return metadata
-
-
 @step(u'The Custom Resource is deleted')
 def delete_yaml(context):
     kubernetes = context.kubernetes
@@ -490,13 +480,6 @@ def assert_generation(context, count):
     return context.latest_application_generation - context.original_application_generation == int(count)
 
 
-@step(u'{type}/{resource_name} is available in the cluster')
-def check_resource_exists(context, type, resource_name):
-    kubernetes = context.kubernetes
-    assert kubernetes.is_resource_in(
-        type, resource_name), f"Could not find the resource: '{type}/{resource_name}' in the cluster"
-
-
 @step(u"Condition {condition}={value} for {resource}/{name} resource is met")
 @step(u"Condition {condition}={value} for {resource}/{name} resource is met in less then {timeout} seconds")
 def condition_is_met_for_resource(context, condition, value, resource, name, timeout=600):
@@ -505,12 +488,14 @@ def condition_is_met_for_resource(context, condition, value, resource, name, tim
         resource, name, context.namespace.name, condition, value, timeout=timeout)
 
 
-@step(u'On Primaza Cluster "{primaza_cluster}", Resource is created')
-@step(u'On Primaza Cluster "{primaza_cluster}", Resource is updated')
-def on_primaza_cluster_apply_yaml(context, primaza_cluster):
+@step(u'On Worker Cluster "{cluster}", Resource is created')
+@step(u'On Worker Cluster "{cluster}", Resource is updated')
+@step(u'On Primaza Cluster "{cluster}", Resource is created')
+@step(u'On Primaza Cluster "{cluster}", Resource is updated')
+def on_cluster_apply_yaml(context, cluster):
     resource = substitute_scenario_id(context, context.text)
     with tempfile.NamedTemporaryFile() as tf:
-        kubeconfig = context.cluster_provider.get_primaza_cluster(primaza_cluster).get_admin_kubeconfig()
+        kubeconfig = context.cluster_provider.get_cluster(cluster).get_admin_kubeconfig()
         tf.write(kubeconfig.encode("utf-8"))
         tf.flush()
 
@@ -554,18 +539,6 @@ def on_primaza_cluster_delete_registered_service(context, primaza_cluster, prima
         tf.flush()
 
         Kubernetes(kubeconfig=tf.name).delete_by_name("registeredservice", primaza_rs, "primaza-system")
-
-
-@step(u'On Worker Cluster "{worker_cluster}", Resource is created')
-@step(u'On Worker Cluster "{worker_cluster}", Resource is updated')
-def on_worker_cluster_apply_yaml(context, worker_cluster):
-    resource = substitute_scenario_id(context, context.text)
-    with tempfile.NamedTemporaryFile() as tf:
-        kubeconfig = context.cluster_provider.get_worker_cluster(worker_cluster).get_admin_kubeconfig()
-        tf.write(kubeconfig.encode("utf-8"))
-        tf.flush()
-
-        Kubernetes(kubeconfig=tf.name).apply(resource)
 
 
 @step(u'On Primaza Cluster "{primaza_cluster}", test application "{app_name}" is running in namespace "{namespace}"')
@@ -656,3 +629,70 @@ def on_worker_cluster_check_resource_not_exists(context, cluster_name: str, reso
             target=lambda: not k.resource_exists(resource_type, resource_name, namespace),
             step=1,
             timeout=30)
+
+
+@step(u'Resource "{resource}" is installed on worker cluster "{cluster}" in namespace "{namespace}"')
+@step(u'Resource "{resource}" is installed on primaza cluster "{cluster}" in namespace "{namespace}"')
+def operator_manifest_installed(context, resource, cluster, namespace):
+    yaml_file = os.path.join(os.getcwd(), "test/acceptance/resources/", resource)
+    kubeconfig = context.cluster_provider.get_cluster(cluster).get_admin_kubeconfig()
+    with tempfile.NamedTemporaryFile() as tf:
+        tf.write(kubeconfig.encode("utf-8"))
+        tf.flush()
+
+        kubernetes = Kubernetes(kubeconfig=tf.name)
+        kubernetes.apply_yaml_file(yaml_file, namespace, validate=True)
+
+
+@step(u'jsonpath "{expr}" on "{resource_type}/{name}:{namespace}" in cluster {cluster} is "{text}"')
+def jq_is(context, expr, resource_type, name, namespace, cluster, text):
+    name = substitute_scenario_id(context, name)
+    text = json.loads(substitute_scenario_id(context, text))
+    kubeconfig = context.cluster_provider.get_cluster(cluster).get_admin_kubeconfig()
+    with tempfile.NamedTemporaryFile() as tf:
+        tf.write(kubeconfig.encode("utf-8"))
+        tf.flush()
+
+        kubernetes = Kubernetes(kubeconfig=tf.name)
+        polling2.poll(lambda: kubernetes.get_resource_info_by_jq(resource_type, name, namespace, expr),
+                      step=1, timeout=400,
+                      check_success=lambda x: json.loads(x) == text)
+
+
+@step(u'The resource {resource_type}/{name}:{namespace} is deleted from the cluster "{cluster}"')
+def delete_resource_from_cluster(context, resource_type, name, namespace, cluster):
+    name = substitute_scenario_id(context, name)
+    kubeconfig = context.cluster_provider.get_cluster(cluster).get_admin_kubeconfig()
+    with tempfile.NamedTemporaryFile() as tf:
+        tf.write(kubeconfig.encode("utf-8"))
+        tf.flush()
+
+        kubernetes = Kubernetes(kubeconfig=tf.name)
+        kubernetes.delete_by_name(resource_type, name, namespace)
+
+
+@step(u'The resource {resource_type}/{name}:{namespace} is available in cluster "{cluster}"')
+def check_resource_exists(context, resource_type, name, namespace, cluster):
+    resource_name = substitute_scenario_id(context, name)
+
+    with tempfile.NamedTemporaryFile() as tf:
+        kubeconfig = context.cluster_provider.get_cluster(cluster).get_admin_kubeconfig()
+        tf.write(kubeconfig.encode("utf-8"))
+        tf.flush()
+
+        kubernetes = Kubernetes(kubeconfig=tf.name)
+        assert kubernetes.is_resource_in(resource_type, resource_name, namespace), \
+            f"Could not find the resource: '{resource_type}/{resource_name}' in the cluster"
+
+
+@step(u'The resource {resource_type}/{name}:{namespace} is not available in cluster "{cluster}"')
+def resource_is_not_available(context, resource_type, name, namespace, cluster):
+    name = substitute_scenario_id(context, name)
+    kubeconfig = context.cluster_provider.get_cluster(cluster).get_admin_kubeconfig()
+    with tempfile.NamedTemporaryFile() as tf:
+        tf.write(kubeconfig.encode("utf-8"))
+        tf.flush()
+
+        kubernetes = Kubernetes(kubeconfig=tf.name)
+        assert kubernetes.search_resource_in_namespace(resource_type, name, namespace) is None, \
+            f"Expected resource {resource_type}/{name} not to be available!"
