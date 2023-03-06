@@ -125,7 +125,7 @@ jobs:
 
       - name: Acceptance tests
         timeout-minutes: 60
-        run: make test-acceptance
+        run: make kustomize test-acceptance
         env:
           EXTRA_BEHAVE_ARGS: -i test/acceptance/features/${{ matrix.feature }} --tags=~@disable-github-actions
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
