@@ -181,7 +181,7 @@ class WorkerCluster(Cluster):
                 name="primaza-role"),
             subjects=[
                 client.V1Subject(
-                    api_group="rbac.authorization.k8s.io",
+                    api_group="",
                     kind="User",
                     name="primaza")
             ])

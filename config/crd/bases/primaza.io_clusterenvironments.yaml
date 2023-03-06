@@ -147,6 +147,7 @@ spec:
                 enum:
                 - Online
                 - Offline
+                - Partial
                 type: string
             required:
             - conditions

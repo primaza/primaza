@@ -36,9 +36,25 @@ import (
 	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
 	"github.com/primaza/primaza/pkg/primaza/controlplane"
 	"github.com/primaza/primaza/pkg/primaza/workercluster"
+	"github.com/primaza/primaza/pkg/slices"
 )
 
-const clusterEnvironmentFinalizer = "clusterenvironment.primaza.io/finalizer"
+type namespaceType string
+
+func (t namespaceType) permissionRequiredReason() string {
+	return fmt.Sprintf("%sNamespacePermissionsRequired", t)
+}
+
+const (
+	clusterEnvironmentFinalizer = "clusterenvironment.primaza.io/finalizer"
+
+	applicationNamespaceType namespaceType = "Application"
+	serviceNamespaceType     namespaceType = "Service"
+
+	PermissionsGrantedReason    = "PermissionsGranted"
+	ClientCreationErrorReason   = "ClientCreationError"
+	PermissionsNotGrantedReason = "PermissionsNotGranted"
+)
 
 var errClusterContextSecretNotFound = fmt.Errorf("Cluster Context Secret not found")
 
@@ -103,37 +119,151 @@ func (r *ClusterEnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 	}
 
+	// get cluster config
+	cfg, err := r.getClusterRESTConfig(ctx, ce)
+	if err != nil {
+		if errors.Is(err, errClusterContextSecretNotFound) {
+			c := workercluster.ConnectionStatus{
+				State:   primazaiov1alpha1.ClusterEnvironmentStateOffline,
+				Reason:  ClientCreationErrorReason,
+				Message: fmt.Sprintf("error creating the client: %s", err),
+			}
+			r.updateClusterEnvironmentStatus(ctx, ce, c)
+			if err := r.Client.Status().Update(ctx, ce); err != nil {
+				l.Error(err, "error updating cluster environment status", "status", ce.Status)
+				return ctrl.Result{}, err
+			}
+		}
+
+		return ctrl.Result{}, err
+	}
+
 	// test connection
-	if err := r.testConnection(ctx, ce); err != nil {
-		l.Error(err, "error testing connection")
+	if err := r.testConnection(ctx, cfg, ce); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// test permissions
+	fann, fsnn, err := r.testNamespacesPermissions(ctx, cfg, ce)
+	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// reconcile namespaces
 	l.Info("reconciling namespaces",
 		"application namespaces", ce.Spec.ApplicationNamespaces,
-		"service namespaces", ce.Spec.ServiceNamespaces)
-	if err := r.reconcileNamespaces(ctx, ce); err != nil {
+		"service namespaces", ce.Spec.ServiceNamespaces,
+		"failed application namespaces (won't reconcile)", fann,
+		"failed service namespaces (won't reconcile)", fsnn)
+	if err := r.reconcileNamespaces(ctx, cfg, ce, fann, fsnn); err != nil {
 		l.Error(err, "error reconciling namespaces")
 		return ctrl.Result{}, err
 	}
 	l.Info("namespaces reconciled")
 
+	if err := r.Client.Status().Update(ctx, ce); err != nil {
+		l.Error(err, "error updating cluster environment status", "status", ce.Status)
+		return ctrl.Result{}, err
+	}
+
 	return ctrl.Result{}, nil
 }
 
-func (r *ClusterEnvironmentReconciler) reconcileNamespaces(ctx context.Context, ce *primazaiov1alpha1.ClusterEnvironment) error {
-	kcfg, err := r.getClusterRESTConfig(ctx, ce)
-	if err != nil {
-		return err
+func (r *ClusterEnvironmentReconciler) testConnection(ctx context.Context, cfg *rest.Config, ce *primazaiov1alpha1.ClusterEnvironment) error {
+	cr := workercluster.TestConnection(ctx, cfg)
+	r.updateClusterEnvironmentStatus(ctx, ce, cr)
+
+	if cr.Reason != workercluster.ConnectionSuccessful {
+		return fmt.Errorf("can not connect to target cluster")
 	}
+
+	return nil
+}
+
+func (r *ClusterEnvironmentReconciler) testNamespacesPermissions(ctx context.Context, cfg *rest.Config, ce *primazaiov1alpha1.ClusterEnvironment) ([]string, []string, error) {
+	// check application namespaces permissions
+	apc := controlplane.NewAgentAppPermissionsChecker(cfg)
+	ansp, err := r.testTypedNamespacesPermissions(ctx, ce, applicationNamespaceType, apc, ce.Spec.ApplicationNamespaces)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// check service namespaces permissions
+	spc := controlplane.NewAgentSvcPermissionsChecker(cfg)
+	snsp, err := r.testTypedNamespacesPermissions(ctx, ce, serviceNamespaceType, spc, ce.Spec.ServiceNamespaces)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// set status to Partial if at least one namespace is not configured correctly
+	if len(ansp) > 0 || len(snsp) > 0 {
+		ce.Status.State = primazaiov1alpha1.ClusterEnvironmentStatePartial
+	}
+
+	return ansp, snsp, nil
+}
+
+func (r *ClusterEnvironmentReconciler) testTypedNamespacesPermissions(
+	ctx context.Context,
+	ce *primazaiov1alpha1.ClusterEnvironment,
+	nsType namespaceType,
+	pc controlplane.AgentPermissionsChecker,
+	namespaces []string) ([]string, error) {
+	l := log.FromContext(ctx)
+
+	pr, err := pc.TestPermissions(ctx, namespaces)
+	if err != nil {
+		return nil, err
+	}
+
+	failed := []string{}
+	for ns, rp := range pr {
+		if !rp.AllSatisfied() {
+			failed = append(failed, ns)
+			l.Info("namespace permission test failed", "namespace type", nsType, "namespace", ns, "report", rp)
+		}
+	}
+
+	co := r.buildPermissionCondition(ctx, nsType, failed)
+	meta.SetStatusCondition(&ce.Status.Conditions, co)
+
+	return failed, nil
+}
+
+func (r *ClusterEnvironmentReconciler) buildPermissionCondition(ctx context.Context, nsType namespaceType, failedNamespaces []string) metav1.Condition {
+	if len(failedNamespaces) > 0 {
+		msg := fmt.Sprintf("namespaces missing required permissions: %v", failedNamespaces)
+
+		return metav1.Condition{
+			Type:    nsType.permissionRequiredReason(),
+			Status:  metav1.ConditionTrue,
+			Reason:  PermissionsNotGrantedReason,
+			Message: msg,
+		}
+	}
+
+	return metav1.Condition{
+		Type:    nsType.permissionRequiredReason(),
+		Status:  metav1.ConditionFalse,
+		Reason:  PermissionsGrantedReason,
+		Message: "all required permissions are granted",
+	}
+}
+
+func (r *ClusterEnvironmentReconciler) reconcileNamespaces(
+	ctx context.Context,
+	cfg *rest.Config,
+	ce *primazaiov1alpha1.ClusterEnvironment,
+	failedApplicationNamespaces, failedServiceNamespaces []string) error {
+	ans := slices.SubtractStr(ce.Spec.ApplicationNamespaces, failedApplicationNamespaces)
+	sns := slices.SubtractStr(ce.Spec.ServiceNamespaces, failedServiceNamespaces)
 
 	s := controlplane.ClusterEnvironmentState{
 		Name:                  ce.Name,
 		Namespace:             ce.Namespace,
-		ClusterConfig:         kcfg,
-		ApplicationNamespaces: ce.Spec.ApplicationNamespaces,
-		ServiceNamespaces:     ce.Spec.ServiceNamespaces,
+		ClusterConfig:         cfg,
+		ApplicationNamespaces: ans,
+		ServiceNamespaces:     sns,
 	}
 
 	nr, err := controlplane.NewNamespaceReconciler(s)
@@ -141,53 +271,18 @@ func (r *ClusterEnvironmentReconciler) reconcileNamespaces(ctx context.Context, 
 		return err
 	}
 
-	return nr.ReconcileNamespaces(ctx)
-}
-
-func (r *ClusterEnvironmentReconciler) testConnection(ctx context.Context, ce *primazaiov1alpha1.ClusterEnvironment) error {
-	cfg, err := r.getClusterRESTConfig(ctx, ce)
-	if err != nil {
-		if errors.Is(err, errClusterContextSecretNotFound) {
-			c := workercluster.ConnectionStatus{
-				State:   primazaiov1alpha1.ClusterEnvironmentStateOffline,
-				Reason:  "ClientCreationError",
-				Message: fmt.Sprintf("error creating the client: %s", err),
-			}
-			if err := r.updateClusterEnvironmentStatus(ctx, ce, c); err != nil {
-				return err
-			}
-		}
-
+	if err := nr.ReconcileNamespaces(ctx); err != nil {
 		return err
 	}
-
-	c := workercluster.TestConnection(ctx, cfg)
-
-	if err := r.updateClusterEnvironmentStatus(ctx, ce, c); err != nil {
-		return err
-	}
-
 	return nil
 }
 
-func (r *ClusterEnvironmentReconciler) updateClusterEnvironmentStatus(ctx context.Context, ce *primazaiov1alpha1.ClusterEnvironment, cs workercluster.ConnectionStatus) error {
+func (r *ClusterEnvironmentReconciler) updateClusterEnvironmentStatus(ctx context.Context, ce *primazaiov1alpha1.ClusterEnvironment, cs workercluster.ConnectionStatus) {
 	l := log.FromContext(ctx)
 
 	l.Info("updating cluster environment status", "clusterenvironment", ce.GetName(), "connection status", cs)
 	ce.Status.State = cs.State
-	co := metav1.Condition{
-		Type:    string(cs.State),
-		Reason:  cs.Reason,
-		Message: cs.Message,
-		Status:  "True",
-	}
-	meta.SetStatusCondition(&ce.Status.Conditions, co)
-	if err := r.Client.Status().Update(ctx, ce); err != nil {
-		l.Error(err, "error updating cluster environment status", "connection status", cs)
-		return err
-	}
-
-	return nil
+	meta.SetStatusCondition(&ce.Status.Conditions, cs.Condition())
 }
 
 func (r *ClusterEnvironmentReconciler) getClusterRESTConfig(ctx context.Context, ce *primazaiov1alpha1.ClusterEnvironment) (*rest.Config, error) {
