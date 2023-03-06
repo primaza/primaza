@@ -341,7 +341,7 @@ spec:
     def new_app(self, name, image_name, namespace):
         output, exit_code = self.cmd.run(f"{ctx.cli} apply -f -", self.deployment_template.format(name=name, image_name=image_name, namespace=namespace))
         assert exit_code == 0, f"Non-zero exit code ({exit_code}) returned when attempting to create a new app \n: {output}"
-        output, exit_code = self.cmd.run(f"{ctx.cli} wait --for=jsonpath=\'{{.status.phase}}\'=Running pod -l app=myapp -n {namespace}")
+        output, exit_code = self.cmd.run(f"{ctx.cli} wait --for=jsonpath=\'{{.status.phase}}\'=Running pod -l app=myapp -n {namespace} --timeout=60s")
         assert exit_code == 0, f"Non-zero exit code ({exit_code}) returned when waiting for new app to rollout \n: {output}"
 
     def set_label(self, name, label, namespace):

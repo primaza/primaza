@@ -118,7 +118,9 @@ func (r *ServiceBindingReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	applications, err := r.getApplication(ctx, req, serviceBinding, secretName)
 	if err != nil {
 		// error retrieving the application(s), so setting the service binding status to false and reconcile
-		err := r.setStatus(ctx, secretName, serviceBinding, metav1.ConditionFalse, conditionGetAppsFailureReason, primazaiov1alpha1.ServiceBindingStateMalformed, err.Error())
+		if errUpdateStatus := r.setStatus(ctx, secretName, serviceBinding, metav1.ConditionFalse, conditionGetAppsFailureReason, primazaiov1alpha1.ServiceBindingStateMalformed, err.Error()); errUpdateStatus != nil {
+			return ctrl.Result{}, errUpdateStatus
+		}
 		return ctrl.Result{}, err
 	}
 
