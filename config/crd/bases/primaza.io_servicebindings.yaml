@@ -47,22 +47,15 @@ spec:
                   apiVersion:
                     description: API version of the referent.
                     type: string
-                  containers:
-                    items:
-                      anyOf:
-                      - type: integer
-                      - type: string
-                      x-kubernetes-int-or-string: true
-                    type: array
                   kind:
-                    description: Kind of the referent.
+                    description: 'Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
                     type: string
                   name:
-                    description: Name of the referent. Mutually exclusive with Selector.
+                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
                     type: string
                   selector:
-                    description: Selector of the referents. Mutually exclusive with
-                      Name.
+                    description: Selector is a query that selects the workload or
+                      workloads to bind the service to
                     properties:
                       matchExpressions:
                         description: matchExpressions is a list of label selector

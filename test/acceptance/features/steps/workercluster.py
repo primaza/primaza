@@ -294,6 +294,14 @@ class WorkerCluster(Cluster):
                     api_groups=[""],
                     resources=["pods"],
                     verbs=["list", "get", "create"]),
+                client.V1PolicyRule(
+                    api_groups=[""],
+                    resources=["secrets"],
+                    verbs=["create"]),
+                client.V1PolicyRule(
+                    api_groups=["primaza.io/v1alpha1"],
+                    resources=["servicebindings"],
+                    verbs=["create"]),
             ])
         rbac.create_cluster_role(role)
 
@@ -459,3 +467,12 @@ def service_agent_is_not_deployed(context, cluster_name: str, namespace: str):
 def ensure_worker_cluster_is_running(context, cluster_name: str, version: str = None):
     worker_cluster = context.cluster_provider.create_worker_cluster(cluster_name, version)
     worker_cluster.start()
+
+
+@step(u'On Worker Cluster "{cluster_name}", the secret "{secret_name}" in namespace "{namespace}" has the key "{key}" with value "{value}"')
+def ensure_secret_key_has_the_right_value(context, cluster_name: str, secret_name: str, namespace: str, key: str, value: str):
+    primaza_cluster = context.cluster_provider.get_worker_cluster(cluster_name)
+    polling2.poll(
+        target=lambda: primaza_cluster.read_secret_resource_data(namespace, secret_name, key) == bytes(value, 'utf-8'),
+        step=1,
+        timeout=30)

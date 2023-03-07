@@ -20,14 +20,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// ServiceClassConstraints defines the constraints for which a
-// RegisteredService may be used.
-type ServiceClassConstraints struct {
-	// Environments defines the environments that the RegisteredService may be
-	// used in.
-	Environments []string `json:"environments,omitempty"`
-}
-
 type ServiceClassMapping struct {
 	// Name of the data referred to
 	Name string `json:"name"`
@@ -55,7 +47,7 @@ type ServiceClassSpec struct {
 	// Constraints defines under which circumstances the ServiceClass may
 	// be used.
 	// +optional
-	Constraints *ServiceClassConstraints `json:"constraints,omitempty"`
+	Constraints *EnvironmentConstraints `json:"constraints,omitempty"`
 
 	// Resource defines the resource type to be used to convert into Registered
 	// Services

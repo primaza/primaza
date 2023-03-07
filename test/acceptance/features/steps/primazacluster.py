@@ -1,4 +1,3 @@
-import base64
 import yaml
 from behave import given, step
 from cryptography import x509
@@ -97,19 +96,6 @@ class PrimazaCluster(Cluster):
             print("Exception when calling CustomObjectsApi->get_namespaced_custom_object_status: %s\n" % e)
             raise e
 
-    def read_secret_resource_data(self, secret_name: str, key: str) -> str:
-        api_client = self.get_api_client()
-        namespace = self.primaza_namespace
-
-        corev1 = client.CoreV1Api(api_client)
-        try:
-            secret = corev1.read_namespaced_secret(name=secret_name, namespace=namespace)
-            b64value = secret.data[key]
-            return base64.b64decode(b64value)
-        except ApiException as e:
-            if e.reason != "Not Found":
-                raise e
-
     def is_app_agent_deployed(self, namespace: str) -> bool:
         api_client = self.get_api_client()
         appsv1 = client.AppsV1Api(api_client)
@@ -183,11 +169,13 @@ def ensure_status_of_service_claim(context, primaza_cluster_name: str, service_c
     assert response["status"]["state"] == status
 
 
-@step(u'On Primaza Cluster, "{primaza_cluster_name}", the secret "{secret_name}" has the key "{key}" with value "{value}"')
-def ensure_secret_key_has_the_right_value(context, primaza_cluster_name: str, secret_name: str, key: str, value: str):
+@step(u'On Primaza Cluster "{primaza_cluster_name}", the secret "{secret_name}" in namespace "{namespace}" has the key "{key}" with value "{value}"')
+def ensure_secret_key_has_the_right_value(context, primaza_cluster_name: str, secret_name: str, namespace: str, key: str, value: str):
     primaza_cluster = context.cluster_provider.get_primaza_cluster(primaza_cluster_name)
-    response = primaza_cluster.read_secret_resource_data(secret_name, key)
-    assert response == bytes(value, 'utf-8')
+    polling2.poll(
+        target=lambda: primaza_cluster.read_secret_resource_data(namespace, secret_name, key) == bytes(value, 'utf-8'),
+        step=1,
+        timeout=30)
 
 
 @step(u'On Primaza Cluster "{cluster_name}", Primaza Service Agent is deployed into namespace "{namespace}"')

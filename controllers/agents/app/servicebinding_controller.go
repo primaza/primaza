@@ -379,23 +379,6 @@ func (r *ServiceBindingReconciler) updateContainerInfo(ctx context.Context, cont
 			return err
 		}
 
-		if len(sb.Spec.Application.Containers) > 0 {
-			found := false
-			count := 0
-			for _, v := range sb.Spec.Application.Containers {
-				l.Info("container", "container value", v, "name", c.Name)
-				if v.StrVal == c.Name {
-					break
-				}
-				found = true
-				count++
-			}
-			if found && len(sb.Spec.Application.Containers) == count {
-				continue
-			}
-
-		}
-
 		for _, e := range sb.Spec.Env {
 			c.Env = append(c.Env, v1.EnvVar{
 				Name:  e.Name,

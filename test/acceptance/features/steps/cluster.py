@@ -1,3 +1,6 @@
+import base64
+from kubernetes import client
+from kubernetes.client.rest import ApiException
 from steps.clusterprovisioner import ClusterProvisioner
 from steps.util import get_api_client_from_kubeconfig
 
@@ -41,3 +44,15 @@ class Cluster(object):
         Returns the cluster admin kubeconfig
         """
         return self.cluster_provisioner.kubeconfig(internal)
+
+    def read_secret_resource_data(self, namespace: str, secret_name: str, key: str) -> str:
+        api_client = self.get_api_client()
+
+        corev1 = client.CoreV1Api(api_client)
+        try:
+            secret = corev1.read_namespaced_secret(name=secret_name, namespace=namespace)
+            b64value = secret.data[key]
+            return base64.b64decode(b64value)
+        except ApiException as e:
+            if e.reason != "Not Found":
+                raise e
