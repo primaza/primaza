@@ -16,6 +16,8 @@ limitations under the License.
 
 package v1alpha1
 
+import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 // ServiceClassIdentityItem defines an attribute that is necessary to
 // identify a service class.
 type ServiceClassIdentityItem struct {
@@ -24,4 +26,27 @@ type ServiceClassIdentityItem struct {
 
 	// Value of the service class identity attribute.
 	Value string `json:"value"`
+}
+
+// Application resource to inject the binding info.
+// It could be any process running within a container.
+type ApplicationSelector struct {
+	// API version of the referent.
+	APIVersion string `json:"apiVersion"`
+	// Kind of the referent.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Kind string `json:"kind"`
+	// Name of the referent.
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+	Name string `json:"name,omitempty"`
+	// Selector is a query that selects the workload or workloads to bind the service to
+	Selector *metav1.LabelSelector `json:"selector,omitempty"`
+}
+
+// EnvironmentConstraints defines the constraints on environment for which
+// the resource may be used.
+type EnvironmentConstraints struct {
+	// Environments defines the environments that the RegisteredService may be
+	// used in.
+	Environments []string `json:"environments,omitempty"`
 }

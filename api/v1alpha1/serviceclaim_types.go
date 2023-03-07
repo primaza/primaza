@@ -20,19 +20,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type ServiceClaimApplication struct {
-	// API version of the referent.
-	APIVersion string `json:"apiVersion"`
-	// Kind of the referent.
-	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
-	Kind string `json:"kind"`
-	// Name of the referent.
-	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-	Name string `json:"name,omitempty"`
-	// Selector is a query that selects the workload or workloads to bind the service to
-	Selector *metav1.LabelSelector `json:"selector,omitempty"`
-}
-
 type ServiceClaimApplicationClusterContext struct {
 	ClusterEnvironmentName string `json:"clusterEnvironmentName"`
 	Namespace              string `json:"namespace"`
@@ -49,7 +36,7 @@ type ServiceClaimSpec struct {
 	// client to establish a connection to the service.
 	ServiceEndpointDefinitionKeys []string `json:"serviceEndpointDefinitionKeys"`
 
-	Application ServiceClaimApplication `json:"application,omitempty"`
+	Application ApplicationSelector `json:"application,omitempty"`
 	// EnvironmentTag allows the controller to search for those application cluster
 	// environments that define such EnvironmentTag
 	EnvironmentTag            string                                `json:"environmentTag,omitempty"`
@@ -58,11 +45,20 @@ type ServiceClaimSpec struct {
 
 // ServiceClaimStatus defines the observed state of ServiceClaim
 type ServiceClaimStatus struct {
-	State             string             `json:"state"`
+	//+kubebuilder:validation:Enum=Pending;Resolved
+	//+kubebuilder:default:=Pending
+	State             ServiceClaimState  `json:"state"`
 	ClaimID           string             `json:"claimID,omitempty"`
 	RegisteredService string             `json:"registeredService,omitempty"`
 	Conditions        []metav1.Condition `json:"conditions,omitempty"`
 }
+
+type ServiceClaimState string
+
+const (
+	ServiceClaimStatePending  ServiceClaimState = "Pending"
+	ServiceClaimStateResolved ServiceClaimState = "Resolved"
+)
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status

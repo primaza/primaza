@@ -18,7 +18,6 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // ServiceBindingSpec defines the desired state of ServiceBinding
@@ -37,7 +36,7 @@ type ServiceBindingSpec struct {
 	// reference by-name or by-[label selector][ls]. A name and selector
 	// **MUST NOT** be defined in the same reference.
 	// +required
-	Application *Application `json:"application"`
+	Application ApplicationSelector `json:"application"`
 
 	// Env creates environment variables based on the Secret values
 	Env []Environment `json:"env,omitempty"`
@@ -101,28 +100,6 @@ type ServiceBindingList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ServiceBinding `json:"items"`
-}
-
-// Application resource to inject the binding info.
-// It could be any process running within a container.
-type Application struct {
-	// API version of the referent.
-	APIVersion string `json:"apiVersion"`
-
-	// Kind of the referent.
-	Kind string `json:"kind"`
-
-	// Name of the referent.
-	// Mutually exclusive with Selector.
-	// +optional
-	Name string `json:"name,omitempty"`
-
-	// Selector of the referents.
-	// Mutually exclusive with Name.
-	// +optional
-	Selector *metav1.LabelSelector `json:"selector,omitempty"`
-
-	Containers []intstr.IntOrString `json:"containers,omitempty"`
 }
 
 func init() {
