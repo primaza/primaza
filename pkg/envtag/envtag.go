@@ -30,6 +30,10 @@ const (
 
 // Match matches an environment against a list of constraints
 func Match(environment string, constraints []string) bool {
+	if len(constraints) == 0 {
+		return true
+	}
+
 	v := false
 	for _, m := range constraints {
 		switch match(environment, m) {
