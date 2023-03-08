@@ -491,3 +491,16 @@ def ensure_secret_key_has_the_right_value(context, cluster_name: str, secret_nam
         target=lambda: primaza_cluster.read_secret_resource_data(namespace, secret_name, key) == bytes(value, 'utf-8'),
         step=1,
         timeout=30)
+
+
+@step(u'On Worker Cluster "{cluster_name}", the secret "{secret_name}" does not exist in namespace "{namespace}"')
+def ensure_secret_not_exist(context, cluster_name: str, secret_name: str, namespace: str):
+    cluster = context.cluster_provider.get_worker_cluster(cluster_name)  # type: WorkerCluster
+    try:
+        polling2.poll(
+            target=lambda: cluster.read_secret(namespace, secret_name),
+            step=1,
+            timeout=10)
+        raise Exception(f"not expecting secret '{secret_name}' to be found in namespace '{namespace}'")
+    except Exception:
+        pass
