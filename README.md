@@ -17,6 +17,7 @@
 
 ### The Solution
 
+- Separated logical environments that can span across different kubernetes clusters
 - An automatically collated Catalog that appropriately exposes available Services to Applications
 - Leverages industry best practices to securely deliver service endpoint data to applications
 - A platform that enables hybrid cloud services consumption in a portable, secured and scalable way
@@ -40,6 +41,12 @@
 - Developers can discover/learn via provided sandbox
 
 ## Implementation
+
+[Primaza's architecture](./docs/architecture/agents.md) is composed by the following elements:
+- Primaza control plane: manages environments, services and claims
+- Application agents: binds applications to services
+- Service agents: discover services
+
 
 Primaza defines the following entities and controllers to provide the above described features.
 

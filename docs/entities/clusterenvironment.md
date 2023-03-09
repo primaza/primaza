@@ -3,9 +3,13 @@
 A Cluster Environment represents a development environment on a kubernetes Cluster.
 Examples of environments are 'app1-prod','app1-dev', or 'app1-uat'.
 
-## Specification
-
 Cluster Environments contain connection information and the namespaces in which Primaza should operate.
+Cluster Environments differentiate among Service and Application namespaces.
+Application namespaces are the ones in which Primaza pushes the Application Agent that in turn binds applications to services.
+Service namespaces are the ones in which Primaza pushes the Service Agent and that in turn performs service discovery.
+Please refer to the [Architecture section](../architecture/agents.md) for more information about Agents and Primaza's architecture.
+
+## Specification
 
 Connection information are stored in a Secret referred by the field `clusterContextSecret`.
 The secret contains a valid kubeconfig that can be used to connect to the physical target cluster.
@@ -56,8 +60,11 @@ spec:
 
 ## Status
 
-A Cluster Environment can be `Online` or `Offline`.
+A Cluster Environment can be `Online`, `Partial, or `Offline`.
 An `Online` Cluster Environment is reachable by Primaza, whereas an `Offline` one is not reachable.
+A `Partial` Cluster Environment is also reachable, but not configured properly.
+This can happen if Primaza does not have the required permissions on this namespaces.
+More details can be found in the Cluster Environment's status conditions.
 
 ```yaml
 status:
@@ -69,6 +76,7 @@ status:
       enum:
       - Online
       - Offline
+      - Partial
       type: string
   required:
   - state
@@ -78,13 +86,19 @@ status:
 
 ### Creation
 
-When a Cluster Environment is created, Primaza must verify the connection and update the field `status.state` accordingly.
+When a Cluster Environment is created, Primaza verifies the connection to the cluster.
+If it can not connect to the target cluster, it logs an error and retries later.
+Otherwise, it checks its permissions in application and service namespaces.
+For each service and application namespace on which permissions are granted, Primaza pushes respectively the service or application agent.
+
+Cluster Environment's State and Conditions are updated according to tests and agents' deployment results.
 
 ### Deletion
 
-No operations should be performed.
+When a Cluster Environment is deleted, the permissions granted in Primaza's namespace to Users associated to namespace agents and agent deployments on target cluster's namespaces are removed.
 
 ### Update
 
-When a Cluster Environment is updated, Primaza must verify the connection and update the field `status.state` accordingly.
+As on [creation](#creation), Primaza verifies the connection to and its permissions into the target cluster. Finally, it pushes agents in cluster's application and service namespaces.
+As on [deletion](#deletion), if application or service namespaces are removed, Primaza deletes agent deployments and agents-granted permissions.
 
