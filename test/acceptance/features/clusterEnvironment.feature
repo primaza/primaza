@@ -1,47 +1,47 @@
 Feature: Register a kubernetes cluster as Primaza Worker Cluster
 
     Scenario: Primaza Cluster can contact Worker cluster, authentication is successful
-        Given Primaza Cluster "primaza-main" is running
-        And   Worker Cluster "primaza-worker" for "primaza-main" is running
-        And   Clusters "primaza-main" and "primaza-worker" can communicate
-        And   On Primaza Cluster "primaza-main", Worker "primaza-worker"'s ClusterContext secret "primaza-kw" is published
-        When On Primaza Cluster "primaza-main", Resource is created
+        Given Primaza Cluster "main" is running
+        And   Worker Cluster "worker" for "main" is running
+        And   Clusters "main" and "worker" can communicate
+        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
+        When On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
         kind: ClusterEnvironment
         metadata:
-            name: primaza-worker
+            name: worker
             namespace: primaza-system
         spec:
             environmentName: dev
             clusterContextSecret: primaza-kw
         """
-        Then On Primaza Cluster "primaza-main", ClusterEnvironment "primaza-worker" state will eventually move to "Online"
-        And  On Primaza Cluster "primaza-main", ClusterEnvironment "primaza-worker" status condition with Type "Online" has Status "True"
-        And  On Primaza Cluster "primaza-main", ClusterEnvironment "primaza-worker" status condition with Type "ApplicationNamespacePermissionsRequired" has Status "False"
-        And  On Primaza Cluster "primaza-main", ClusterEnvironment "primaza-worker" status condition with Type "ServiceNamespacePermissionsRequired" has Status "False"
+        Then On Primaza Cluster "main", ClusterEnvironment "worker" state will eventually move to "Online"
+        And  On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "Online" has Status "True"
+        And  On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ApplicationNamespacePermissionsRequired" has Status "False"
+        And  On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ServiceNamespacePermissionsRequired" has Status "False"
 
     Scenario: Primaza Cluster can contact Worker cluster, but ClusterContext secret is missing
-        Given Primaza Cluster "primaza-main" is running
-        And   Worker Cluster "primaza-worker" for "primaza-main" is running
-        And   Clusters "primaza-main" and "primaza-worker" can communicate
-        When  On Primaza Cluster "primaza-main", Resource is created
+        Given Primaza Cluster "main" is running
+        And   Worker Cluster "worker" for "main" is running
+        And   Clusters "main" and "worker" can communicate
+        When  On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
         kind: ClusterEnvironment
         metadata:
-            name: primaza-worker
+            name: worker
             namespace: primaza-system
         spec:
             environmentName: dev
             clusterContextSecret: primaza-kw
         """
-        Then On Primaza Cluster "primaza-main", ClusterEnvironment "primaza-worker" state will eventually move to "Offline"
-        And  On Primaza Cluster "primaza-main", ClusterEnvironment "primaza-worker" status condition with Type "Online" has Status "False"
+        Then On Primaza Cluster "main", ClusterEnvironment "worker" state will eventually move to "Offline"
+        And  On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "Online" has Status "False"
 
     Scenario: Cluster Environment is created outside of Primaza's namespace
-        Given Primaza Cluster "primaza-main" is running
-        When On Primaza Cluster "primaza-main", Resource is created
+        Given Primaza Cluster "main" is running
+        When On Primaza Cluster "main", Resource is created
         """
         apiVersion: v1
         kind: Namespace
@@ -51,10 +51,10 @@ Feature: Register a kubernetes cluster as Primaza Worker Cluster
         apiVersion: primaza.io/v1alpha1
         kind: ClusterEnvironment
         metadata:
-            name: primaza-worker
+            name: worker
             namespace: out-of-scope-namespace
         spec:
             environmentName: dev
             clusterContextSecret: primaza-kw
         """
-        Then On Primaza Cluster "primaza-main", ClusterEnvironment "primaza-worker" in namespace "out-of-scope-namespace" state remains not present
+        Then On Primaza Cluster "main", ClusterEnvironment "worker" in namespace "out-of-scope-namespace" state remains not present

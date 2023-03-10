@@ -2,17 +2,17 @@ Feature: Forward Service Class into Service namespaces
 
     Scenario: On Service Class creation, Primaza control plane forwards it into all matching services namespace
 
-        Given Primaza Cluster "primaza-main" is running
-        And Worker Cluster "primaza-worker" for "primaza-main" is running
-        And Clusters "primaza-main" and "primaza-worker" can communicate
-        And On Primaza Cluster "primaza-main", Worker "primaza-worker"'s ClusterContext secret "primaza-kw" is published
-        And On Worker Cluster "primaza-worker", service namespace "services" exists
-        And On Primaza Cluster "primaza-main", Resource is created
+        Given Primaza Cluster "main" is running
+        And Worker Cluster "worker" for "main" is running
+        And Clusters "main" and "worker" can communicate
+        And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
+        And On Worker Cluster "worker", service namespace "services" exists
+        And On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
         kind: ClusterEnvironment
         metadata:
-            name: primaza-worker
+            name: worker
             namespace: primaza-system
         spec:
             environmentName: dev
@@ -20,8 +20,8 @@ Feature: Forward Service Class into Service namespaces
             serviceNamespaces:
             - "services"
         """
-        And  On Worker Cluster "primaza-worker", Primaza Service Agent is deployed into namespace "services"
-        When On Primaza Cluster "primaza-main", Resource is created
+        And  On Worker Cluster "worker", Primaza Service Agent is deployed into namespace "services"
+        When On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
         kind: ServiceClass
@@ -46,4 +46,4 @@ Feature: Forward Service Class into Service namespaces
                 - name: version
                   value: v1
         """
-        Then On Worker Cluster "primaza-worker", Resource "ServiceClass" with name "demo-service-sc" exists in namespace "services"
+        Then On Worker Cluster "worker", Resource "ServiceClass" with name "demo-service-sc" exists in namespace "services"

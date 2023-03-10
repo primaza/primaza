@@ -25,7 +25,7 @@ def is_development(context):
 
 @fixture
 def use_kind(context, _timeout=30, **_kwargs):
-    context.cluster_provider = KindProvider(prefix=f"{scenario_id(context)}-")
+    context.cluster_provider = KindProvider(prefix=f"primaza-{scenario_id(context)}-")
     yield context.cluster_provider
 
     # if development configuration is found and scenario failed, skip cleanup
