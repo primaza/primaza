@@ -49,7 +49,7 @@ type ServiceClaimStatus struct {
 	//+kubebuilder:default:=Pending
 	State             ServiceClaimState  `json:"state"`
 	ClaimID           string             `json:"claimID,omitempty"`
-	RegisteredService string             `json:"registeredService,omitempty"`
+	RegisteredService string             `json:"registeredService"`
 	Conditions        []metav1.Condition `json:"conditions,omitempty"`
 }
 
