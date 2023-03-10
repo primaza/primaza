@@ -32,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
+	"github.com/primaza/primaza/pkg/envtag"
 	"github.com/primaza/primaza/pkg/primaza/clustercontext"
 	"github.com/primaza/primaza/pkg/primaza/controlplane"
 	"github.com/primaza/primaza/pkg/primaza/workercluster"
@@ -152,7 +153,9 @@ func (r *ClusterEnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.R
 		"service namespaces", ce.Spec.ServiceNamespaces,
 		"failed application namespaces (won't reconcile)", fann,
 		"failed service namespaces (won't reconcile)", fsnn)
-	if err := r.reconcileNamespaces(ctx, cfg, ce, fann, fsnn); err != nil {
+	errns := r.reconcileNamespaces(ctx, cfg, ce, fann, fsnn)
+	errsns := r.reconcileServiceNamespaces(ctx, cfg, ce, fsnn)
+	if err := errors.Join(errns, errsns); err != nil {
 		l.Error(err, "error reconciling namespaces")
 		return ctrl.Result{}, err
 	}
@@ -174,6 +177,34 @@ func (r *ClusterEnvironmentReconciler) testConnection(ctx context.Context, cfg *
 		return fmt.Errorf("can not connect to target cluster")
 	}
 
+	return nil
+}
+
+// TODO: eventually move this logic in `pkg/primaza/controlplane`
+func (r *ClusterEnvironmentReconciler) reconcileServiceNamespaces(ctx context.Context, cfg *rest.Config, ce *primazaiov1alpha1.ClusterEnvironment, failedServiceNamespaces []string) error {
+	errs := []error{}
+	serviceclassesList := primazaiov1alpha1.ServiceClassList{}
+	if err := r.List(ctx, &serviceclassesList, &client.ListOptions{Namespace: ce.Namespace}); err != nil {
+		return client.IgnoreNotFound(err)
+	}
+	var serviceclassFilteredList []primazaiov1alpha1.ServiceClass
+	for _, serviceclass := range serviceclassesList.Items {
+		if envtag.Match(ce.Spec.EnvironmentName, serviceclass.Spec.Constraints.Environments) {
+			serviceclassFilteredList = append(serviceclassFilteredList, serviceclass)
+		}
+	}
+	serviceNamespaces := slices.SubtractStr(ce.Spec.ServiceNamespaces, failedServiceNamespaces)
+	for _, serviceclass := range serviceclassFilteredList {
+		if err := controlplane.PushServiceClassToServiceNamespaces(ctx, serviceclass, r.Scheme, r.Client, serviceNamespaces, cfg); err != nil {
+			if !apierrors.IsAlreadyExists(err) {
+				errs = append(errs,
+					fmt.Errorf("error pushing service class '%s' to cluster environment '%s': %w", serviceclass.Name, ce.Name, err))
+			}
+		}
+	}
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
 	return nil
 }
 
