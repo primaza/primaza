@@ -15,3 +15,35 @@ limitations under the License.
 */
 
 package envtag_test
+
+import (
+	"testing"
+
+	"github.com/primaza/primaza/pkg/envtag"
+)
+
+func Test_MatchEmptyContainsts(t *testing.T) {
+	type test struct {
+		environment string
+		constraints []string
+		want        bool
+	}
+
+	tt := []test{
+		{environment: "", constraints: nil, want: true},
+		{environment: "", constraints: []string{}, want: true},
+		{environment: "env", constraints: nil, want: true},
+		{environment: "env", constraints: []string{}, want: true},
+		{environment: "env", constraints: []string{"env"}, want: true},
+		{environment: "env", constraints: []string{"env", "!prod"}, want: true},
+		{environment: "env", constraints: []string{"env", "!env"}, want: false},
+		{environment: "env", constraints: []string{"!prod"}, want: false},
+		{environment: "env", constraints: []string{"!env"}, want: false},
+	}
+
+	for _, te := range tt {
+		if got := envtag.Match(te.environment, te.constraints); got != te.want {
+			t.Errorf("expected %v, got %v", te.want, got)
+		}
+	}
+}
