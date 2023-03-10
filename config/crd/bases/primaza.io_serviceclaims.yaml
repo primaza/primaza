@@ -224,6 +224,7 @@ spec:
                 - Resolved
                 type: string
             required:
+            - registeredService
             - state
             type: object
         type: object
