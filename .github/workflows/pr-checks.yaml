@@ -39,6 +39,9 @@ jobs:
       - name: Lint Go
         if: success() || failure()
         run: make lint-go
+        env:
+          GO_LINT_CONCURRENCY: 2
+          GO_LINT_OUTPUT: github-actions
 
       - name: Lint YAML files
         if: success() || failure()

@@ -103,7 +103,7 @@ func (r *ServiceBindingReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			if err != nil {
 				return ctrl.Result{}, err
 			}
-			//Remove finalizer from service binding
+			// Remove finalizer from service binding
 			if finalizerBool := controllerutil.RemoveFinalizer(&serviceBinding, ServiceBindingFinalizer); !finalizerBool {
 				l.Error(errors.New("Finalizer not removed for service binding"), "Finalizer not removed for service binding")
 				return ctrl.Result{}, errors.New("Finalizer not removed for service binding")
@@ -489,7 +489,7 @@ func (r *ServiceBindingReconciler) removeVolumeMount(ctx context.Context, sb pri
 		l.Error(err, "unable to reference the volumes in the application object")
 		return err
 	}
-	//check if volume not found in application object
+	// check if volume not found in application object
 	if !found {
 		l.Info("volumes not found in the application object")
 		return nil

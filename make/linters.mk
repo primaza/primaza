@@ -17,17 +17,13 @@ lint-yaml: setup-venv ${YAML_FILES} ## Checks all yaml files
 	$(Q)$(PYTHON_VENV_DIR)/bin/pip install yamllint==$(YAMLLINT_VERSION)
 	$(Q)$(PYTHON_VENV_DIR)/bin/yamllint -c .yamllint $(YAML_FILES)
 
-GO_LINT_CMD = GOFLAGS="$(GOFLAGS)" GOGC=30 GOCACHE=$(GOCACHE) $(GOLANGCI_LINT) run --concurrency=1 --verbose --deadline=30m --disable-all --enable
+GO_LINT_CONCURRENCY ?= 4
+GO_LINT_OUTPUT ?= colored-line-number
+GO_LINT_CMD = GOFLAGS="$(GOFLAGS)" GOGC=30 GOCACHE=$(GOCACHE) $(GOLANGCI_LINT) run --concurrency=$(GO_LINT_CONCURRENCY) --out-format=$(GO_LINT_OUTPUT)
 
 .PHONY: lint-go
 lint-go: $(GOLANGCI_LINT) fmt vet ## Checks Go code
-	$(GO_LINT_CMD) gosimple
-	$(GO_LINT_CMD) staticcheck
-	$(GO_LINT_CMD) errcheck
-	$(GO_LINT_CMD) govet
-	$(GO_LINT_CMD) ineffassign
-	$(GO_LINT_CMD) typecheck
-	$(GO_LINT_CMD) unused
+	$(GO_LINT_CMD)
 
 $(GOLANGCI_LINT):
 	curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(LOCALBIN) $(GOLANGCI_LINT_VERSION)
