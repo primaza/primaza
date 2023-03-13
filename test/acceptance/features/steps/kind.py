@@ -103,14 +103,22 @@ class PrimazaKind(PrimazaCluster):
             self.__build_load_and_deploy_primaza(t.name, img)
 
     def __build_load_and_deploy_primaza(self, kubeconfig_path: str, img: str):
-        self.__install_crd_and_build_image(kubeconfig_path, img)
+        self.__install_build_image(kubeconfig_path, img)
+        self.__install_dependencies(kubeconfig_path)
         self.__load_image(img)
         self.__deploy_primaza(kubeconfig_path, img)
 
-    def __install_crd_and_build_image(self, kubeconfig_path: str, img: str):
-        out, err = self.__build_install_base_cmd(kubeconfig_path, img).run("make primaza install docker-build")
+    def __install_build_image(self, kubeconfig_path: str, img: str):
+        out, err = self.__build_install_base_cmd(kubeconfig_path, img).run("make primaza docker-build")
         print(out)
         assert err == 0, "error installing manifests and building primaza controller"
+
+    def __install_dependencies(self, kubeconfig_path: str):
+        out, err = Command() \
+            .setenv("KUBECONFIG", kubeconfig_path) \
+            .run("make deploy-cert-manager")
+        print(out)
+        assert err == 0, "error installing dependencies"
 
     def __load_image(self, image: str):
         out, err = Command().run(f"kind load docker-image {image} --name {self.cluster_name}")
@@ -178,6 +186,7 @@ class PrimazaKind(PrimazaCluster):
 
 class WorkerKind(WorkerCluster):
     __agentapp_loaded: bool = False
+    __agentsvc_loaded: bool = False
 
     def __init__(self, cluster_name, version=None):
         super().__init__(KindClusterProvisioner(cluster_name, version), cluster_name)
@@ -185,6 +194,11 @@ class WorkerKind(WorkerCluster):
     def create_application_namespace(self, namespace: str):
         self.configure_application_cluster()
         super().create_application_namespace(namespace)
+
+    def create_service_namespace(self, namespace: str):
+        print("creating service namespace")
+        self.configure_service_cluster()
+        super().create_service_namespace(namespace)
 
     def configure_application_cluster(self):
         if self.__agentapp_loaded:
@@ -194,9 +208,23 @@ class WorkerKind(WorkerCluster):
 
         self.__agentapp_loaded = True
 
+    def configure_service_cluster(self):
+        if self.__agentsvc_loaded:
+            return
+
+        self.__load_agentsvc_image()
+
+        self.__agentsvc_loaded = True
+
     def __load_agentapp_image(self):
         cmd = f'make agentapp docker-build && kind load docker-image --name {self.cluster_name} $IMG'
         output, exit_code = Command().setenv("IMG", "agentapp:latest").run(cmd)
+
+    def __load_agentsvc_image(self):
+        image = "agentsvc:latest"
+        cmd = 'make agentsvc docker-build'
+        output, exit_code = Command().setenv("IMG", "agentsvc:latest").run(cmd)
+        self.__load_image(image)
 
     def __load_image(self, image: str):
         cmd = f' kind load docker-image --name {self.cluster_name} $IMG'

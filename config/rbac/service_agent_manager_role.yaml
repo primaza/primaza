@@ -1,0 +1,34 @@
+# permissions for the manager to own serviceclasses.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - primaza.io
+  resources:
+  - serviceclasses
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - primaza.io
+  resources:
+  - serviceclasses/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
