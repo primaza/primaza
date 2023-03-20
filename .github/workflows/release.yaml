@@ -1,0 +1,42 @@
+name: Release Latest Manifests
+
+on:  # yamllint disable-line rule:truthy
+  push:
+    branches: ['main']
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  TAG_NAME: latest
+
+jobs:
+  relase-latest-manifests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Create or Update latest Tag
+        run: |
+          git tag -f ${{ env.TAG_NAME }}
+          git push origin -f ${{ env.TAG_NAME }}
+
+      - name: Bake manifests
+        run: |
+          make kustomize
+          mkdir -p out
+          ( cd config/manager && ../../bin/kustomize edit set image controller=${IMG} )
+          ./bin/kustomize build config/default > ./out/primaza.yaml
+        env:
+          IMG: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+      - name: Release manifests
+        uses: softprops/action-gh-release@v1
+        with:
+          name: latest
+          tag_name: ${{ env.TAG_NAME }}
+          files: |
+            ./out/primaza.yaml
