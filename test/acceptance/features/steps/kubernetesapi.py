@@ -46,7 +46,7 @@ def on_primaza_cluster_check_last_status_condition(context, cluster, ce_name, ct
     assert last_applied["type"] == ctype, f'Cluster Environment last condition type is not matching: wanted "{ctype}", found "{last_applied["type"]}"'
 
 
-@then(u'On Primaza Cluster "{cluster}", ClusterEnvironment "{ce_name}" status condition with Type "{ctype}" has Status "{cstatus}"')
+@step(u'On Primaza Cluster "{cluster}", ClusterEnvironment "{ce_name}" status condition with Type "{ctype}" has Status "{cstatus}"')
 def on_primaza_cluster_check_status_condition(context, cluster: str, ce_name: str, ctype: str, cstatus: str):
     api_client = context.cluster_provider.get_primaza_cluster(cluster).get_api_client()
     cobj = client.CustomObjectsApi(api_client)
@@ -193,3 +193,19 @@ def on_worker_cluster_check_service_binding_status(context, cluster, name, names
         check_success=lambda x: x is not None and x == state,
         step=5,
         timeout=timeout)
+
+
+@then(u'On Worker Cluster "{cluster}", Service Class "{sc_class}" exists in "{serviceclass_namespace}"')
+def on_worker_cluster_check_service_class_exists_on_serviceclass_namespace(context, cluster, sc_class, serviceclass_namespace):
+    api_client = context.cluster_provider.get_worker_cluster(cluster).get_api_client()
+    cobj = client.CustomObjectsApi(api_client)
+    polling2.poll(
+        target=lambda: cobj.get_namespaced_custom_object(
+            group="primaza.io",
+            version="v1alpha1",
+            namespace=serviceclass_namespace,
+            plural="serviceclasses",
+            name=sc_class),
+        check_success=lambda x: x is not None,
+        step=5,
+        timeout=60)
