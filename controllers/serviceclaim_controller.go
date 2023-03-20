@@ -127,7 +127,7 @@ func (r *ServiceClaimReconciler) extractServiceEndpointDefinition(
 	ctx context.Context,
 	req ctrl.Request,
 	rs v1alpha1.RegisteredService,
-	SEDKeys []string,
+	sedKeys []string,
 	secret *corev1.Secret) (int, error) {
 	l := log.FromContext(ctx)
 	count := 0
@@ -137,12 +137,12 @@ func (r *ServiceClaimReconciler) extractServiceEndpointDefinition(
 		if sed.Value != "" {
 			// check if the ServiceEndpointDefinitionKeys part of ServiceClaim has the current
 			// SED name in the RegisteredService
-			if slices.ItemContains(SEDKeys, sed.Name) {
+			if slices.ItemContains(sedKeys, sed.Name) {
 				secret.StringData[sed.Name] = sed.Value
-				count = count + 1
+				count++
 			}
 		} else if sed.ValueFromSecret.Key != "" { // check value if the key is non-empty
-			if slices.ItemContains(SEDKeys, sed.Name) {
+			if slices.ItemContains(sedKeys, sed.Name) {
 				sec := &corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      sed.ValueFromSecret.Name,
@@ -154,7 +154,7 @@ func (r *ServiceClaimReconciler) extractServiceEndpointDefinition(
 					return 0, client.IgnoreNotFound(err)
 				}
 				secret.StringData[sed.Name] = sec.StringData[sed.ValueFromSecret.Key]
-				count = count + 1
+				count++
 			}
 		}
 	}
