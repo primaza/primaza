@@ -63,23 +63,28 @@ type ServiceEndpointDefinitionItem struct {
 
 	// Value of the service endpoint definition attribute. It is mutually
 	// exclusive with ValueFromSecret.
+	// +optional
 	Value string `json:"value,omitempty"`
 
 	// Value reference of the service endpoint definition attribute. It is mutually
 	// exclusive with Value
-	ValueFromSecret ServiceEndpointDefinitionSecretRef `json:"valueFromSecret,omitempty"`
+	// +optional
+	ValueFromSecret *ServiceEndpointDefinitionSecretRef `json:"valueFromSecret,omitempty"`
 }
 
 // RegisteredServiceSpec defines the desired state of RegisteredService
 type RegisteredServiceSpec struct {
 	// Constraints defines under which circumstances the RegisteredService may
 	// be used.
-	Constraints RegisteredServiceConstraints `json:"constraints,omitempty"`
+	// +optional
+	Constraints *RegisteredServiceConstraints `json:"constraints,omitempty"`
 
 	// HealthCheck defines a health check for the underlying service.
-	HealthCheck RegisteredServiceHealthCheck `json:"healthcheck,omitempty"`
+	// +optional
+	HealthCheck *RegisteredServiceHealthCheck `json:"healthcheck,omitempty"`
 
 	// SLA defines the support level for this service.
+	// +optional
 	SLA string `json:"sla,omitempty"`
 
 	// ServiceClassIdentity defines a set of attributes that are sufficient to
@@ -95,6 +100,7 @@ type RegisteredServiceSpec struct {
 // RegisteredServiceStatus defines the observed state of RegisteredService.
 type RegisteredServiceStatus struct {
 	// State describes the current state of the service.
+	// +optional
 	State string `json:"state,omitempty"`
 }
 
