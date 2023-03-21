@@ -221,7 +221,8 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 		// Check if the ServiceClassIdentity given in ServiceClaim is a subset of
 		// ServiceClassIdentity given in the RegisteredService
 		if checkSCISubset(sclaim.Spec.ServiceClassIdentity, rs.Spec.ServiceClassIdentity) &&
-			envtag.Match(env, rs.Spec.Constraints.Environments) {
+			(rs.Spec.Constraints == nil ||
+				envtag.Match(env, rs.Spec.Constraints.Environments)) {
 			registeredServiceFound = true
 			registeredService = rs
 			var err error
