@@ -27,23 +27,6 @@ type RegisteredServiceConstraints struct {
 	Environments []string `json:"environments,omitempty"`
 }
 
-// HealthCheckContainer defines the container information to be used to
-// run helth checks for the service.
-type HealthCheckContainer struct {
-	// Container image with the client to run the test
-	Image string `json:"image"`
-	// Command to execute in the container to run the test
-	Command string `json:"command"`
-}
-
-// RegisteredServiceHealthCheck defines metadata that can be used check
-// the health of a service and report status.
-type RegisteredServiceHealthCheck struct {
-	// Container defines a container that will run a check against the
-	// ServiceEndpointDefinition to determine connectivity and access.
-	Container HealthCheckContainer `json:"container"`
-}
-
 // ServiceEndpointDefinitionSecretRef defines a reference to
 // one of the keys of a secret. This reference can then be used
 // when defining a ServiceEndpointDefinitionItem
@@ -81,7 +64,7 @@ type RegisteredServiceSpec struct {
 
 	// HealthCheck defines a health check for the underlying service.
 	// +optional
-	HealthCheck *RegisteredServiceHealthCheck `json:"healthcheck,omitempty"`
+	HealthCheck *HealthCheck `json:"healthcheck,omitempty"`
 
 	// SLA defines the support level for this service.
 	// +optional
