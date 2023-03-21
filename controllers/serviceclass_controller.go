@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
@@ -54,9 +55,34 @@ type ServiceClassReconciler struct {
 func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
-	sc := primazaiov1alpha1.ServiceClass{}
-	if err := r.Get(ctx, req.NamespacedName, &sc, &client.GetOptions{}); err != nil {
+	sc := &primazaiov1alpha1.ServiceClass{}
+	if err := r.Get(ctx, req.NamespacedName, sc, &client.GetOptions{}); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	// check if instance is marked to be deleted
+	if sc.GetDeletionTimestamp() != nil {
+		if controllerutil.ContainsFinalizer(sc, clusterEnvironmentFinalizer) {
+			// run finalizer
+			if err := r.finalize(ctx, sc); err != nil {
+				return ctrl.Result{}, err
+			}
+
+			// Remove finalizer from cluster environment
+			controllerutil.RemoveFinalizer(sc, clusterEnvironmentFinalizer)
+			if err := r.Update(ctx, sc); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		return ctrl.Result{}, nil
+	}
+
+	// add finalizer if needed
+	if !controllerutil.ContainsFinalizer(sc, clusterEnvironmentFinalizer) {
+		controllerutil.AddFinalizer(sc, clusterEnvironmentFinalizer)
+		if err := r.Update(ctx, sc); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	if err := r.reconcileEnvironments(ctx, sc); err != nil {
@@ -66,7 +92,11 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	return ctrl.Result{}, nil
 }
 
-func (r *ServiceClassReconciler) reconcileEnvironments(ctx context.Context, sc primazaiov1alpha1.ServiceClass) error {
+func (r *ServiceClassReconciler) finalize(ctx context.Context, sc *primazaiov1alpha1.ServiceClass) error {
+	return r.removeFromEnvironments(ctx, sc)
+}
+
+func (r *ServiceClassReconciler) reconcileEnvironments(ctx context.Context, sc *primazaiov1alpha1.ServiceClass) error {
 	cee := primazaiov1alpha1.ClusterEnvironmentList{}
 	if err := r.List(ctx, &cee, &client.ListOptions{}); err != nil {
 		return err
@@ -76,16 +106,50 @@ func (r *ServiceClassReconciler) reconcileEnvironments(ctx context.Context, sc p
 
 	errs := []error{}
 	for _, ce := range ff {
-		cfg, err := clustercontext.GetClusterRESTConfig(ctx, r.Client, ce.Namespace, ce.Spec.ClusterContextSecret)
+		cli, err := clustercontext.CreateClient(ctx, r.Client, ce, r.Scheme, r.Client.RESTMapper())
 		if err != nil {
-			return err
+			errs = append(errs, err)
+			continue
 		}
-		if err := controlplane.PushServiceClassToServiceNamespaces(ctx, sc, r.Scheme, r.Client, ce.Spec.ServiceNamespaces, cfg); err != nil {
+
+		if err := controlplane.PushServiceClassToNamespaces(ctx, cli, *sc, ce.Spec.ServiceNamespaces); err != nil {
 			errs = append(errs,
 				fmt.Errorf("error pushing service class '%s' to cluster environment '%s': %w", sc.Name, ce.Name, err))
 		}
 	}
+
 	return errors.Join(errs...)
+}
+
+func (r *ServiceClassReconciler) removeFromEnvironments(ctx context.Context, sc *primazaiov1alpha1.ServiceClass) error {
+	ff, err := r.getRelatedClusterEnvironments(ctx, sc.Spec.Constraints.Environments)
+	if err != nil {
+		return err
+	}
+
+	errs := []error{}
+	for _, ce := range ff {
+		cli, err := clustercontext.CreateClient(ctx, r.Client, ce, r.Scheme, r.Client.RESTMapper())
+		if err != nil {
+			return err
+		}
+
+		if err := controlplane.DeleteServiceClassFromNamespaces(ctx, cli, *sc, ce.Spec.ServiceNamespaces); err != nil {
+			errs = append(errs,
+				fmt.Errorf("error deleting service class '%s' to cluster environment '%s': %w", sc.Name, ce.Name, err))
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func (r *ServiceClassReconciler) getRelatedClusterEnvironments(ctx context.Context, constraints []string) ([]primazaiov1alpha1.ClusterEnvironment, error) {
+	cee := primazaiov1alpha1.ClusterEnvironmentList{}
+	if err := r.List(ctx, &cee, &client.ListOptions{}); err != nil {
+		return nil, err
+	}
+
+	ff := r.filterClusterEnvironments(constraints, cee.Items)
+	return ff, nil
 }
 
 func (r *ServiceClassReconciler) filterClusterEnvironments(

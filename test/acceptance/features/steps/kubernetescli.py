@@ -11,7 +11,7 @@ import yaml
 from steps.environment import ctx
 from steps.command import Command
 from steps.util import substitute_scenario_id
-from behave import register_type, step, then
+from behave import register_type, step
 from steps.workercluster import WorkerCluster
 
 
@@ -626,7 +626,7 @@ def on_worker_cluster_check_file_available(context, cluster, file_path, namespac
         polling2.poll(lambda: Kubernetes(kubeconfig=tf.name).check_file_content_from_myapp(namespace, file_path) == content, step=20, timeout=120)
 
 
-@then(u'On Worker Cluster "{cluster_name}", Resource "{resource_type}" with name "{resource_name}" exists in namespace "{namespace}"')
+@step(u'On Worker Cluster "{cluster_name}", Resource "{resource_type}" with name "{resource_name}" exists in namespace "{namespace}"')
 def on_worker_cluster_check_resource_exists(context, cluster_name: str, resource_type: str, resource_name: str, namespace: str):
     cluster = context.cluster_provider.get_worker_cluster(cluster_name)  # type: WorkerCluster
 
@@ -636,4 +636,23 @@ def on_worker_cluster_check_resource_exists(context, cluster_name: str, resource
         tf.flush()
 
         k = Kubernetes(kubeconfig=tf.name)
-        polling2.poll(lambda: k.resource_exists(resource_type, resource_name, namespace), step=1, timeout=60)
+        polling2.poll(
+            target=lambda: k.resource_exists(resource_type, resource_name, namespace),
+            step=1,
+            timeout=60)
+
+
+@step(u'On Worker Cluster "{cluster_name}", Resource "{resource_type}" with name "{resource_name}" does not exist in namespace "{namespace}"')
+def on_worker_cluster_check_resource_not_exists(context, cluster_name: str, resource_type: str, resource_name: str, namespace: str):
+    cluster = context.cluster_provider.get_worker_cluster(cluster_name)  # type: WorkerCluster
+
+    with tempfile.NamedTemporaryFile() as tf:
+        kubeconfig = cluster.get_admin_kubeconfig()
+        tf.write(kubeconfig.encode("utf-8"))
+        tf.flush()
+
+        k = Kubernetes(kubeconfig=tf.name)
+        polling2.poll(
+            target=lambda: not k.resource_exists(resource_type, resource_name, namespace),
+            step=1,
+            timeout=30)

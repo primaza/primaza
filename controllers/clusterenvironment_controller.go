@@ -118,7 +118,7 @@ func (r *ClusterEnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	// get cluster config
-	cfg, err := r.getClusterRESTConfig(ctx, ce)
+	cfg, err := clustercontext.GetClusterRESTConfig(ctx, r.Client, ce.Namespace, ce.Spec.ClusterContextSecret)
 	if err != nil {
 		if errors.Is(err, clustercontext.ErrSecretNotFound) {
 			c := workercluster.ConnectionStatus{
@@ -182,11 +182,11 @@ func (r *ClusterEnvironmentReconciler) testConnection(ctx context.Context, cfg *
 
 // TODO: eventually move this logic in `pkg/primaza/controlplane`
 func (r *ClusterEnvironmentReconciler) reconcileServiceNamespaces(ctx context.Context, cfg *rest.Config, ce *primazaiov1alpha1.ClusterEnvironment, failedServiceNamespaces []string) error {
-	errs := []error{}
 	serviceclassesList := primazaiov1alpha1.ServiceClassList{}
 	if err := r.List(ctx, &serviceclassesList, &client.ListOptions{Namespace: ce.Namespace}); err != nil {
 		return client.IgnoreNotFound(err)
 	}
+
 	var serviceclassFilteredList []primazaiov1alpha1.ServiceClass
 	for _, serviceclass := range serviceclassesList.Items {
 		if envtag.Match(ce.Spec.EnvironmentName, serviceclass.Spec.Constraints.Environments) {
@@ -194,18 +194,24 @@ func (r *ClusterEnvironmentReconciler) reconcileServiceNamespaces(ctx context.Co
 		}
 	}
 	serviceNamespaces := slices.SubtractStr(ce.Spec.ServiceNamespaces, failedServiceNamespaces)
+
+	errs := []error{}
 	for _, serviceclass := range serviceclassFilteredList {
-		if err := controlplane.PushServiceClassToServiceNamespaces(ctx, serviceclass, r.Scheme, r.Client, serviceNamespaces, cfg); err != nil {
+		cli, err := clustercontext.CreateClient(ctx, r.Client, *ce, r.Scheme, r.Client.RESTMapper())
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+
+		if err := controlplane.PushServiceClassToNamespaces(ctx, cli, serviceclass, serviceNamespaces); err != nil {
 			if !apierrors.IsAlreadyExists(err) {
 				errs = append(errs,
 					fmt.Errorf("error pushing service class '%s' to cluster environment '%s': %w", serviceclass.Name, ce.Name, err))
 			}
 		}
 	}
-	if len(errs) > 0 {
-		return errors.Join(errs...)
-	}
-	return nil
+
+	return errors.Join(errs...)
 }
 
 func (r *ClusterEnvironmentReconciler) testNamespacesPermissions(ctx context.Context, cfg *rest.Config, ce *primazaiov1alpha1.ClusterEnvironment) ([]string, []string, error) {
@@ -313,12 +319,8 @@ func (r *ClusterEnvironmentReconciler) updateClusterEnvironmentStatus(ctx contex
 	meta.SetStatusCondition(&ce.Status.Conditions, cs.Condition())
 }
 
-func (r *ClusterEnvironmentReconciler) getClusterRESTConfig(ctx context.Context, ce *primazaiov1alpha1.ClusterEnvironment) (*rest.Config, error) {
-	return clustercontext.GetClusterRESTConfig(ctx, r.Client, ce.Namespace, ce.Spec.ClusterContextSecret)
-}
-
 func (r *ClusterEnvironmentReconciler) finalizeClusterEnvironment(ctx context.Context, ce *primazaiov1alpha1.ClusterEnvironment) error {
-	kcfg, err := r.getClusterRESTConfig(ctx, ce)
+	kcfg, err := clustercontext.GetClusterRESTConfig(ctx, r.Client, ce.Namespace, ce.Spec.ClusterContextSecret)
 	if err != nil {
 		return err
 	}
