@@ -271,6 +271,28 @@ func (r *ClusterEnvironmentReconciler) reconcileApplicationNamespaces(ctx contex
 	return nil
 }
 
+func (r *ClusterEnvironmentReconciler) reconcileApplicationNamespaces(ctx context.Context, cfg *rest.Config, ce *primazaiov1alpha1.ClusterEnvironment, failedApplicationNamespaces []string) error {
+	errs := []error{}
+	servicecatalogList := primazaiov1alpha1.ServiceCatalogList{}
+	if err := r.List(ctx, &servicecatalogList, &client.ListOptions{Namespace: ce.Namespace}); err != nil {
+		return client.IgnoreNotFound(err)
+	}
+
+	applicationNamespaces := slices.SubtractStr(ce.Spec.ApplicationNamespaces, failedApplicationNamespaces)
+	for _, servicecatalog := range servicecatalogList.Items {
+		if err := controlplane.PushServiceCatalogToApplicationNamespaces(ctx, servicecatalog, r.Scheme, r.Client, applicationNamespaces, cfg); err != nil {
+			if !apierrors.IsAlreadyExists(err) {
+				errs = append(errs,
+					fmt.Errorf("error pushing service catalog '%s' to cluster environment '%s': %w", servicecatalog.Name, ce.Name, err))
+			}
+		}
+	}
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+	return nil
+}
+
 func (r *ClusterEnvironmentReconciler) testNamespacesPermissions(ctx context.Context, cfg *rest.Config, ce *primazaiov1alpha1.ClusterEnvironment) ([]string, []string, error) {
 	// check application namespaces permissions
 	apc := controlplane.NewAgentAppPermissionsChecker(cfg)
