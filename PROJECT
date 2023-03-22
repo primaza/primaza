@@ -12,7 +12,6 @@ resources:
     namespaced: true
   controller: true
   domain: primaza.io
-  group: primaza.io
   kind: ClusterEnvironment
   path: github.com/primaza/primaza/api/v1alpha1
   version: v1alpha1
@@ -21,7 +20,6 @@ resources:
     namespaced: true
   controller: true
   domain: primaza.io
-  group: primaza.io
   kind: RegisteredService
   path: github.com/primaza/primaza/api/v1alpha1
   version: v1alpha1
@@ -30,7 +28,6 @@ resources:
     namespaced: true
   controller: true
   domain: primaza.io
-  group: primaza.io
   kind: ServiceBinding
   path: github.com/primaza/primaza/api/v1alpha1
   version: v1alpha1
@@ -38,7 +35,6 @@ resources:
     crdVersion: v1
     namespaced: true
   domain: primaza.io
-  group: primaza.io
   kind: ServiceCatalog
   path: github.com/primaza/primaza/api/v1alpha1
   version: v1alpha1
@@ -47,7 +43,6 @@ resources:
     namespaced: true
   controller: true
   domain: primaza.io
-  group: primaza.io
   kind: ServiceClaim
   path: github.com/primaza/primaza/api/v1alpha1
   version: v1alpha1
@@ -56,7 +51,6 @@ resources:
     namespaced: true
   controller: true
   domain: primaza.io
-  group: primaza.io
   kind: ServiceClass
   path: github.com/primaza/primaza/api/v1alpha1
   version: v1alpha1
