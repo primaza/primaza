@@ -21,21 +21,11 @@ import (
 
 	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func PushServiceClassToServiceNamespaces(ctx context.Context, sc primazaiov1alpha1.ServiceClass, scheme *runtime.Scheme, controllerruntimeClient client.Client, serviceNamespaces []string, cfg *rest.Config) error {
-	oc := client.Options{
-		Scheme: scheme,
-		Mapper: controllerruntimeClient.RESTMapper(),
-	}
-	cli, err := client.New(cfg, oc)
-	if err != nil {
-		return err
-	}
-	for _, ns := range serviceNamespaces {
+func PushServiceClassToNamespaces(ctx context.Context, cli client.Client, sc primazaiov1alpha1.ServiceClass, namespaces []string) error {
+	for _, ns := range namespaces {
 		sccp := &primazaiov1alpha1.ServiceClass{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      sc.Name,
@@ -45,6 +35,23 @@ func PushServiceClassToServiceNamespaces(ctx context.Context, sc primazaiov1alph
 		}
 
 		if err := cli.Create(ctx, sccp, &client.CreateOptions{}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func DeleteServiceClassFromNamespaces(ctx context.Context, cli client.Client, sc primazaiov1alpha1.ServiceClass, namespaces []string) error {
+	for _, ns := range namespaces {
+		sccp := &primazaiov1alpha1.ServiceClass{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      sc.Name,
+				Namespace: ns,
+			},
+		}
+
+		if err := cli.Delete(ctx, sccp, &client.DeleteOptions{}); err != nil {
 			return err
 		}
 	}
