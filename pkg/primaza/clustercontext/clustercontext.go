@@ -23,13 +23,40 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime"
 
+	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var ErrSecretNotFound = fmt.Errorf("Cluster Context Secret not found")
+
+func CreateClient(
+	ctx context.Context,
+	primazaCli client.Client,
+	ce primazaiov1alpha1.ClusterEnvironment,
+	scheme *runtime.Scheme,
+	mapper meta.RESTMapper,
+) (client.Client, error) {
+	cfg, err := GetClusterRESTConfig(ctx, primazaCli, ce.Namespace, ce.Spec.ClusterContextSecret)
+	if err != nil {
+		return nil, err
+	}
+
+	oc := client.Options{
+		Scheme: scheme,
+		Mapper: mapper,
+	}
+	cli, err := client.New(cfg, oc)
+	if err != nil {
+		return nil, err
+	}
+
+	return cli, nil
+}
 
 func GetClusterRESTConfig(ctx context.Context, cli client.Client, secretNamespace, secretName string) (*rest.Config, error) {
 	s, err := getSecret(ctx, cli, secretNamespace, secretName)
