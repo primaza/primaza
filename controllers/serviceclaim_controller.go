@@ -22,7 +22,6 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -36,6 +35,7 @@ import (
 	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
 	"github.com/primaza/primaza/pkg/envtag"
 	"github.com/primaza/primaza/pkg/primaza/clustercontext"
+	"github.com/primaza/primaza/pkg/primaza/controlplane"
 	"github.com/primaza/primaza/pkg/slices"
 )
 
@@ -305,7 +305,11 @@ func (r *ServiceClaimReconciler) pushToClusterEnvironments(
 			l.Info("error getting ClusterEnvironment", "error", err)
 			return err
 		}
-		if err := r.pushServiceBinding(ctx, &sclaim, *ce, secret, &sclaim.Spec.ApplicationClusterContext.Namespace); err != nil {
+		cfg, err := clustercontext.GetClusterRESTConfig(ctx, r.Client, ce.Namespace, ce.Spec.ClusterContextSecret)
+		if err != nil {
+			return err
+		}
+		if err = controlplane.PushServiceBinding(ctx, &sclaim, secret, r.Scheme, r.Client, &sclaim.Spec.ApplicationClusterContext.Namespace, ce.Spec.ApplicationNamespaces, cfg); err != nil {
 			errs = append(errs, err)
 		}
 	} else {
@@ -316,6 +320,10 @@ func (r *ServiceClaimReconciler) pushToClusterEnvironments(
 		}
 
 		for _, ce := range cel.Items {
+			cfg, err := clustercontext.GetClusterRESTConfig(ctx, r.Client, ce.Namespace, ce.Spec.ClusterContextSecret)
+			if err != nil {
+				return err
+			}
 			// check if the ServiceClaim EnvironmentTag matches the EnvironmentName part of ClusterEnvironment
 			if ce.Spec.EnvironmentName != sclaim.Spec.EnvironmentTag {
 				l.Info("cluster environment is NOT matching environment", "cluster environment", ce, "environment tag", sclaim.Spec.EnvironmentTag)
@@ -323,7 +331,7 @@ func (r *ServiceClaimReconciler) pushToClusterEnvironments(
 			}
 
 			l.Info("cluster environment is matching environment", "cluster environment", ce, "environment tag", sclaim.Spec.EnvironmentTag)
-			if err := r.pushServiceBinding(ctx, &sclaim, ce, secret, nil); err != nil {
+			if err = controlplane.PushServiceBinding(ctx, &sclaim, secret, r.Scheme, r.Client, nil, ce.Spec.ApplicationNamespaces, cfg); err != nil {
 				errs = append(errs, err)
 			}
 
@@ -331,81 +339,6 @@ func (r *ServiceClaimReconciler) pushToClusterEnvironments(
 	}
 	if len(errs) > 0 {
 		return errors.Join(errs...)
-	}
-	return nil
-}
-
-func (r *ServiceClaimReconciler) pushServiceBinding(
-	ctx context.Context,
-	sc *primazaiov1alpha1.ServiceClaim,
-	ce primazaiov1alpha1.ClusterEnvironment,
-	secret *corev1.Secret,
-	nspace *string) error {
-	l := log.FromContext(ctx)
-
-	cfg, err := clustercontext.GetClusterRESTConfig(ctx, r.Client, ce.Namespace, ce.Spec.ClusterContextSecret)
-	if err != nil {
-		return err
-	}
-
-	oc := client.Options{
-		Scheme: r.Scheme,
-		Mapper: r.Mapper,
-	}
-	cecli, err := client.New(cfg, oc)
-	if err != nil {
-		return err
-	}
-
-	errs := []error{}
-	for _, ns := range ce.Spec.ApplicationNamespaces {
-		if nspace == nil || *nspace == ns {
-			l.Info("pushing to application namespace", "application namespace", ns)
-			if err := r.pushServiceBindingToNamespace(ctx, cecli, ns, sc, secret); err != nil {
-				errs = append(errs, err)
-				l.Error(err, "error pushing to application namespaces", "application namespace", ns)
-			}
-		}
-	}
-	if len(errs) > 0 {
-		return errors.Join(errs...)
-	}
-	return nil
-}
-
-func (r *ServiceClaimReconciler) pushServiceBindingToNamespace(
-	ctx context.Context,
-	cli client.Client,
-	namespace string,
-	sc *primazaiov1alpha1.ServiceClaim,
-	secret *corev1.Secret) error {
-	l := log.FromContext(ctx)
-
-	s := *secret
-	s.Namespace = namespace
-	l.Info("creating secret for service claim", "secret", s, "service claim", sc)
-	if err := cli.Create(ctx, &s, &client.CreateOptions{}); err != nil {
-		l.Error(err, "error creating secret for service claim", "secret", s, "service claim", sc)
-		if !apierrors.IsAlreadyExists(err) {
-			return err
-		}
-	}
-
-	sb := primazaiov1alpha1.ServiceBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      sc.Name,
-			Namespace: namespace,
-		},
-		Spec: primazaiov1alpha1.ServiceBindingSpec{
-			ServiceEndpointDefinitionSecret: sc.Name,
-			Application:                     sc.Spec.Application,
-		},
-	}
-
-	if err := cli.Create(ctx, &sb, &client.CreateOptions{}); err != nil {
-		if !apierrors.IsAlreadyExists(err) {
-			return err
-		}
 	}
 	return nil
 }

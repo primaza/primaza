@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -155,7 +156,8 @@ func (r *ClusterEnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.R
 		"failed service namespaces (won't reconcile)", fsnn)
 	errns := r.reconcileNamespaces(ctx, cfg, ce, fann, fsnn)
 	errsns := r.reconcileServiceNamespaces(ctx, cfg, ce, fsnn)
-	if err := errors.Join(errns, errsns); err != nil {
+	errans := r.reconcileApplicationNamespaces(ctx, cfg, ce, fann)
+	if err := errors.Join(errns, errsns, errans); err != nil {
 		l.Error(err, "error reconciling namespaces")
 		return ctrl.Result{}, err
 	}
@@ -212,6 +214,61 @@ func (r *ClusterEnvironmentReconciler) reconcileServiceNamespaces(ctx context.Co
 	}
 
 	return errors.Join(errs...)
+}
+
+// TODO: eventually move this logic in `pkg/primaza/controlplane`
+func (r *ClusterEnvironmentReconciler) reconcileApplicationNamespaces(ctx context.Context, cfg *rest.Config, ce *primazaiov1alpha1.ClusterEnvironment, failedApplicationNamespaces []string) error {
+	errs := []error{}
+	l := log.FromContext(ctx)
+	serviceclaimsList := primazaiov1alpha1.ServiceClaimList{}
+	if err := r.List(ctx, &serviceclaimsList, &client.ListOptions{Namespace: ce.Namespace}); err != nil {
+		return client.IgnoreNotFound(err)
+	}
+	var serviceclaimFilteredList []primazaiov1alpha1.ServiceClaim
+	for _, serviceclaim := range serviceclaimsList.Items {
+		if ce.Spec.EnvironmentName == serviceclaim.Spec.EnvironmentTag {
+			serviceclaimFilteredList = append(serviceclaimFilteredList, serviceclaim)
+		}
+	}
+	applicationNamespaces := slices.SubtractStr(ce.Spec.ApplicationNamespaces, failedApplicationNamespaces)
+	for index := range serviceclaimFilteredList {
+		sclaim := serviceclaimFilteredList[index]
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      sclaim.Name,
+				Namespace: sclaim.Namespace,
+			},
+			StringData: map[string]string{},
+		}
+		// ServiceClassIdentity values are going to override
+		// any values in the secret resource
+		for _, sci := range sclaim.Spec.ServiceClassIdentity {
+			secret.StringData[sci.Name] = sci.Value
+		}
+		if sclaim.Spec.EnvironmentTag == "" {
+			if sclaim.Spec.ApplicationClusterContext != nil && ce.Name == sclaim.Spec.ApplicationClusterContext.ClusterEnvironmentName {
+				if err := controlplane.PushServiceBinding(ctx, &sclaim, secret, r.Scheme, r.Client, &sclaim.Spec.ApplicationClusterContext.Namespace, applicationNamespaces, cfg); err != nil {
+					errs = append(errs, err)
+				}
+			}
+		} else {
+			// check if the ServiceClaim EnvironmentTag matches the EnvironmentName part of ClusterEnvironment
+			if ce.Spec.EnvironmentName != sclaim.Spec.EnvironmentTag {
+				l.Info("cluster environment is NOT matching environment", "cluster environment", ce, "environment tag", sclaim.Spec.EnvironmentTag)
+				continue
+			}
+
+			l.Info("cluster environment is matching environment", "cluster environment", ce, "environment tag", sclaim.Spec.EnvironmentTag)
+			if err := controlplane.PushServiceBinding(ctx, &sclaim, secret, r.Scheme, r.Client, nil, applicationNamespaces, cfg); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+	return nil
 }
 
 func (r *ClusterEnvironmentReconciler) testNamespacesPermissions(ctx context.Context, cfg *rest.Config, ce *primazaiov1alpha1.ClusterEnvironment) ([]string, []string, error) {
