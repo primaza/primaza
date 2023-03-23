@@ -217,7 +217,7 @@ func (r *ClusterEnvironmentReconciler) reconcileServiceNamespaces(ctx context.Co
 }
 
 // TODO: eventually move this logic in `pkg/primaza/controlplane`
-func (r *ClusterEnvironmentReconciler) reconcileApplicationNamespaces(ctx context.Context, cfg *rest.Config, ce *primazaiov1alpha1.ClusterEnvironment, failedApplicationNamespaces []string) error {
+func (r *ClusterEnvironmentReconciler) reconcileServiceBindingApplicationNamespaces(ctx context.Context, cfg *rest.Config, ce *primazaiov1alpha1.ClusterEnvironment, applicationNamespaces []string) error {
 	errs := []error{}
 	l := log.FromContext(ctx)
 	serviceclaimsList := primazaiov1alpha1.ServiceClaimList{}
@@ -230,7 +230,6 @@ func (r *ClusterEnvironmentReconciler) reconcileApplicationNamespaces(ctx contex
 			serviceclaimFilteredList = append(serviceclaimFilteredList, serviceclaim)
 		}
 	}
-	applicationNamespaces := slices.SubtractStr(ce.Spec.ApplicationNamespaces, failedApplicationNamespaces)
 	for index := range serviceclaimFilteredList {
 		sclaim := serviceclaimFilteredList[index]
 		secret := &corev1.Secret{
@@ -269,6 +268,32 @@ func (r *ClusterEnvironmentReconciler) reconcileApplicationNamespaces(ctx contex
 		return errors.Join(errs...)
 	}
 	return nil
+}
+
+func (r *ClusterEnvironmentReconciler) reconcileServiceCatalogApplicationNamespaces(ctx context.Context, cfg *rest.Config, ce *primazaiov1alpha1.ClusterEnvironment, applicationNamespaces []string) error {
+	errs := []error{}
+	servicecatalogList := primazaiov1alpha1.ServiceCatalogList{}
+	if err := r.List(ctx, &servicecatalogList, &client.ListOptions{Namespace: ce.Namespace}); err != nil {
+		return client.IgnoreNotFound(err)
+	}
+
+	for _, servicecatalog := range servicecatalogList.Items {
+		if err := controlplane.PushServiceCatalogToApplicationNamespaces(ctx, servicecatalog, r.Scheme, r.Client, applicationNamespaces, cfg); err != nil {
+			if !apierrors.IsAlreadyExists(err) {
+				errs = append(errs,
+					fmt.Errorf("error pushing service catalog '%s' to cluster environment '%s': %w", servicecatalog.Name, ce.Name, err))
+			}
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func (r *ClusterEnvironmentReconciler) reconcileApplicationNamespaces(ctx context.Context, cfg *rest.Config, ce *primazaiov1alpha1.ClusterEnvironment, failedApplicationNamespaces []string) error {
+
+	nns := slices.SubtractStr(ce.Spec.ApplicationNamespaces, failedApplicationNamespaces)
+	errcm := r.reconcileServiceBindingApplicationNamespaces(ctx, cfg, ce, nns)
+	errct := r.reconcileServiceCatalogApplicationNamespaces(ctx, cfg, ce, nns)
+	return errors.Join(errcm, errct)
 }
 
 func (r *ClusterEnvironmentReconciler) testNamespacesPermissions(ctx context.Context, cfg *rest.Config, ce *primazaiov1alpha1.ClusterEnvironment) ([]string, []string, error) {
