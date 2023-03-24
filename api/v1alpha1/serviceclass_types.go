@@ -49,6 +49,10 @@ type ServiceClassSpec struct {
 	// +optional
 	Constraints *EnvironmentConstraints `json:"constraints,omitempty"`
 
+	// HealthCheck sets the default health check for generated registered services
+	// +optional
+	HealthCheck *HealthCheck `json:"healthCheck,omitempty"`
+
 	// Resource defines the resource type to be used to convert into Registered
 	// Services
 	Resource ServiceClassResource `json:"resource"`
@@ -61,7 +65,7 @@ type ServiceClassSpec struct {
 
 // ServiceClassStatus defines the observed state of ServiceClass
 type ServiceClassStatus struct {
-	Conditions metav1.ConditionStatus `json:"conditions,omitempty"`
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 //+kubebuilder:object:root=true
