@@ -167,7 +167,7 @@ class WorkerCluster(Cluster):
                     resource_names=["primaza-controller-agentapp", "primaza-controller-agentsvc"]),
                 client.V1PolicyRule(
                     api_groups=["primaza.io"],
-                    resources=["servicebindings", "serviceclasses"],
+                    resources=["servicebindings", "serviceclasses", "servicecatalogs"],
                     verbs=["get", "list", "watch", "create", "update", "patch", "delete"])
             ])
         rbacv1.create_namespaced_role(namespace, r)

@@ -101,3 +101,29 @@ func pushServiceBindingToNamespace(
 	}
 	return nil
 }
+
+func PushServiceCatalogToApplicationNamespaces(ctx context.Context, sc primazaiov1alpha1.ServiceCatalog, scheme *runtime.Scheme, controllerruntimeClient client.Client, applicationNamespaces []string, cfg *rest.Config) error {
+	oc := client.Options{
+		Scheme: scheme,
+		Mapper: controllerruntimeClient.RESTMapper(),
+	}
+	cli, err := client.New(cfg, oc)
+	if err != nil {
+		return err
+	}
+	for _, ns := range applicationNamespaces {
+		sccp := &primazaiov1alpha1.ServiceCatalog{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      sc.Name,
+				Namespace: ns,
+			},
+			Spec: sc.Spec,
+		}
+
+		if err := cli.Create(ctx, sccp, &client.CreateOptions{}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
