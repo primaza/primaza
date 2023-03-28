@@ -84,3 +84,7 @@ type ServiceClaimList struct {
 func init() {
 	SchemeBuilder.Register(&ServiceClaim{}, &ServiceClaimList{})
 }
+
+func (sc *ServiceClaim) HasDeletionTimestamp() bool {
+	return !sc.DeletionTimestamp.IsZero()
+}

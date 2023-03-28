@@ -25,6 +25,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -73,16 +74,6 @@ func pushServiceBindingToNamespace(
 	secret *corev1.Secret) error {
 	l := log.FromContext(ctx)
 
-	s := *secret
-	s.Namespace = namespace
-	l.Info("creating secret for service claim", "secret", s, "service claim", sc)
-	if err := cli.Create(ctx, &s, &client.CreateOptions{}); err != nil {
-		l.Error(err, "error creating secret for service claim", "secret", s, "service claim", sc)
-		if !apierrors.IsAlreadyExists(err) {
-			return err
-		}
-	}
-
 	sb := primazaiov1alpha1.ServiceBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      sc.Name,
@@ -99,6 +90,30 @@ func pushServiceBindingToNamespace(
 			return err
 		}
 	}
+
+	if err := cli.Get(ctx, types.NamespacedName{Namespace: namespace, Name: sc.Name}, &sb); err != nil {
+		return err
+	}
+
+	s := *secret
+	s.Namespace = namespace
+	s.OwnerReferences = []metav1.OwnerReference{
+		{
+			APIVersion: "primaza.io/v1alpha1",
+			Kind:       "ServiceBinding",
+			Name:       sc.Name,
+			UID:        sb.UID,
+		},
+	}
+
+	l.Info("creating secret for service claim", "secret", s, "service claim", sc)
+	if err := cli.Create(ctx, &s, &client.CreateOptions{}); err != nil {
+		l.Error(err, "error creating secret for service claim", "secret", s, "service claim", sc)
+		if !apierrors.IsAlreadyExists(err) {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -126,4 +141,26 @@ func PushServiceCatalogToApplicationNamespaces(ctx context.Context, sc primazaio
 	}
 
 	return nil
+}
+
+func DeleteServiceBindingAndSecretFromNamespaces(ctx context.Context, cli client.Client, sc primazaiov1alpha1.ServiceClaim, namespaces []string) error {
+	var errs []error
+
+	for _, ns := range namespaces {
+		sb := &primazaiov1alpha1.ServiceBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      sc.Name,
+				Namespace: ns,
+			},
+		}
+
+		if err := cli.Delete(ctx, sb, &client.DeleteOptions{}); err != nil {
+			if !apierrors.IsNotFound(err) {
+				errs = append(errs, err)
+			}
+
+		}
+	}
+
+	return errors.Join(errs...)
 }
