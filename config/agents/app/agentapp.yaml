@@ -1,7 +1,6 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: primaza-controller-agentapp
   labels:
     control-plane: primaza-controller-agentapp
     app.kubernetes.io/name: deployment
@@ -10,6 +9,8 @@ metadata:
     app.kubernetes.io/created-by: primaza
     app.kubernetes.io/part-of: primaza
     app.kubernetes.io/managed-by: kustomize
+  name: primaza-controller-agentapp
+  namespace: system
 spec:
   selector:
     matchLabels:

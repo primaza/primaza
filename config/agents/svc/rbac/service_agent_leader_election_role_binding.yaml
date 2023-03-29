@@ -9,6 +9,7 @@ metadata:
     app.kubernetes.io/part-of: primaza
     app.kubernetes.io/managed-by: kustomize
   name: leader-election-rolebinding
+  namespace: system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -16,4 +17,3 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: primaza-controller-agentsvc
-  namespace: system

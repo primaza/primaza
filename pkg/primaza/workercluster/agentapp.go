@@ -141,6 +141,6 @@ spec:
           requests:
             cpu: 10m
             memory: 64Mi
-      serviceAccountName: primaza-agentapp
+      serviceAccountName: primaza-controller-agentapp
       terminationGracePeriodSeconds: 10
 `

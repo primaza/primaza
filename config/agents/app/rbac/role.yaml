@@ -3,6 +3,7 @@ kind: Role
 metadata:
   creationTimestamp: null
   name: agentapp-role
+  namespace: system
 rules:
 - apiGroups:
   - coordination.k8s.io

@@ -20,7 +20,7 @@ Feature: Publish Service Agent to worker cluster
             serviceNamespaces:
             - "services"
         """
-        Then On Worker Cluster "worker", Primaza Service Agent is deployed into namespace "services"
+        Then On Worker Cluster "worker", Primaza Service Agent exists into namespace "services"
 
     Scenario: On Cluster Environment update, Primaza Service Agent is successfully removed from service namespace
 
@@ -42,7 +42,7 @@ Feature: Publish Service Agent to worker cluster
             serviceNamespaces:
             - services
         """
-        And On Worker Cluster "worker", Primaza Service Agent is deployed into namespace "services"
+        And On Worker Cluster "worker", Primaza Service Agent exists into namespace "services"
         When On Primaza Cluster "main", Resource is updated
         """
         apiVersion: primaza.io/v1alpha1
@@ -55,7 +55,7 @@ Feature: Publish Service Agent to worker cluster
             clusterContextSecret: primaza-kw
             serviceNamespaces: []
         """
-        Then On Worker Cluster "worker", Primaza Service Agent is not deployed into namespace "services"
+        Then On Worker Cluster "worker", Primaza Service Agent does not exist into namespace "services"
 
     Scenario: On Cluster Environment update, Primaza Service Agent is successfully published into service namespace
 
@@ -89,7 +89,7 @@ Feature: Publish Service Agent to worker cluster
             serviceNamespaces:
             - services
         """
-        Then On Worker Cluster "worker", Primaza Service Agent is deployed into namespace "services"
+        Then On Worker Cluster "worker", Primaza Service Agent exists into namespace "services"
 
     Scenario: On Cluster Environment deletion, Primaza Service Agent is successfully removed from service namespace
 
@@ -111,7 +111,7 @@ Feature: Publish Service Agent to worker cluster
             serviceNamespaces:
             - services
         """
-        And On Worker Cluster "worker", Primaza Service Agent is deployed into namespace "services"
+        And On Worker Cluster "worker", Primaza Service Agent exists into namespace "services"
         When On Primaza Cluster "main", Resource is deleted
         """
         apiVersion: primaza.io/v1alpha1
@@ -120,4 +120,4 @@ Feature: Publish Service Agent to worker cluster
             name: worker
             namespace: primaza-system
         """
-        Then On Worker Cluster "worker", Primaza Service Agent is not deployed into namespace "services"
+        Then On Worker Cluster "worker", Primaza Service Agent does not exist into namespace "services"

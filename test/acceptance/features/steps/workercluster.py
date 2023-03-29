@@ -5,7 +5,7 @@ import tempfile
 import time
 import yaml
 from behave import given, step
-from typing import Dict, List
+from typing import Dict
 from datetime import datetime, timezone, timedelta
 from kubernetes import client
 from kubernetes.client.rest import ApiException
@@ -188,98 +188,28 @@ class WorkerCluster(Cluster):
         rbacv1.create_namespaced_role_binding(namespace=namespace, body=rb)
 
     def __create_application_agent_identity(self, namespace: str):
-        rules = [
-            client.V1PolicyRule(
-                api_groups=[""],
-                resources=["secrets"],
-                verbs=["get", "list"]),
-            client.V1PolicyRule(
-                api_groups=["apps"],
-                resources=["deployments"],
-                verbs=["get", "list", "watch", "update", "patch"]),
-            client.V1PolicyRule(
-                api_groups=["primaza.io"],
-                resources=["servicebindings", "servicebindings/status", "serviceclaims"],
-                verbs=["get", "list", "watch", "update", "patch"])
-        ]
-        self.__create_agent_identity(namespace, "agentapp", rules)
+        self.__create_agent_identity(namespace, "agentapp")
 
     def __create_service_agent_identity(self, namespace: str):
-        rules = [
-            client.V1PolicyRule(
-                api_groups=["primaza.io"],
-                resources=["serviceclass"],
-                verbs=["get", "list", "watch"])
-        ]
-        self.__create_agent_identity(namespace, "agentsvc", rules)
+        self.__create_agent_identity(namespace, "agentsvc")
 
-    def __create_agent_identity(self, namespace: str, agent_name: str, rules: List[client.V1PolicyRule]):
-        api_client = self.get_api_client()
-        corev1 = client.CoreV1Api(api_client)
-        rbacv1 = client.RbacAuthorizationV1Api(api_client)
+    def __create_agent_identity(self, namespace: str, component: str):
+        kubeconfig = self.cluster_provisioner.kubeconfig()
+        with tempfile.NamedTemporaryFile(prefix=f"kubeconfig-{self.cluster_name}-") as t:
+            t.write(kubeconfig.encode("utf-8"))
+            t.flush()
 
-        # create service account
-        sa = client.V1ServiceAccount(metadata=client.V1ObjectMeta(name=f"primaza-{agent_name}"))
-        corev1.create_namespaced_service_account(namespace=namespace, body=sa)
+            out, err = Command() \
+                .setenv("HOME", os.getenv("HOME")) \
+                .setenv("USER", os.getenv("USER")) \
+                .setenv("KUBECONFIG", t.name) \
+                .setenv("NAMESPACE", namespace) \
+                .setenv("GOCACHE", os.getenv("GOCACHE", "/tmp/gocache")) \
+                .setenv("GOPATH", os.getenv("GOPATH", "/tmp/go")) \
+                .run(f"make {component} deploy-rbac")
 
-        cr = client.V1ClusterRole(
-            metadata=client.V1ObjectMeta(name=f"primaza-{agent_name}-{namespace}-role"),
-            rules=[
-                client.V1PolicyRule(
-                    api_groups=["authentication.k8s.io"],
-                    resources=["tokenreviews", "subjectaccessreviews"],
-                    verbs=["create"])
-            ])
-        rbacv1.create_cluster_role(cr)
-
-        # bind cluster role to service account
-        crb = client.V1RoleBinding(
-            metadata=client.V1ObjectMeta(name=f"primaza-{agent_name}-{namespace}-rolebinding", namespace=namespace),
-            role_ref=client.V1RoleRef(
-                api_group="rbac.authorization.k8s.io",
-                kind="ClusterRole",
-                name=f"primaza-{agent_name}-{namespace}-role"),
-            subjects=[
-                client.V1Subject(
-                    kind="ServiceAccount",
-                    name=f"primaza-{agent_name}",
-                    namespace=namespace)
-            ])
-        rbacv1.create_cluster_role_binding(body=crb)
-
-        # create role
-        r = client.V1Role(
-            metadata=client.V1ObjectMeta(name=f"primaza-{agent_name}-role", namespace=namespace),
-            rules=[
-                client.V1PolicyRule(
-                    api_groups=["coordination.k8s.io"],
-                    resources=["leases"],
-                    verbs=["get", "list", "watch", "create", "update", "patch", "delete"]),
-                client.V1PolicyRule(
-                    api_groups=[""],
-                    resources=["configmaps"],
-                    verbs=["get", "list", "watch", "create", "update", "patch", "delete"]),
-                client.V1PolicyRule(
-                    api_groups=[""],
-                    resources=["events"],
-                    verbs=["create", "patch"])
-            ] + rules)
-        rbacv1.create_namespaced_role(namespace, r)
-
-        # bind role to service account
-        rb = client.V1RoleBinding(
-            metadata=client.V1ObjectMeta(name=f"{agent_name}-rolebinding", namespace=namespace),
-            role_ref=client.V1RoleRef(
-                api_group="rbac.authorization.k8s.io",
-                kind="Role",
-                name=f"primaza-{agent_name}-role"),
-            subjects=[
-                client.V1Subject(
-                    kind="ServiceAccount",
-                    name=f"primaza-{agent_name}",
-                    namespace=namespace)
-            ])
-        rbacv1.create_namespaced_role_binding(namespace=namespace, body=rb)
+            print(out)
+            assert err == 0, f"error deploying {component}'s rbac manifests"
 
     def __configure_primaza_user_permissions(self):
         api_client = self.get_api_client()
@@ -439,8 +369,17 @@ def application_agent_is_deployed(context, cluster_name: str, namespace: str):
         timeout=30)
 
 
-@step(u'On Worker Cluster "{cluster_name}", Primaza Application Agent is not deployed into namespace "{namespace}"')
-def application_agent_is_not_deployed(context, cluster_name: str, namespace: str):
+@step(u'On Worker Cluster "{cluster_name}", Primaza Application Agent exists into namespace "{namespace}"')
+def application_agent_exists(context, cluster_name: str, namespace: str):
+    worker = context.cluster_provider.get_worker_cluster(cluster_name)  # type: WorkerCluster
+    polling2.poll(
+        target=lambda: worker.is_app_agent_deployed(namespace),
+        step=1,
+        timeout=30)
+
+
+@step(u'On Worker Cluster "{cluster_name}", Primaza Application Agent does not exist into namespace "{namespace}"')
+def application_agent_does_not_exist(context, cluster_name: str, namespace: str):
     worker = context.cluster_provider.get_worker_cluster(cluster_name)  # type: WorkerCluster
 
     def is_not_found():
@@ -472,8 +411,17 @@ def service_agent_is_deployed(context, cluster_name: str, namespace: str):
         timeout=30)
 
 
-@step(u'On Worker Cluster "{cluster_name}", Primaza Service Agent is not deployed into namespace "{namespace}"')
-def service_agent_is_not_deployed(context, cluster_name: str, namespace: str):
+@step(u'On Worker Cluster "{cluster_name}", Primaza Service Agent exists into namespace "{namespace}"')
+def service_agent_exists(context, cluster_name: str, namespace: str):
+    worker = context.cluster_provider.get_worker_cluster(cluster_name)  # type: WorkerCluster
+    polling2.poll(
+        target=lambda: worker.is_svc_agent_deployed(namespace),
+        step=1,
+        timeout=30)
+
+
+@step(u'On Worker Cluster "{cluster_name}", Primaza Service Agent does not exist into namespace "{namespace}"')
+def service_agent_does_not_exist(context, cluster_name: str, namespace: str):
     worker = context.cluster_provider.get_worker_cluster(cluster_name)  # type: WorkerCluster
 
     def is_not_found():
