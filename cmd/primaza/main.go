@@ -110,6 +110,10 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "ServiceClass")
 		os.Exit(1)
 	}
+	if err = (&primazaiov1alpha1.ServiceClass{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "ServiceClass")
+		os.Exit(1)
+	}
 	if err = (&controllers.RegisteredServiceReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),

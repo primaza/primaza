@@ -59,7 +59,7 @@ class WorkerCluster(Cluster):
                 .setenv("KUBECONFIG", t.name) \
                 .setenv("GOCACHE", os.getenv("GOCACHE", "/tmp/gocache")) \
                 .setenv("GOPATH", os.getenv("GOPATH", "/tmp/go")) \
-                .run(f"make {component} install")
+                .run(f"make {component} deploy-cert-manager install")
 
             print(out)
             assert err == 0, f"error installing {component}'s manifests"
@@ -398,6 +398,18 @@ class WorkerCluster(Cluster):
             print("Exception when calling CustomObjectsApi->get_namespaced_custom_object_status: %s\n" % e)
             raise e
 
+    def deploy_primaza_kubeconfig(self, primaza_cluster: Cluster, namespace: str):
+        api_client = self.get_api_client()
+        v1 = client.CoreV1Api(api_client)
+        secret = client.V1Secret(
+            metadata=client.V1ObjectMeta(name="primaza-kubeconfig"),
+            string_data={
+                "kubeconfig": primaza_cluster.get_admin_kubeconfig(internal=True),
+                # for now, assume primaza's default deployment namespace
+                "namespace": "primaza-system"
+            })
+        v1.create_namespaced_secret(namespace, secret)
+
 
 # Behave steps
 @given('Worker Cluster "{cluster_name}" for "{primaza_cluster_name}" is running')
@@ -482,6 +494,13 @@ def service_agent_is_not_deployed(context, cluster_name: str, namespace: str):
 def ensure_worker_cluster_is_running(context, cluster_name: str, version: str = None):
     worker_cluster = context.cluster_provider.create_worker_cluster(cluster_name, version)
     worker_cluster.start()
+
+
+@step(u'Primaza cluster\'s "{primaza_cluster}" kubeconfig is available on "{worker_cluster}" in namespace "{namespace}"')
+def deploy_kubeconfig(context, primaza_cluster: str, worker_cluster: str, namespace: str):
+    primaza = context.cluster_provider.get_primaza_cluster(primaza_cluster)  # type: Cluster
+    worker = context.cluster_provider.get_worker_cluster(worker_cluster)  # type: WorkerCluster
+    worker.deploy_primaza_kubeconfig(primaza, namespace)
 
 
 @step(u'On Worker Cluster "{cluster_name}", the secret "{secret_name}" in namespace "{namespace}" has the key "{key}" with value "{value}"')
