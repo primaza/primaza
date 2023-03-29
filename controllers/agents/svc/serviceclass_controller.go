@@ -55,10 +55,6 @@ type ServiceClassReconciler struct {
 	Mapper       meta.RESTMapper
 }
 
-//+kubebuilder:rbac:groups=primaza.io,resources=serviceclasses,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=primaza.io,resources=serviceclasses/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=primaza.io,resources=serviceclasses/finalizers,verbs=update
-
 func NewServiceClassReconciler(mgr ctrl.Manager) *ServiceClassReconciler {
 	return &ServiceClassReconciler{
 		Client:    mgr.GetClient(),

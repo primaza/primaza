@@ -1,6 +1,6 @@
 Feature: Application Namespaces initialization: Service Bindings
 
-    Background: 
+    Background:
         Given Primaza Cluster "main" is running
         And   Worker Cluster "worker" for "main" is running
         And   Clusters "main" and "worker" can communicate

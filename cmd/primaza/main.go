@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -35,6 +36,8 @@ import (
 	"github.com/primaza/primaza/controllers"
 	//+kubebuilder:scaffold:imports
 )
+const EnvWatchNamespace = "WATCH_NAMESPACE"
+
 
 var (
 	scheme   = runtime.NewScheme()
@@ -65,11 +68,17 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	ns, err := getWatchNamespaceFromEnv()
+	if err != nil {
+		setupLog.Error(err, "unable to start manager")
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
 		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
+		Namespace:              ns,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "859ca7e5.primaza.io",
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
@@ -142,4 +151,13 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+func getWatchNamespaceFromEnv() (string, error) {
+	ns := os.Getenv(EnvWatchNamespace)
+	if ns == "" {
+		return "", fmt.Errorf("environment variable %s not found", EnvWatchNamespace)
+	}
+
+	return ns, nil
 }

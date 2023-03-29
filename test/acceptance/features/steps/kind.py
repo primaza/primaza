@@ -125,8 +125,9 @@ class PrimazaKind(PrimazaCluster):
         print(out)
         assert err == 0, f"error loading image {image} into kind cluster {self.cluster_name}"
 
-    def __deploy_primaza(self, kubeconfig_path: str, img: str):
-        out, err = self.__build_install_base_cmd(kubeconfig_path, img).run("make primaza deploy")
+    def __deploy_primaza(self, kubeconfig_path: str, img: str, namespace: str = "primaza-system"):
+        out, err = self.__build_install_base_cmd(kubeconfig_path, img) \
+            .setenv("NAMESPACE", namespace).run("make primaza deploy")
         print(out)
         assert err == 0, f"error deploying Primaza's controller into cluster {self.cluster_name}"
 
