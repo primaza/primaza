@@ -18,7 +18,7 @@ contains two required properties:
 There are other three optional fields. The EnvironmentTag and
 ApplicationClusterContext are mutually exclusive:
 
-- Application: Fields indentifies application resources through kind, apiVersion and label selector. 
+- Application: Fields indentifies application resources through kind, apiVersion and label selector.
 - EnvironmentTag: A string representing one of the environment.
 - ApplicationClusterContext: A combination of ClusterEnvironment resource name and namespace.
 
@@ -37,11 +37,11 @@ There is an optional `claimID` field with a unique ID for the claim.
 
 ### Creation
 
-When a Service Claim is created, Primaza should find a Registered Service based on Service Class Identity and Service Endpoint Definition Keys and create Secret and Service Binding resources. Then it will update the state of Service Claim to `Resolved`.  The state of Registered Service will be changed to `Claimed`. If no match for Registered Service is found, the state of Service Claim will be set to `Pending`.
+When a Service Claim is created, Primaza should find a Registered Service based on Service Class Identity and Service Endpoint Definition Keys and create Secret and Service Binding resources. The Service Binding resource will be marked as the owner for the secret. Then it will update the state of Service Claim to `Resolved`.  The state of Registered Service will be changed to `Claimed`. If no match for Registered Service is found, the state of Service Claim will be set to `Pending`.
 
 ### Deletion
 
-When a Service Claim is deleted, Primaza will delete the Service Endpoint Definition Secret and the Service Binding.  It also change the state of Registered Service to `Available`.
+When a Service Claim is deleted, Primaza will delete the Service Endpoint Definition Secret and the Service Binding. As Service Binding is the owner of the Service Endpoint Definition Secret, deleting it ensures deletion of the secret too. It also change the state of Registered Service to `Available`.
 
 ### Update
 
