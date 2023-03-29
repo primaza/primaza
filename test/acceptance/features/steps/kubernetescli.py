@@ -502,6 +502,20 @@ def on_cluster_apply_yaml(context, cluster):
         Kubernetes(kubeconfig=tf.name).apply(resource)
 
 
+@step(u'On Worker Cluster "{cluster}", Resource is not getting created')
+@step(u'On Worker Cluster "{cluster}", Resource is not getting updated')
+@step(u'On Primaza Cluster "{cluster}", Resource is not getting created')
+@step(u'On Primaza Cluster "{cluster}", Resource is not getting updated')
+def on_cluster_apply_invalid_yaml(context, cluster):
+    resource = substitute_scenario_id(context, context.text)
+    with tempfile.NamedTemporaryFile() as tf:
+        kubeconfig = context.cluster_provider.get_cluster(cluster).get_admin_kubeconfig()
+        tf.write(kubeconfig.encode("utf-8"))
+        tf.flush()
+
+        Kubernetes(kubeconfig=tf.name).apply_invalid(resource)
+
+
 @step(u'On Primaza Cluster "{primaza_cluster}", Resource is deleted')
 def on_primaza_cluster_delete_yaml(context, primaza_cluster: str):
     kubeconfig = context.cluster_provider.get_primaza_cluster(primaza_cluster).get_admin_kubeconfig()

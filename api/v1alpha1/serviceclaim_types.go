@@ -39,7 +39,9 @@ type ServiceClaimSpec struct {
 	Application ApplicationSelector `json:"application,omitempty"`
 	// EnvironmentTag allows the controller to search for those application cluster
 	// environments that define such EnvironmentTag
-	EnvironmentTag            string                                 `json:"environmentTag,omitempty"`
+	// +optional
+	EnvironmentTag string `json:"environmentTag,omitempty"`
+	// +optional
 	ApplicationClusterContext *ServiceClaimApplicationClusterContext `json:"applicationClusterContext,omitempty"`
 }
 
