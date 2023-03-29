@@ -501,6 +501,6 @@ def ensure_secret_not_exist(context, cluster_name: str, secret_name: str, namesp
             target=lambda: cluster.read_secret(namespace, secret_name),
             step=1,
             timeout=10)
-        raise Exception(f"not expecting secret '{secret_name}' to be found in namespace '{namespace}'")
     except Exception:
-        pass
+        return
+    raise Exception(f"not expecting secret '{secret_name}' to be found in namespace '{namespace}'")

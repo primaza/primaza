@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/google/uuid"
@@ -45,6 +46,8 @@ type ServiceClaimReconciler struct {
 	Scheme *runtime.Scheme
 	Mapper meta.RESTMapper
 }
+
+const ServiceClaimFinalizer = "serviceclaims.primaza.io/finalizer"
 
 //+kubebuilder:rbac:groups=primaza.io,resources=serviceclaims,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=primaza.io,resources=serviceclaims/status,verbs=get;update;patch
@@ -69,6 +72,33 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if err := r.Get(ctx, req.NamespacedName, &sclaim); err != nil {
 		l.Info("unable to retrieve ServiceClaim", "error", err)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	l.Info("Check if Service Claim is marked for deletion")
+	if sclaim.HasDeletionTimestamp() {
+		if controllerutil.ContainsFinalizer(&sclaim, ServiceClaimFinalizer) {
+			if err := r.processClaimMarkedForDeletion(ctx, req, sclaim); err != nil {
+				return ctrl.Result{}, err
+			}
+			// Remove finalizer from service binding
+			if finalizerBool := controllerutil.RemoveFinalizer(&sclaim, ServiceClaimFinalizer); !finalizerBool {
+				l.Error(errors.New("Finalizer not removed for service claim"), "Finalizer not removed for service claim")
+				return ctrl.Result{}, errors.New("Finalizer not removed for service claim")
+			}
+			if err := r.Update(ctx, &sclaim); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		return ctrl.Result{}, nil
+	}
+
+	l.Info("Add Finalizer if needed")
+	// add finalizer if needed
+	if !controllerutil.ContainsFinalizer(&sclaim, ServiceClaimFinalizer) {
+		controllerutil.AddFinalizer(&sclaim, ServiceClaimFinalizer)
+		if err := r.Update(ctx, &sclaim); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	switch sclaim.Status.State {
@@ -101,6 +131,44 @@ func (r *ServiceClaimReconciler) processPendingClaim(ctx context.Context, req ct
 		return err
 	}
 	return nil
+}
+
+func (r *ServiceClaimReconciler) processClaimMarkedForDeletion(ctx context.Context, req ctrl.Request, sclaim primazaiov1alpha1.ServiceClaim) error {
+	l := log.FromContext(ctx)
+	errs := []error{}
+
+	var rsl primazaiov1alpha1.RegisteredServiceList
+	lo := client.ListOptions{Namespace: req.NamespacedName.Namespace}
+	if err := r.List(ctx, &rsl, &lo); err != nil {
+		l.Info("unable to retrieve RegisteredServiceList", "error", err)
+		errs = append(errs, client.IgnoreNotFound(err))
+	}
+	var registeredServiceFound bool
+	var registeredService primazaiov1alpha1.RegisteredService
+	for _, rs := range rsl.Items {
+		// Check if the ServiceClassIdentity given in ServiceClaim is a subset of
+		// ServiceClassIdentity given in the RegisteredService
+		if checkSCISubset(sclaim.Spec.ServiceClassIdentity, rs.Spec.ServiceClassIdentity) &&
+			(rs.Spec.Constraints == nil ||
+				envtag.Match(sclaim.Spec.EnvironmentTag, rs.Spec.Constraints.Environments)) {
+			registeredServiceFound = true
+			registeredService = rs
+			break
+		}
+	}
+
+	if err := r.DeleteServiceBindingsAndSecret(ctx, req, sclaim); err != nil {
+		l.Error(err, "unable to delete service binding and secret", "Service Binding", sclaim.Name)
+		errs = append(errs, err)
+	}
+
+	if registeredServiceFound {
+		if err := r.changeServiceState(ctx, registeredService, primazaiov1alpha1.RegisteredServiceStateAvailable); err != nil {
+			l.Error(err, "unable to update the RegisteredService", "RegisteredService", registeredService)
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // Ref. https://stackoverflow.com/a/18879994/547840
@@ -341,6 +409,56 @@ func (r *ServiceClaimReconciler) pushToClusterEnvironments(
 		return errors.Join(errs...)
 	}
 	return nil
+}
+
+func (r *ServiceClaimReconciler) DeleteServiceBindingsAndSecret(
+	ctx context.Context,
+	req ctrl.Request,
+	sclaim primazaiov1alpha1.ServiceClaim,
+) error {
+	l := log.FromContext(ctx)
+	errs := []error{}
+
+	if sclaim.Spec.ApplicationClusterContext != nil {
+		var err error
+		ce, err := r.getEnvironmentFromClusterEnvironment(ctx, req, sclaim.Spec.ApplicationClusterContext.ClusterEnvironmentName)
+		if err != nil {
+			l.Info("error getting ClusterEnvironment", "error", err)
+			return err
+		}
+		cli, err := clustercontext.CreateClient(ctx, r.Client, *ce, r.Scheme, r.Client.RESTMapper())
+		if err != nil {
+			return err
+		}
+		ns := []string{sclaim.Spec.ApplicationClusterContext.Namespace}
+		if err = controlplane.DeleteServiceBindingAndSecretFromNamespaces(ctx, cli, sclaim, ns); err != nil {
+			errs = append(errs, err)
+		}
+	} else {
+		var cel primazaiov1alpha1.ClusterEnvironmentList
+		if err := r.List(ctx, &cel); err != nil {
+			l.Info("error fetching ClusterEnvironmentList", "error", err)
+			return client.IgnoreNotFound(err)
+		}
+
+		for _, ce := range cel.Items {
+			cli, err := clustercontext.CreateClient(ctx, r.Client, ce, r.Scheme, r.Client.RESTMapper())
+			if err != nil {
+				return err
+			}
+			// check if the ServiceClaim EnvironmentTag matches the EnvironmentName part of ClusterEnvironment
+			if ce.Spec.EnvironmentName != sclaim.Spec.EnvironmentTag {
+				l.Info("cluster environment is NOT matching environment", "cluster environment", ce, "environment tag", sclaim.Spec.EnvironmentTag)
+				continue
+			}
+
+			l.Info("cluster environment is matching environment", "cluster environment", ce, "environment tag", sclaim.Spec.EnvironmentTag)
+			if err = controlplane.DeleteServiceBindingAndSecretFromNamespaces(ctx, cli, sclaim, ce.Spec.ApplicationNamespaces); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // SetupWithManager sets up the controller with the Manager.

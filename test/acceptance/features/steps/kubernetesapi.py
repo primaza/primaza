@@ -211,7 +211,7 @@ def on_worker_cluster_check_service_class_exists_on_serviceclass_namespace(conte
         timeout=60)
 
 
-@then(u'On Worker Cluster "{cluster}", Service Binding "{service_binding}" exists in "{application_namespace}"')
+@step(u'On Worker Cluster "{cluster}", Service Binding "{service_binding}" exists in "{application_namespace}"')
 def on_worker_cluster_check_service_bindings_exists_on_application_namespace(context, cluster, service_binding, application_namespace):
     api_client = context.cluster_provider.get_worker_cluster(cluster).get_api_client()
     cobj = client.CustomObjectsApi(api_client)
@@ -227,7 +227,7 @@ def on_worker_cluster_check_service_bindings_exists_on_application_namespace(con
         timeout=60)
 
 
-@then(u'On Worker Cluster "{cluster}", Service Binding "{service_binding}" does not exist in "{namespace}"')
+@step(u'On Worker Cluster "{cluster}", Service Binding "{service_binding}" does not exist in "{namespace}"')
 def on_worker_cluster_check_service_bindings_not_exists_in_application_namespace(context, cluster, service_binding, namespace):
     api_client = context.cluster_provider.get_worker_cluster(cluster).get_api_client()
     cobj = client.CustomObjectsApi(api_client)
@@ -242,9 +242,9 @@ def on_worker_cluster_check_service_bindings_not_exists_in_application_namespace
             check_success=lambda x: x is not None,
             step=1,
             timeout=10)
-        raise Exception(f"not expecting service binding '{service_binding}' to be found in namespace '{namespace}'")
     except Exception:
-        pass
+        return
+    raise Exception(f"not expecting service binding '{service_binding}' to be found in namespace '{namespace}'")
 
 
 @then(u'On Worker Cluster "{cluster}", Service Catalog "{catalog}" exists in "{application_namespace}"')
