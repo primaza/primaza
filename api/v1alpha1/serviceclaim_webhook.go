@@ -68,8 +68,10 @@ func (v *serviceClaimValidator) validate(r *ServiceClaim) error {
 	if r.Spec.ApplicationClusterContext == nil && r.Spec.EnvironmentTag == "" {
 		return fmt.Errorf("Both ApplicationClusterContext and EnvironmentTag cannot be empty")
 	}
+	if r.Spec.Application.Name != "" && r.Spec.Application.Selector != nil {
+		return fmt.Errorf("Both Application name and Application selector cannot be used together")
+	}
 	return nil
-
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
