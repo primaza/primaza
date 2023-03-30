@@ -21,6 +21,8 @@ import (
 	"errors"
 	"fmt"
 
+	appsv1 "k8s.io/api/apps/v1"
+
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -97,6 +99,11 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if err != nil {
 		reconcileLog.Error(err, "Failed to write registered services")
 		// fallthrough: we still want to write the service class status field
+	}
+
+	if err = r.setOwnerReference(ctx, &serviceClass, req.Namespace); err != nil {
+		reconcileLog.Error(err, "Failed to set owner reference on ServiceClass", "namespace", req.Namespace, "name", req.Name)
+		return ctrl.Result{}, err
 	}
 
 	// finally, write the status of the service class
@@ -255,6 +262,30 @@ func (r *ServiceClassReconciler) getPrimazaKubeconfig(ctx context.Context, names
 		return nil, "", err
 	}
 	return restConfig, string(s.Data["namespace"]), nil
+}
+
+func (r *ServiceClassReconciler) setOwnerReference(ctx context.Context, scclass *v1alpha1.ServiceClass, namespace string) error {
+	reconcileLog := log.FromContext(ctx)
+	objKey := client.ObjectKey{
+		Name:      "primaza-controller-agentsvc",
+		Namespace: namespace,
+	}
+	var agentsvcdeployment appsv1.Deployment
+	if err := r.Get(ctx, objKey, &agentsvcdeployment); err != nil {
+		reconcileLog.Error(err, "unable to retrieve agent svc deployment")
+		// we'll ignore not-found errors, since they can't be fixed by an immediate
+		// requeue (we'll need to wait for a new notification), and we can get them
+		// on deleted requests
+		return client.IgnoreNotFound(err)
+	}
+	if err := ctrl.SetControllerReference(&agentsvcdeployment, scclass, r.Client.Scheme()); err != nil {
+		return err
+	}
+	if err := r.Update(ctx, scclass); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
