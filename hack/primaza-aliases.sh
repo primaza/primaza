@@ -1,4 +1,4 @@
-#!/bin/env sh
+#!/bin/env bash
 
 __primaza_get_kind_kubeconfig() {
     kind get kubeconfig --name "$(kind get clusters | grep -E "$1\$" | fzf -1)"
@@ -59,16 +59,40 @@ __primaza_kind_export_kubeconfig()
     __primaza_get_kind_kubeconfig "$c" >! "$kfg"
 )
 
+__primaza_wait_for_controller_logs()
+(
+    while true; do
+        {
+        c=$(__primaza_get_kind_cluster_noninteractive "main") && \
+            kfg=$(__primaza_get_kind_kubeconfig_by_name "$c") && \
+            kubectl wait pods \
+                --for=jsonpath='{.status.phase}'=Running \
+                -n primaza-system \
+                -l control-plane=controller-manager \
+                --kubeconfig <(echo "$kfg") && \
+            kubectl logs -f \
+                -n primaza-system \
+                -l control-plane=controller-manager \
+                --kubeconfig <(echo "$kfg")
+        } || ( echo "error getting logs: waiting 5 seconds and retrying..." && sleep 5)
+    done
+)
+
 alias pek="__primaza_export_env"
 alias primaza-env="__primaza_export_env"
 alias pgc="__primaza_get_kind_cluster"
 
 # main
+alias epm='eval $(__primaza_export_env main) && kubectl config set-context --current --namespace primaza-system'
 alias pclo="kubectl logs -f -n primaza-system -l control-plane=controller-manager --kubeconfig=<(__primaza_get_kind_kubeconfig main)"
+alias pwclo="__primaza_wait_for_controller_logs"
 alias pmgpo="kubectl get pods -n primaza-system --kubeconfig=<(__primaza_get_kind_kubeconfig main)"
 alias pmgce="kubectl get clusterenvironments -n primaza-system --kubeconfig=<(__primaza_get_kind_kubeconfig main)"
 
 # worker
+alias epw='eval $(__primaza_export_env worker)'
+alias epwa='eval $(__primaza_export_env worker) && kubectl config set-context --current --namespace applications'
+alias epws='eval $(__primaza_export_env worker) && kubectl config set-context --current --namespace services'
 alias pwgpoall="kubectl get pods --all-namespaces --kubeconfig=<(__primaza_get_kind_kubeconfig worker)"
 alias pwgpoa="kubectl get pods -n applications --kubeconfig=<(__primaza_get_kind_kubeconfig worker)"
 alias pwgpos="kubectl get pods -n services --kubeconfig=<(__primaza_get_kind_kubeconfig worker)"
