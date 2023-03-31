@@ -43,7 +43,7 @@ endif
 
 include make/agents/svc/*.mk
 
-else
+else ifeq ($(shell expr $(MAKE_VERSION) \>= 4.0), 1)
 undefine TARGET
 endif
 
