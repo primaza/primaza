@@ -21,7 +21,7 @@ Feature: Forward Service Class into Service namespaces
             serviceNamespaces:
             - "services"
         """
-        And  On Worker Cluster "worker", Primaza Service Agent is deployed into namespace "services"
+        And  On Worker Cluster "worker", Primaza Service Agent exists into namespace "services"
         When On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
@@ -160,7 +160,7 @@ Feature: Forward Service Class into Service namespaces
             serviceNamespaces:
             - "services"
         """
-        And On Worker Cluster "worker", Primaza Service Agent is deployed into namespace "services"
+        And On Worker Cluster "worker", Primaza Service Agent exists into namespace "services"
         And On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1

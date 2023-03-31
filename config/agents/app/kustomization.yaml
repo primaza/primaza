@@ -7,3 +7,4 @@ images:
 - name: controller
   newName: agentapp
   newTag: latest
+namespace: applications

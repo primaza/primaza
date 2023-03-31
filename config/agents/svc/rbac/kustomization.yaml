@@ -6,3 +6,4 @@ resources:
 - service_agent_manager_role_binding.yaml
 - service_agent_manager_role.yaml
 - service_agent_account.yaml
+namespace: services

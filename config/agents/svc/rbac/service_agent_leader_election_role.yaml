@@ -10,6 +10,7 @@ metadata:
     app.kubernetes.io/part-of: primaza
     app.kubernetes.io/managed-by: kustomize
   name: leader-election-role
+  namespace: system
 rules:
 - apiGroups:
   - ""
