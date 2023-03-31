@@ -25,7 +25,9 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -271,21 +273,19 @@ func (r *ClusterEnvironmentReconciler) reconcileServiceBindingApplicationNamespa
 }
 
 func (r *ClusterEnvironmentReconciler) reconcileServiceCatalogApplicationNamespaces(ctx context.Context, cfg *rest.Config, ce *primazaiov1alpha1.ClusterEnvironment, applicationNamespaces []string) error {
-	errs := []error{}
-	servicecatalogList := primazaiov1alpha1.ServiceCatalogList{}
-	if err := r.List(ctx, &servicecatalogList, &client.ListOptions{Namespace: ce.Namespace}); err != nil {
-		return client.IgnoreNotFound(err)
-	}
-
-	for _, servicecatalog := range servicecatalogList.Items {
-		if err := controlplane.PushServiceCatalogToApplicationNamespaces(ctx, servicecatalog, r.Scheme, r.Client, applicationNamespaces, cfg); err != nil {
-			if !apierrors.IsAlreadyExists(err) {
-				errs = append(errs,
-					fmt.Errorf("error pushing service catalog '%s' to cluster environment '%s': %w", servicecatalog.Name, ce.Name, err))
-			}
+	servicecatalog := primazaiov1alpha1.ServiceCatalog{}
+	if err := r.Get(ctx, types.NamespacedName{Namespace: ce.Namespace, Name: ce.Spec.EnvironmentName}, &servicecatalog); apierrors.IsNotFound(err) {
+		if err := r.CreateServiceCatalog(ctx, ce); err != nil {
+			return err
 		}
 	}
-	return errors.Join(errs...)
+	if err := r.Get(ctx, types.NamespacedName{Namespace: ce.Namespace, Name: ce.Spec.EnvironmentName}, &servicecatalog); err != nil {
+		return err
+	}
+	if err := controlplane.PushServiceCatalogToApplicationNamespaces(ctx, servicecatalog, r.Scheme, r.Client, applicationNamespaces, cfg); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *ClusterEnvironmentReconciler) reconcileApplicationNamespaces(ctx context.Context, cfg *rest.Config, ce *primazaiov1alpha1.ClusterEnvironment, failedApplicationNamespaces []string) error {
@@ -421,6 +421,51 @@ func (r *ClusterEnvironmentReconciler) finalizeClusterEnvironment(ctx context.Co
 	}
 
 	return nr.ReconcileNamespaces(ctx)
+}
+
+func (r *ClusterEnvironmentReconciler) CreateServiceCatalog(ctx context.Context, ce *primazaiov1alpha1.ClusterEnvironment) error {
+	l := log.FromContext(ctx)
+	l.Info("Service catalog not found in cluster environment")
+
+	var rsl primazaiov1alpha1.RegisteredServiceList
+	lo := client.ListOptions{Namespace: ce.Namespace}
+	if err := r.Client.List(ctx, &rsl, &lo); err != nil {
+		return err
+	}
+	var scs []primazaiov1alpha1.ServiceCatalogService
+	for _, rs := range rsl.Items {
+		if rs.Status.State == primazaiov1alpha1.RegisteredServiceStateAvailable &&
+			(rs.Spec.Constraints == nil || envtag.Match(ce.Spec.EnvironmentName, rs.Spec.Constraints.Environments)) {
+			// Extracting Keys of SED
+			sedKeys := make([]string, 0, len(rs.Spec.ServiceEndpointDefinition))
+			for i := 0; i < len(rs.Spec.ServiceEndpointDefinition); i++ {
+				sedKeys = append(sedKeys, rs.Spec.ServiceEndpointDefinition[i].Name)
+			}
+			// Initializing Service Catalog Service
+			serviceCatalogSvc := primazaiov1alpha1.ServiceCatalogService{
+				Name:                          rs.Name,
+				ServiceClassIdentity:          rs.Spec.ServiceClassIdentity,
+				ServiceEndpointDefinitionKeys: sedKeys,
+			}
+			scs = append(scs, serviceCatalogSvc)
+		}
+	}
+	serviceCatalog := primazaiov1alpha1.ServiceCatalog{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      ce.Spec.EnvironmentName,
+			Namespace: ce.Namespace,
+		},
+		Spec: primazaiov1alpha1.ServiceCatalogSpec{
+			Services: scs,
+		},
+	}
+
+	l.Info(ce.Spec.EnvironmentName)
+	if err := r.Create(ctx, &serviceCatalog); !apierrors.IsAlreadyExists(err) {
+		l.Error(err, "Failed to create service catalog")
+		return err
+	}
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

@@ -58,3 +58,22 @@ Feature: Register a kubernetes cluster as Primaza Worker Cluster
             clusterContextSecret: primaza-kw
         """
         Then On Primaza Cluster "main", ClusterEnvironment "worker" in namespace "out-of-scope-namespace" state remains not present
+
+    Scenario: ServiceCatalog is created
+        Given Primaza Cluster "main" is running
+        And Worker Cluster "worker" for "main" is running
+        And Clusters "main" and "worker" can communicate
+        And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
+        When On Primaza Cluster "main", Resource is created
+        """
+        apiVersion: primaza.io/v1alpha1
+        kind: ClusterEnvironment
+        metadata:
+            name: worker
+            namespace: primaza-system
+        spec:
+            environmentName: dev
+            clusterContextSecret: primaza-kw
+        """
+        Then On Primaza Cluster "main", ServiceCatalog "dev" exists
+

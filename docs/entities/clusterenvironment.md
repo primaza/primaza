@@ -93,6 +93,8 @@ For each service and application namespace on which permissions are granted, Pri
 
 Cluster Environment's State and Conditions are updated according to tests and agents' deployment results.
 
+When a ClusterEnvironment is created, Primaza ensures a Service Catalog exists for its environment. The Service Catalog thereby created are also pushed to the Cluster Environment  application namespace where permissions are granted.
+
 ### Deletion
 
 When a Cluster Environment is deleted, the permissions granted in Primaza's namespace to Users associated to namespace agents and agent deployments on target cluster's namespaces are removed.
