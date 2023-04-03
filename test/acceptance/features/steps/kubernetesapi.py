@@ -114,6 +114,10 @@ def registered_service_in_catalog(rs_name, catalog):
     return False
 
 
+def catalog_is_empty(catalog):
+    return "spec" not in catalog or catalog["spec"] == {}
+
+
 @step(u'On Primaza Cluster "{primaza_cluster}", RegisteredService "{primaza_rs}" state moves to "{state}"')
 def on_primaza_cluster_claim_registered_service(context, primaza_cluster, primaza_rs, state):
     api_client = context.cluster_provider.get_primaza_cluster(primaza_cluster).get_api_client()
@@ -281,3 +285,36 @@ def on_worker_cluster_check_service_class_not_exists_in_service_namespace(contex
     except Exception:
         return
     raise Exception(f"not expecting service class '{service_class}' to be found in namespace '{namespace}'")
+
+
+@then(u'On Primaza Cluster "{cluster}", ServiceCatalog "{catalog}" exists')
+def on_primaza_cluster_check_service_catalog_exists(context, cluster, catalog):
+    api_client = context.cluster_provider.get_primaza_cluster(cluster).get_api_client()
+    cobj = client.CustomObjectsApi(api_client)
+    polling2.poll(
+        target=lambda: cobj.get_namespaced_custom_object(
+            group="primaza.io",
+            version="v1alpha1",
+            namespace="primaza-system",
+            plural="servicecatalogs",
+            name=catalog),
+        check_success=lambda x: x is not None,
+        step=5,
+        timeout=60)
+
+
+@then(u'On Primaza Cluster "{cluster}", ServiceCatalog "{catalog_name}" is empty')
+def on_primaza_cluster_check_service_catalog_empty(context, cluster, catalog_name):
+    api_client = context.cluster_provider.get_primaza_cluster(cluster).get_api_client()
+    cobj = client.CustomObjectsApi(api_client)
+
+    polling2.poll(
+        target=lambda: cobj.get_namespaced_custom_object(
+            group="primaza.io",
+            version="v1alpha1",
+            namespace="primaza-system",
+            plural="servicecatalogs",
+            name=catalog_name),
+        check_success=lambda x: x is not None and catalog_is_empty(x),
+        step=5,
+        timeout=20)

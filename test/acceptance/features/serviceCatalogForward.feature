@@ -59,7 +59,7 @@ Feature: Reconcile Service Catalog in Application namespaces
             applicationNamespaces:
             - applications
         """
-        Then On Worker Cluster "worker", Service Catalog "primaza-service-catalog" exists in "applications"
+        Then On Worker Cluster "worker", Service Catalog "dev" exists in "applications"
 
     Scenario: Service Catalog is pushed to application namespaces of new Cluster Environments
         Given Primaza Cluster "main" is running
@@ -110,4 +110,4 @@ Feature: Reconcile Service Catalog in Application namespaces
         And On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "Online" has Status "True"
         And On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ApplicationNamespacePermissionsRequired" has Status "False"
         And On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ServiceNamespacePermissionsRequired" has Status "False"
-        And On Worker Cluster "worker", Service Catalog "primaza-service-catalog" exists in "applications"
+        And On Worker Cluster "worker", Service Catalog "dev" exists in "applications"
