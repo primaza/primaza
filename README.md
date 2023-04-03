@@ -55,7 +55,7 @@ Entities:
 * [Registered Service](./docs/entities/registeredservice.md): represents running instance of a software service.
 * [Service Binding](./docs/entities/servicebinding.md): projects secrets referenced by ServiceBinding resources to application compute resources.
 * [Service Claim](./docs/entities/serviceclaim.md): represents a claim for Registered Service.
-* Service Catalog
+* [Service Catalog](./docs/entities/servicecatalog.md): represents group of Registered Services.
 
 Controllers:
 * Discovery Controller
