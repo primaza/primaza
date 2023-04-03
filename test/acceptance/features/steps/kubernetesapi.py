@@ -277,7 +277,7 @@ def on_worker_cluster_check_service_class_not_exists_in_service_namespace(contex
                 name=service_class),
             check_success=lambda x: x is not None,
             step=1,
-            timeout=10)
+            timeout=60)
     except Exception:
         return
     raise Exception(f"not expecting service class '{service_class}' to be found in namespace '{namespace}'")
