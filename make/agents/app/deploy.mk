@@ -22,7 +22,7 @@ deploy-rbac:
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/agents/app && \
-		$(KUSTOMIZE) edit set image controller=${IMG} && \
+		$(KUSTOMIZE) edit set image agentapp=${IMG} && \
 		$(KUSTOMIZE) edit set namespace $(NAMESPACE)
 	$(KUSTOMIZE) build $(KUSTOMIZE_ARGS) config/agents/app | kubectl apply -f -
 	kubectl rollout status deploy/primaza-controller-agentapp -n $(NAMESPACE) -w --timeout=120s
