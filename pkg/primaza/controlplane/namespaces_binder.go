@@ -102,6 +102,11 @@ func (b *namespacesBinder) createRoleBinding(ctx context.Context, ceName, ceName
 				Kind:     "User",
 				Name:     n,
 			},
+			{
+				APIGroup: "",
+				Kind:     "ServiceAccount",
+				Name:     n,
+			},
 		},
 	}
 
