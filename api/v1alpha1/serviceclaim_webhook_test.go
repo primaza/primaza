@@ -22,6 +22,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -49,7 +50,6 @@ var _ = Describe("Webhook tests", func() {
 					WithLists(&ServiceClaimList{}).
 					Build(),
 			}
-			_ = validator
 			scacc := ServiceClaimApplicationClusterContext{}
 			serviceClaim := newServiceClaim("spam", "eggs",
 				ServiceClaimSpec{
@@ -62,6 +62,7 @@ var _ = Describe("Webhook tests", func() {
 			Expect(validator.ValidateCreate(context.Background(), &serviceClaim)).To(Equal(expected))
 		})
 	})
+
 	Context("When creating ServiceClaim with empty ApplicationClusterContext and EnvironmentTag", func() {
 		It("should an error saying the resource cannot be created", func() {
 			var validator serviceClaimValidator
@@ -74,7 +75,6 @@ var _ = Describe("Webhook tests", func() {
 					WithLists(&ServiceClaimList{}).
 					Build(),
 			}
-			_ = validator
 			serviceClaim := newServiceClaim("spam", "eggs",
 				ServiceClaimSpec{
 					EnvironmentTag:            "",
@@ -83,6 +83,34 @@ var _ = Describe("Webhook tests", func() {
 			)
 
 			expected := fmt.Errorf("Both ApplicationClusterContext and EnvironmentTag cannot be empty")
+			Expect(validator.ValidateCreate(context.Background(), &serviceClaim)).To(Equal(expected))
+		})
+	})
+
+	Context("When creating ServiceClaim with Application name and Application selector", func() {
+		It("should an error saying the resource cannot be created", func() {
+			var validator serviceClaimValidator
+			schemeBuilder, err := SchemeBuilder.Build()
+			Expect(err).NotTo(HaveOccurred())
+
+			validator = serviceClaimValidator{
+				client: fake.NewClientBuilder().
+					WithScheme(schemeBuilder).
+					WithLists(&ServiceClaimList{}).
+					Build(),
+			}
+			as := ApplicationSelector{
+				Name:     "some-name",
+				Selector: &metav1.LabelSelector{},
+			}
+			serviceClaim := newServiceClaim("spam", "eggs",
+				ServiceClaimSpec{
+					Application:    as,
+					EnvironmentTag: "prod",
+				},
+			)
+
+			expected := fmt.Errorf("Both Application name and Application selector cannot be used together")
 			Expect(validator.ValidateCreate(context.Background(), &serviceClaim)).To(Equal(expected))
 		})
 	})
