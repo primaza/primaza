@@ -17,5 +17,6 @@ limitations under the License.
 package constants
 
 const (
-	PrimazaNamespace = "primaza-system"
+	PrimazaNamespace           = "primaza-system"
+	ServiceAgentDeploymentName = "primaza-controller-agentsvc"
 )
