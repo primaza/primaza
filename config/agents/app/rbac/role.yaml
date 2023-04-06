@@ -27,6 +27,7 @@ rules:
   - list
   - watch
   - update
+  - delete
 - apiGroups:
   - primaza.io
   resources:
@@ -76,3 +77,14 @@ rules:
   - servicebindings/finalizers
   verbs:
   - update
+- apiGroups:
+  - primaza.io
+  resources:
+  - servicecatalogs
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+  - patch
+  - delete

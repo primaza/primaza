@@ -11,6 +11,8 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: primaza-controller-agentapp
   namespace: system
+  finalizers:
+    - agentapp.primaza.io/finalizer
 spec:
   selector:
     matchLabels:

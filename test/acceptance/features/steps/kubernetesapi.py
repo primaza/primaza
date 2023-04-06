@@ -258,7 +258,7 @@ def on_worker_cluster_check_service_bindings_not_exists_in_application_namespace
                 name=service_binding),
             check_success=lambda x: x is not None,
             step=1,
-            timeout=10)
+            timeout=60)
     except Exception:
         return
     raise Exception(f"not expecting service binding '{service_binding}' to be found in namespace '{namespace}'")
@@ -400,3 +400,23 @@ def check_on_worker_cluster_registered_service_contains_identity(context, cluste
         check_success=lambda x: x is not None and registered_service_in_catalog_contains_service_class_identity(registered_service, sci, x),
         step=5,
         timeout=60)
+
+
+@step(u'On Worker Cluster "{cluster}", Service Catalog "{catalog}" does not exist in "{application_namespace}"')
+def on_worker_cluster_check_service_catalog_not_exists_in_application_namespace(context, cluster, catalog, application_namespace):
+    api_client = context.cluster_provider.get_worker_cluster(cluster).get_api_client()
+    cobj = client.CustomObjectsApi(api_client)
+    try:
+        polling2.poll(
+            target=lambda: cobj.get_namespaced_custom_object(
+                group="primaza.io",
+                version="v1alpha1",
+                namespace=application_namespace,
+                plural="servicecatalogs",
+                name=catalog),
+            check_success=lambda x: x is not None,
+            step=1,
+            timeout=60)
+    except Exception:
+        return
+    raise Exception(f"not expecting service catalog '{catalog}' to be found in namespace '{application_namespace}'")
