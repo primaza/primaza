@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -118,6 +119,7 @@ func pushServiceBindingToNamespace(
 }
 
 func PushServiceCatalogToApplicationNamespaces(ctx context.Context, sc primazaiov1alpha1.ServiceCatalog, scheme *runtime.Scheme, controllerruntimeClient client.Client, applicationNamespaces []string, cfg *rest.Config) error {
+	l := log.FromContext(ctx)
 	oc := client.Options{
 		Scheme: scheme,
 		Mapper: controllerruntimeClient.RESTMapper(),
@@ -126,21 +128,29 @@ func PushServiceCatalogToApplicationNamespaces(ctx context.Context, sc primazaio
 	if err != nil {
 		return err
 	}
+	var errorList []error
 	for _, ns := range applicationNamespaces {
 		sccp := &primazaiov1alpha1.ServiceCatalog{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      sc.Name,
 				Namespace: ns,
 			},
-			Spec: sc.Spec,
 		}
 
-		if err := cli.Create(ctx, sccp, &client.CreateOptions{}); err != nil {
-			return err
+		op, err := controllerutil.CreateOrUpdate(ctx, cli, sccp, func() error {
+			sccp.Spec = sc.Spec
+			return nil
+		})
+
+		if err != nil {
+			l.Error(err, "Failed to create or update service catalog")
+			errorList = append(errorList, err)
+		} else {
+			l.Info("Wrote service catalog", "catalog", sccp.Name, "namespace", sccp.Namespace, "operation", op)
 		}
 	}
 
-	return nil
+	return errors.Join(errorList...)
 }
 
 func DeleteServiceBindingAndSecretFromNamespaces(ctx context.Context, cli client.Client, sc primazaiov1alpha1.ServiceClaim, namespaces []string) error {
