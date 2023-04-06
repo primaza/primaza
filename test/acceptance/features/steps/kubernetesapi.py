@@ -2,6 +2,7 @@ import polling2
 from behave import then, step
 from datetime import datetime
 from kubernetes import client
+from steps.util import substitute_scenario_id
 
 
 @step(u'On Primaza Cluster "{cluster}", ClusterEnvironment "{ce_name}" state will eventually move to "{state}"')
@@ -203,13 +204,14 @@ def on_worker_cluster_check_service_binding_status(context, cluster, name, names
 def on_worker_cluster_check_service_class_exists_on_serviceclass_namespace(context, cluster, sc_class, serviceclass_namespace):
     api_client = context.cluster_provider.get_worker_cluster(cluster).get_api_client()
     cobj = client.CustomObjectsApi(api_client)
+    name = substitute_scenario_id(context, sc_class)
     polling2.poll(
         target=lambda: cobj.get_namespaced_custom_object(
             group="primaza.io",
             version="v1alpha1",
             namespace=serviceclass_namespace,
             plural="serviceclasses",
-            name=sc_class),
+            name=name),
         check_success=lambda x: x is not None,
         step=5,
         timeout=60)
@@ -271,6 +273,7 @@ def on_worker_cluster_check_service_catalog_exists_on_application_namespace(cont
 def on_worker_cluster_check_service_class_not_exists_in_service_namespace(context, cluster, service_class, namespace):
     api_client = context.cluster_provider.get_worker_cluster(cluster).get_api_client()
     cobj = client.CustomObjectsApi(api_client)
+    name = substitute_scenario_id(context, service_class)
     try:
         polling2.poll(
             target=lambda: cobj.get_namespaced_custom_object(
@@ -278,13 +281,13 @@ def on_worker_cluster_check_service_class_not_exists_in_service_namespace(contex
                 version="v1alpha1",
                 namespace=namespace,
                 plural="serviceclasses",
-                name=service_class),
+                name=name),
             check_success=lambda x: x is not None,
             step=1,
             timeout=60)
     except Exception:
         return
-    raise Exception(f"not expecting service class '{service_class}' to be found in namespace '{namespace}'")
+    raise Exception(f"not expecting service class '{name}' to be found in namespace '{namespace}'")
 
 
 @then(u'On Primaza Cluster "{cluster}", ServiceCatalog "{catalog}" exists')

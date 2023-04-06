@@ -28,7 +28,7 @@ Feature: Cleanup service namespace
             apiVersion: primaza.io/v1alpha1
             kind: ServiceClass
             metadata:
-                name: demo-service-sc
+                name: $scenario_id-serviceclass
                 namespace: primaza-system
             spec:
                 constraints:
@@ -48,7 +48,7 @@ Feature: Cleanup service namespace
                     - name: version
                       value: v1
             """
-        And  On Worker Cluster "worker", Service Class "demo-service-sc" exists in "services"
+        And  On Worker Cluster "worker", Service Class "$scenario_id-serviceclass" exists in "services"
 
     Scenario: Service Class is removed on Service Namespace deletion
         When On Primaza Cluster "main", Resource is updated
@@ -62,7 +62,7 @@ Feature: Cleanup service namespace
                 environmentName: dev
                 clusterContextSecret: primaza-kw
             """
-        Then On Worker Cluster "worker", Service Class "demo-service-sc" does not exists in "services"
+        Then On Worker Cluster "worker", Service Class "$scenario_id-serviceclass" does not exists in "services"
 
     Scenario: Service Class is removed on Cluster Environment deletion
         When On Primaza Cluster "main", Resource is deleted
@@ -73,4 +73,4 @@ Feature: Cleanup service namespace
                 name: worker
                 namespace: primaza-system
             """
-        Then On Worker Cluster "worker", Service Class "demo-service-sc" does not exists in "services"
+        Then On Worker Cluster "worker", Service Class "$scenario_id-serviceclass" does not exists in "services"
