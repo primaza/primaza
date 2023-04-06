@@ -2,11 +2,14 @@
 
 A Service Claim represents a claim for a Registered Service.
 
+Service Bindings may explicitly request an Application by Name or by LabelSelector.
+LabelSelector can match more than one resource.
+
 ## Specification
 
 The definition of a ServiceClaim can be obtained directly from our [ServiceClaim
 CRD](../../config/crd/bases/primaza.io_serviceclaims.yaml). The specification
-contains two required properties:
+contains few fields:
 
 - ServiceClassIdentity: A set of key/value pairs that identify the service
   class. Examples of service class identity keys include type of service, and
@@ -14,13 +17,16 @@ contains two required properties:
 - ServiceEndpointDefinitionKeys: An array of keys that is required for
   connectivity. The values corresponding to each of these keys will be extracted
   from the service. This property is required.
-
-There are other three optional fields. The EnvironmentTag and
-ApplicationClusterContext are mutually exclusive:
-
-- Application: Fields indentifies application resources through kind, apiVersion and label selector.
+- Application: Fields indentifies application resources through kind, apiVersion
+  and label selector & name.
 - EnvironmentTag: A string representing one of the environment.
-- ApplicationClusterContext: A combination of ClusterEnvironment resource name and namespace.
+- ApplicationClusterContext: A combination of ClusterEnvironment resource name
+  and namespace.
+
+The EnvironmentTag and ApplicationClusterContext are mutually exclusive.
+
+The Application field values are passed to the ServiceBinding resource. The
+application label selector and application name are mutually exclusive.
 
 ## Status
 
