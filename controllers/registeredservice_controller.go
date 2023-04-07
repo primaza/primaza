@@ -20,7 +20,7 @@ import (
 	"context"
 
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -138,12 +138,12 @@ func (r *RegisteredServiceReconciler) addServiceToCatalog(ctx context.Context, c
 	return nil
 }
 
-//+kubebuilder:rbac:groups=primaza.io,resources=registeredservices,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=primaza.io,resources=registeredservices/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=primaza.io,resources=registeredservices/finalizers,verbs=update
-//+kubebuilder:rbac:groups=primaza.io,resources=servicecatalogs,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=primaza.io,resources=servicecatalogs/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=primaza.io,resources=servicecatalogs/finalizers,verbs=update
+//+kubebuilder:rbac:groups=primaza.io,namespace=system,resources=registeredservices,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=primaza.io,namespace=system,resources=registeredservices/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=primaza.io,namespace=system,resources=registeredservices/finalizers,verbs=update
+//+kubebuilder:rbac:groups=primaza.io,namespace=system,resources=servicecatalogs,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=primaza.io,namespace=system,resources=servicecatalogs/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=primaza.io,namespace=system,resources=servicecatalogs/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

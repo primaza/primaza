@@ -1,9 +1,10 @@
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
+kind: Role
 metadata:
   creationTimestamp: null
   name: manager-role
+  namespace: system
 rules:
 - apiGroups:
   - ""
@@ -61,26 +62,6 @@ rules:
   - primaza.io
   resources:
   - registeredservices/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - primaza.io
-  resources:
-  - servicebindings
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - primaza.io
-  resources:
-  - servicebindings/status
   verbs:
   - get
   - patch
