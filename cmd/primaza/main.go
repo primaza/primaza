@@ -36,8 +36,8 @@ import (
 	"github.com/primaza/primaza/controllers"
 	//+kubebuilder:scaffold:imports
 )
-const EnvWatchNamespace = "WATCH_NAMESPACE"
 
+const EnvWatchNamespace = "WATCH_NAMESPACE"
 
 var (
 	scheme   = runtime.NewScheme()
