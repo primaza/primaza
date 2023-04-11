@@ -24,6 +24,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -55,6 +56,8 @@ type ServiceClassReconciler struct {
 	Mapper       meta.RESTMapper
 }
 
+const finalizer = "serviceclasses.primaza.io/finalizer"
+
 func NewServiceClassReconciler(mgr ctrl.Manager) *ServiceClassReconciler {
 	return &ServiceClassReconciler{
 		Client:    mgr.GetClient(),
@@ -79,8 +82,19 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	serviceClass := v1alpha1.ServiceClass{}
 	err := r.Get(ctx, req.NamespacedName, &serviceClass)
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			// service class was deleted on the control plane; we've got
+			// nothing more to do here.
+			return ctrl.Result{}, nil
+		}
+		// something went wrong, requeue
 		reconcileLog.Error(err, "Failed to retrieve ServiceClass")
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, err
+	}
+
+	if err = r.setOwnerReference(ctx, &serviceClass, req.Namespace); err != nil {
+		reconcileLog.Error(err, "Failed to set owner reference on ServiceClass", "namespace", req.Namespace, "name", req.Name)
+		return ctrl.Result{}, err
 	}
 
 	// next, get all the services that this service class controls
@@ -91,15 +105,57 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	// then, write all the registered services up to the primaza cluster
-	err = r.CreateRegisteredServices(ctx, &serviceClass, *services)
-	if err != nil {
-		reconcileLog.Error(err, "Failed to write registered services")
-		// fallthrough: we still want to write the service class status field
-	}
+	if serviceClass.DeletionTimestamp.IsZero() {
+		handler := func(remote_client client.Client, rs v1alpha1.RegisteredService) error {
+			op, err := controllerutil.CreateOrUpdate(ctx, remote_client, &rs, func() error { return nil })
+			if err != nil {
+				reconcileLog.Error(err, "Failed to create registered service",
+					"service", rs.Name,
+					"namespace", rs.Namespace)
+			} else {
+				reconcileLog.Info("Wrote registered service", "service", rs.Name, "namespace", rs.Namespace, "operation", op)
+			}
+			return err
+		}
 
-	if err = r.setOwnerReference(ctx, &serviceClass, req.Namespace); err != nil {
-		reconcileLog.Error(err, "Failed to set owner reference on ServiceClass", "namespace", req.Namespace, "name", req.Name)
-		return ctrl.Result{}, err
+		// add a finalizer since we have deletion logic
+		if controllerutil.AddFinalizer(&serviceClass, finalizer) {
+			if err = r.Update(ctx, &serviceClass, &client.UpdateOptions{}); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		err = r.HandleRegisteredServices(ctx, &serviceClass, *services, handler)
+		if err != nil {
+			reconcileLog.Error(err, "Failed to write registered services")
+			// fallthrough: we still want to write the service class status field
+		}
+	} else if controllerutil.ContainsFinalizer(&serviceClass, finalizer) {
+		handler := func(remote_client client.Client, rs v1alpha1.RegisteredService) error {
+			if err := remote_client.Delete(ctx, &rs); err != nil {
+				if apierrors.IsNotFound(err) {
+					// we tried to delete an object that doesn't exist, so
+					return nil
+				}
+				reconcileLog.Error(err, "Failed to delete registered service", "namespace", rs.Namespace)
+			}
+			return err
+		}
+
+		err = r.HandleRegisteredServices(ctx, &serviceClass, *services, handler)
+		if err != nil {
+			reconcileLog.Error(err, "Failed to delete registered services")
+			return ctrl.Result{}, err
+		}
+
+		// remove the finalizer so we don't requeue
+		if controllerutil.RemoveFinalizer(&serviceClass, finalizer) {
+			if err = r.Update(ctx, &serviceClass, &client.UpdateOptions{}); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+	} else {
+		// nothing to do
+		return ctrl.Result{}, nil
 	}
 
 	// finally, write the status of the service class
@@ -133,7 +189,9 @@ func (r *ServiceClassReconciler) GetResources(ctx context.Context, serviceClass 
 	return services, nil
 }
 
-func (r *ServiceClassReconciler) CreateRegisteredServices(ctx context.Context, serviceClass *v1alpha1.ServiceClass, services unstructured.UnstructuredList) error {
+type HandleFunc func(client.Client, v1alpha1.RegisteredService) error
+
+func (r *ServiceClassReconciler) HandleRegisteredServices(ctx context.Context, serviceClass *v1alpha1.ServiceClass, services unstructured.UnstructuredList, handleFunc HandleFunc) error {
 	l := log.FromContext(ctx)
 	mappings := map[string]*jsonpath.JSONPath{}
 	for _, mapping := range serviceClass.Spec.Resource.ServiceEndpointDefinitionMapping {
@@ -154,11 +212,17 @@ func (r *ServiceClassReconciler) CreateRegisteredServices(ctx context.Context, s
 	// TODO(sadlerap): move TestConnection from `workercluster` into a more
 	// general-purpose package
 	status := workercluster.TestConnection(ctx, config)
-	serviceClass.Status.Conditions = append(serviceClass.Status.Conditions, metav1.Condition{
-		Type:    "Connection",
-		Message: status.Message,
-		Reason:  string(status.Reason),
-		Status:  metav1.ConditionStatus(status.State),
+	state := metav1.ConditionUnknown
+	if status.State == v1alpha1.ClusterEnvironmentStateOnline {
+		state = metav1.ConditionTrue
+	} else if status.State == v1alpha1.ClusterEnvironmentStateOffline {
+		state = metav1.ConditionFalse
+	}
+    meta.SetStatusCondition(&serviceClass.Status.Conditions, metav1.Condition{
+		Type:               "Connection",
+		Message:            status.Message,
+		Reason:             string(status.Reason),
+		Status:             state,
 	})
 	if status.State == v1alpha1.ClusterEnvironmentStateOffline {
 		return fmt.Errorf("Failed to connect to cluster")
@@ -202,14 +266,8 @@ func (r *ServiceClassReconciler) CreateRegisteredServices(ctx context.Context, s
 			}
 		}
 
-		op, err := controllerutil.CreateOrUpdate(ctx, remote_client, &rs, func() error { return nil })
-		if err != nil {
-			l.Error(err, "Failed to create registered service",
-				"service", data.GetName(),
-				"namespace", remote_namespace)
+		if err = handleFunc(remote_client, rs); err != nil {
 			errorList = append(errorList, err)
-		} else {
-			l.Info("Wrote registered service", "service", rs.Name, "namespace", remote_namespace, "operation", op)
 		}
 	}
 
