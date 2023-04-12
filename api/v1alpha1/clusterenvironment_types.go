@@ -87,3 +87,7 @@ type ClusterEnvironmentList struct {
 func init() {
 	SchemeBuilder.Register(&ClusterEnvironment{}, &ClusterEnvironmentList{})
 }
+
+func (ce *ClusterEnvironment) HasDeletionTimestamp() bool {
+	return !ce.DeletionTimestamp.IsZero()
+}

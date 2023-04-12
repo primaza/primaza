@@ -96,7 +96,7 @@ func (r *ClusterEnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	// check if instance is marked to be deleted
-	if ce.GetDeletionTimestamp() != nil {
+	if ce.HasDeletionTimestamp() {
 		if controllerutil.ContainsFinalizer(ce, clusterEnvironmentFinalizer) {
 			// run finalizer
 			if err := r.finalizeClusterEnvironment(ctx, ce); err != nil {
@@ -401,26 +401,60 @@ func (r *ClusterEnvironmentReconciler) updateClusterEnvironmentStatus(ctx contex
 	meta.SetStatusCondition(&ce.Status.Conditions, cs.Condition())
 }
 
+func (r *ClusterEnvironmentReconciler) getRelatedClusterEnvironments(ctx context.Context, namespace string, envname string) ([]primazaiov1alpha1.ClusterEnvironment, error) {
+	cee := primazaiov1alpha1.ClusterEnvironmentList{}
+	if err := r.List(ctx, &cee, &client.ListOptions{Namespace: namespace}); err != nil {
+		return nil, err
+	}
+	ff := r.filterClusterEnvironments(envname, cee.Items)
+	return ff, nil
+}
+
+func (r *ClusterEnvironmentReconciler) filterClusterEnvironments(
+	environmentName string,
+	clusterEnvironments []primazaiov1alpha1.ClusterEnvironment) []primazaiov1alpha1.ClusterEnvironment {
+
+	cee := []primazaiov1alpha1.ClusterEnvironment{}
+	for _, ce := range clusterEnvironments {
+		if ce.Spec.EnvironmentName == environmentName && !ce.HasDeletionTimestamp() {
+			cee = append(cee, ce)
+		}
+	}
+
+	return cee
+}
+
 func (r *ClusterEnvironmentReconciler) finalizeClusterEnvironment(ctx context.Context, ce *primazaiov1alpha1.ClusterEnvironment) error {
-	kcfg, err := clustercontext.GetClusterRESTConfig(ctx, r.Client, ce.Namespace, ce.Spec.ClusterContextSecret)
+	var err []error
+	errnamespace := r.finalizeClusterEnvironmentInNamespaces(ctx, ce)
+	errcatalog := r.removeServiceCatalogOnDeletedClusterEnvironment(ctx, ce)
+	err = append(err, errnamespace, errcatalog)
+	return errors.Join(err...)
+}
+
+func (r *ClusterEnvironmentReconciler) removeServiceCatalogOnDeletedClusterEnvironment(ctx context.Context, ce *primazaiov1alpha1.ClusterEnvironment) error {
+
+	ff, err := r.getRelatedClusterEnvironments(ctx, ce.Namespace, ce.Spec.EnvironmentName)
 	if err != nil {
 		return err
 	}
+	if len(ff) == 0 {
+		servicecatalog := &primazaiov1alpha1.ServiceCatalog{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      ce.Spec.EnvironmentName,
+				Namespace: ce.Namespace,
+			},
+		}
 
-	s := controlplane.ClusterEnvironmentState{
-		Name:                  ce.Name,
-		Namespace:             ce.Namespace,
-		ClusterConfig:         kcfg,
-		ApplicationNamespaces: []string{},
-		ServiceNamespaces:     []string{},
+		if err := r.Delete(ctx, servicecatalog, &client.DeleteOptions{}); err != nil {
+			if !apierrors.IsNotFound(err) {
+				return err
+			}
+		}
+		return nil
 	}
 
-	nr, err := controlplane.NewNamespaceReconciler(s)
-	if err != nil {
-		return err
-	}
-
-	return nr.ReconcileNamespaces(ctx)
+	return nil
 }
 
 func (r *ClusterEnvironmentReconciler) CreateServiceCatalog(ctx context.Context, ce *primazaiov1alpha1.ClusterEnvironment) error {
@@ -466,6 +500,28 @@ func (r *ClusterEnvironmentReconciler) CreateServiceCatalog(ctx context.Context,
 		return err
 	}
 	return nil
+}
+
+func (r *ClusterEnvironmentReconciler) finalizeClusterEnvironmentInNamespaces(ctx context.Context, ce *primazaiov1alpha1.ClusterEnvironment) error {
+	kcfg, err := clustercontext.GetClusterRESTConfig(ctx, r.Client, ce.Namespace, ce.Spec.ClusterContextSecret)
+	if err != nil {
+		return err
+	}
+
+	s := controlplane.ClusterEnvironmentState{
+		Name:                  ce.Name,
+		Namespace:             ce.Namespace,
+		ClusterConfig:         kcfg,
+		ApplicationNamespaces: []string{},
+		ServiceNamespaces:     []string{},
+	}
+
+	nr, err := controlplane.NewNamespaceReconciler(s)
+	if err != nil {
+		return err
+	}
+
+	return nr.ReconcileNamespaces(ctx)
 }
 
 // SetupWithManager sets up the controller with the Manager.

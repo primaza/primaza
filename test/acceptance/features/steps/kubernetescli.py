@@ -710,3 +710,14 @@ def resource_is_not_available(context, resource_type, name, namespace, cluster):
         kubernetes = Kubernetes(kubeconfig=tf.name)
         assert kubernetes.search_resource_in_namespace(resource_type, name, namespace) is None, \
             f"Expected resource {resource_type}/{name} not to be available!"
+
+
+@step(u'On Primaza Cluster "{cluster}", ClusterEnvironment "{ce_name}" is deleted')
+def on_primaza_cluster_delete_cluster_environment(context, cluster, ce_name):
+
+    with tempfile.NamedTemporaryFile() as tf:
+        kubeconfig = context.cluster_provider.get_primaza_cluster(cluster).get_admin_kubeconfig()
+        tf.write(kubeconfig.encode("utf-8"))
+        tf.flush()
+
+        Kubernetes(kubeconfig=tf.name).delete_by_name("clusterenvironment", ce_name, "primaza-system")
