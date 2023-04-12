@@ -37,8 +37,11 @@ func Test_MatchEmptyContainsts(t *testing.T) {
 		{environment: "env", constraints: []string{"env"}, want: true},
 		{environment: "env", constraints: []string{"env", "!prod"}, want: true},
 		{environment: "env", constraints: []string{"env", "!env"}, want: false},
-		{environment: "env", constraints: []string{"!prod"}, want: false},
+		{environment: "env", constraints: []string{"!prod"}, want: true},
 		{environment: "env", constraints: []string{"!env"}, want: false},
+		{environment: "prod", constraints: []string{"!test", "stage"}, want: true},
+		{environment: "prod", constraints: []string{"!test", "!stage"}, want: true},
+		{environment: "prod", constraints: []string{"!test", "!prod"}, want: false},
 	}
 
 	for _, te := range tt {

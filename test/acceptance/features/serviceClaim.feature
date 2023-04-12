@@ -1,5 +1,6 @@
 Feature: Service claim with label selector
 
+
     Scenario: Create a service claim with label selector
         Given Primaza Cluster "main" is running
         And Worker Cluster "worker" for "main" is running
@@ -79,8 +80,9 @@ Feature: Service claim with label selector
         """
         Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
         And  On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
-        And  On Primaza Cluster "main", ServiceCatalog "primaza-service-catalog" will not contain RegisteredService "primaza-rsdb"
+        And  On Primaza Cluster "main", ServiceCatalog "stage" will not contain RegisteredService "primaza-rsdb"
         And  On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "type" with value "psqlserver"
+
 
     Scenario: Create a service claim with label selector, no constraints
         Given Primaza Cluster "main" is running
@@ -158,9 +160,10 @@ Feature: Service claim with label selector
         """
         Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
         And  On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
-        And  On Primaza Cluster "main", ServiceCatalog "primaza-service-catalog" will not contain RegisteredService "primaza-rsdb"
+        And  On Primaza Cluster "main", ServiceCatalog "stage" will not contain RegisteredService "primaza-rsdb"
         And  On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "type" with value "psqlserver"
 
+  
     Scenario: Create a service claim with label selector, no constraints, sci subset and sed subset
         Given Primaza Cluster "main" is running
         And Worker Cluster "worker" for "main" is running
@@ -232,9 +235,10 @@ Feature: Service claim with label selector
         """
         Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
-        And On Primaza Cluster "main", ServiceCatalog "primaza-service-catalog" will not contain RegisteredService "primaza-rsdb"
+        And On Primaza Cluster "main", ServiceCatalog "stage" will not contain RegisteredService "primaza-rsdb"
         And  On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "type" with value "psqlserver"
 
+  
     Scenario: Create a service claim with non-existing SED key
         Given Primaza Cluster "main" is running
         And Worker Cluster "worker" for "main" is running
@@ -314,7 +318,8 @@ Feature: Service claim with label selector
         """
         Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Pending"
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Available"
-        And On Primaza Cluster "main", ServiceCatalog "primaza-service-catalog" will contain RegisteredService "primaza-rsdb"
+        And On Primaza Cluster "main", ServiceCatalog "stage" will contain RegisteredService "primaza-rsdb"
+
 
     Scenario: Create a service claim with non-matching SCI
         Given Primaza Cluster "main" is running
@@ -406,7 +411,7 @@ Feature: Service claim with label selector
         """
         Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Pending"
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Available"
-        And On Primaza Cluster "main", ServiceCatalog "primaza-service-catalog" will contain RegisteredService "primaza-rsdb"
+        And On Primaza Cluster "main", ServiceCatalog "stage" will contain RegisteredService "primaza-rsdb"
 
     Scenario: Create ServiceClaim with ApplicationClusterContext and EnvironmentTag
         Given Primaza Cluster "main" is running

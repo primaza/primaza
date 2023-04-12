@@ -93,6 +93,7 @@ Feature: Application Namespaces initialization: Service Bindings
         """
         Then On Worker Cluster "worker", Service Binding "sc-test" exists in "applications"
 
+
     Scenario: Service Bindings are pushed to application namespaces of new Cluster Environments with EnvironmentTag
         Given On Primaza Cluster "main", Resource is created
         """
