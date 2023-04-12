@@ -167,7 +167,7 @@ jobs:
   single-commit:
     name: Single commit PR
     runs-on: ubuntu-20.04
-
+    if: github.event_name == 'pull_request'
     steps:
       - name: Checkout Git Repository
         uses: actions/checkout@v3
