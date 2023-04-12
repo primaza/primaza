@@ -16,6 +16,8 @@ rules:
   resources:
   - serviceclaims
   verbs:
+  - get
+  - list
   - create
   - delete
   - patch
