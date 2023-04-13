@@ -353,7 +353,7 @@ def ensure_worker_cluster_running(context, cluster_name: str, primaza_cluster_na
     worker_cluster.create_primaza_user(p_csr_pem)
 
 
-@given(u'On Worker Cluster "{cluster_name}", application namespace "{namespace}" exists')
+@step(u'On Worker Cluster "{cluster_name}", application namespace "{namespace}" exists')
 def ensure_application_namespace_exists(context, cluster_name: str, namespace: str):
     worker = context.cluster_provider.get_worker_cluster(cluster_name)  # type: WorkerCluster
     worker.create_application_namespace(namespace)
