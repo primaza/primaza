@@ -1,13 +1,14 @@
 Feature: Claim for specific cluster
 
-    Scenario: Application Namespace exists
-
+    Background
         Given Primaza Cluster "main" is running
-        And Worker Cluster "worker" for "main" is running
-        And Clusters "main" and "worker" can communicate
-        And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
-        And On Worker Cluster "worker", application namespace "applications" exists
-        And On Primaza Cluster "main", Resource is created
+        And   Worker Cluster "worker" for "main" is running
+        And   Clusters "main" and "worker" can communicate
+        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
+
+    Scenario: Application Namespace exists
+        Given On Worker Cluster "worker", application namespace "applications" for ClusterEnvironment "worker" exists
+        And   On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
         kind: ClusterEnvironment
@@ -102,16 +103,11 @@ Feature: Claim for specific cluster
             name: stage-app
         """
         Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
-        And On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "type" with value "psqlserver"
-        And On Worker Cluster "worker", ServiceBinding "sc-test" on namespace "applications" state will eventually move to "Ready"
+        And  On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "type" with value "psqlserver"
+        And  On Worker Cluster "worker", ServiceBinding "sc-test" on namespace "applications" state will eventually move to "Ready"
 
     Scenario: Application Namespace does not exist
-
-        Given Primaza Cluster "main" is running
-        And Worker Cluster "worker" for "main" is running
-        And Clusters "main" and "worker" can communicate
-        And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
-        And On Primaza Cluster "main", Resource is created
+        Given On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
         kind: ClusterEnvironment

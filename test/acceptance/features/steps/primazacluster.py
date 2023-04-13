@@ -96,11 +96,11 @@ class PrimazaCluster(Cluster):
             print("Exception when calling CustomObjectsApi->get_namespaced_custom_object_status: %s\n" % e)
             raise e
 
-    def is_app_agent_deployed(self, namespace: str) -> bool:
+    def is_app_agent_deployed(self, namespace: str, cluster_environment: str) -> bool:
         api_client = self.get_api_client()
         appsv1 = client.AppsV1Api(api_client)
 
-        appsv1.read_namespaced_deployment(name="primaza-controller-agentapp", namespace=namespace)
+        appsv1.read_namespaced_deployment(name=f"pmz-app-{cluster_environment}", namespace=namespace)
         return True
 
     def is_svc_agent_deployed(self, namespace: str) -> bool:
@@ -110,7 +110,7 @@ class PrimazaCluster(Cluster):
         appsv1.read_namespaced_deployment(name="primaza-controller-agentsvc", namespace=namespace)
         return True
 
-    def deploy_agentapp(self, namespace: str):
+    def deploy_agentapp(self, namespace: str, cluster_environment: str):
         """
         Deploys Application Agent into a cluster's namespace
         """
@@ -188,11 +188,11 @@ def service_agent_is_deployed(context, cluster_name: str, namespace: str):
         timeout=30)
 
 
-@step(u'On Primaza Cluster "{cluster_name}", Primaza Application Agent is deployed into namespace "{namespace}"')
-def application_agent_is_deployed(context, cluster_name: str, namespace: str):
+@step(u'On Primaza Cluster "{cluster_name}", Primaza Application Agent for ClusterEnvironment "{ce_name}" is deployed into namespace "{namespace}"')
+def application_agent_is_deployed(context, cluster_name: str, ce_name: str, namespace: str):
     primaza_cluster = context.cluster_provider.get_primaza_cluster(cluster_name)  # type: PrimazaCluster
-    primaza_cluster.deploy_agentapp(namespace)
+    primaza_cluster.deploy_agentapp(namespace, ce_name)
     polling2.poll(
-        target=lambda: primaza_cluster.is_app_agent_deployed(namespace),
+        target=lambda: primaza_cluster.is_app_agent_deployed(namespace, ce_name),
         step=1,
         timeout=30)

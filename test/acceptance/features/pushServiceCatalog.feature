@@ -5,10 +5,10 @@ Feature: Push ServiceCatalog
       And Worker Cluster "worker" for "main" is running
       And Clusters "main" and "worker" can communicate
       And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
-      And On Worker Cluster "worker", application namespace "applications" exists
+      And On Worker Cluster "worker", application namespace "applications" for ClusterEnvironment "worker" exists
 
   Scenario: Initialize ServiceCatalog
-      And On Primaza Cluster "main", Resource is created
+      Given On Primaza Cluster "main", Resource is created
       """
       apiVersion: primaza.io/v1alpha1
       kind: ClusterEnvironment
@@ -69,17 +69,17 @@ Feature: Push ServiceCatalog
           applicationNamespaces:
           - applications
       """
-      And On Primaza Cluster "main", ClusterEnvironment "worker" state will eventually move to "Online"
-      And On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "Online" has Status "True"
-      And On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ApplicationNamespacePermissionsRequired" has Status "False"
-      And On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ServiceNamespacePermissionsRequired" has Status "False"
+      And  On Primaza Cluster "main", ClusterEnvironment "worker" state will eventually move to "Online"
+      And  On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "Online" has Status "True"
+      And  On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ApplicationNamespacePermissionsRequired" has Status "False"
+      And  On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ServiceNamespacePermissionsRequired" has Status "False"
       And  On Primaza Cluster "main", ServiceCatalog "dev" exists
       And  On Worker Cluster "worker", ServiceCatalog "dev" exists in "applications"
       Then On Primaza Cluster "main", ServiceCatalog "dev" will contain RegisteredService "primaza-rsdb"
       And  On Worker Cluster "worker", ServiceCatalog "dev" in application namespace "applications" will contain RegisteredService "primaza-rsdb"
 
   Scenario: Update Registered Service in Service Catalog
-      And On Primaza Cluster "main", Resource is created
+      Given On Primaza Cluster "main", Resource is created
       """
       apiVersion: primaza.io/v1alpha1
       kind: ClusterEnvironment
