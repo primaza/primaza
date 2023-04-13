@@ -25,7 +25,7 @@ import (
 )
 
 type AgentPermissionsChecker interface {
-	TestPermissions(ctx context.Context, namespaces []string) (AgentPermissionsCheckReport, error)
+	TestPermissions(ctx context.Context, clusterEnvironmentName string, namespaces []string) (AgentPermissionsCheckReport, error)
 }
 
 type AgentPermissionsCheckReport map[string]authz.NamespacedPermissionsReport
@@ -46,10 +46,10 @@ func NewAgentSvcPermissionsChecker(cfg *rest.Config) AgentPermissionsChecker {
 
 type agentPermissionsChecker struct {
 	cfg                    *rest.Config
-	getResourcePermissions func() []authz.ResourcePermissions
+	getResourcePermissions func(string) []authz.ResourcePermissions
 }
 
-func (c *agentPermissionsChecker) TestPermissions(ctx context.Context, namespaces []string) (AgentPermissionsCheckReport, error) {
-	pp := c.getResourcePermissions()
+func (c *agentPermissionsChecker) TestPermissions(ctx context.Context, clusterEnvironmentName string, namespaces []string) (AgentPermissionsCheckReport, error) {
+	pp := c.getResourcePermissions(clusterEnvironmentName)
 	return authz.TestResourcePermissions(ctx, c.cfg, namespaces, pp)
 }

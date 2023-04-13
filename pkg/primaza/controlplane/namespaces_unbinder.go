@@ -46,7 +46,7 @@ type namespacesUnbinder struct {
 	wcli *kubernetes.Clientset
 	kind string
 
-	deleteAgent func(context.Context, *kubernetes.Clientset, string) error
+	deleteAgent func(context.Context, *kubernetes.Clientset, string, string) error
 }
 
 func (b *namespacesUnbinder) UnbindNamespaces(ctx context.Context, ceName, ceNamespace string, namespaces []string) error {
@@ -72,7 +72,7 @@ func (b *namespacesUnbinder) unbindNamespace(ctx context.Context, ceName, ceName
 		return err
 	}
 
-	if err := b.deleteAgent(ctx, b.wcli, namespace); err != nil && !errors.IsNotFound(err) {
+	if err := b.deleteAgent(ctx, b.wcli, namespace, ceName); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 

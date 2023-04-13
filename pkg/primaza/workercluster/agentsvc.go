@@ -28,7 +28,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func DeleteServiceAgent(ctx context.Context, cli *kubernetes.Clientset, namespace string) error {
+func DeleteServiceAgent(ctx context.Context, cli *kubernetes.Clientset, namespace string, clusterEnvironment string) error {
 	s := runtime.NewScheme()
 	if err := appsv1.AddToScheme(s); err != nil {
 		return fmt.Errorf("decoder error: %w", err)
@@ -48,15 +48,15 @@ func DeleteServiceAgent(ctx context.Context, cli *kubernetes.Clientset, namespac
 	return nil
 }
 
-func PushServiceAgent(ctx context.Context, cli *kubernetes.Clientset, namespace string) error {
-	if _, err := createAgentSvcDeployment(ctx, cli, namespace); err != nil && !errors.IsAlreadyExists(err) {
+func PushServiceAgent(ctx context.Context, cli *kubernetes.Clientset, namespace string, clusterEnvironment string) error {
+	if _, err := createAgentSvcDeployment(ctx, cli, namespace, clusterEnvironment); err != nil && !errors.IsAlreadyExists(err) {
 		return err
 	}
 
 	return nil
 }
 
-func createAgentSvcDeployment(ctx context.Context, cli *kubernetes.Clientset, namespace string) (*appsv1.Deployment, error) {
+func createAgentSvcDeployment(ctx context.Context, cli *kubernetes.Clientset, namespace string, clusterEnvironment string) (*appsv1.Deployment, error) {
 	s := runtime.NewScheme()
 	if err := appsv1.AddToScheme(s); err != nil {
 		return nil, fmt.Errorf("decoder error: %w", err)

@@ -20,7 +20,7 @@ import (
 	"github.com/primaza/primaza/pkg/authz"
 )
 
-func GetAgentAppRequiredPermissions() []authz.ResourcePermissions {
+func GetAgentAppRequiredPermissions(clusterEnvironmentName string) []authz.ResourcePermissions {
 	return []authz.ResourcePermissions{
 		{
 			Verbs:    []string{"create"},
@@ -33,12 +33,12 @@ func GetAgentAppRequiredPermissions() []authz.ResourcePermissions {
 			Version:  "",
 			Group:    "apps",
 			Resource: "deployments",
-			Name:     "primaza-controller-agentapp",
+			Name:     "pmz-app-" + clusterEnvironmentName,
 		},
 	}
 }
 
-func GetAgentSvcRequiredPermissions() []authz.ResourcePermissions {
+func GetAgentSvcRequiredPermissions(clusterEnvironmentName string) []authz.ResourcePermissions {
 	return []authz.ResourcePermissions{
 		{
 			Verbs:    []string{"create"},

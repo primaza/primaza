@@ -119,7 +119,7 @@ class WorkerCluster(Cluster):
             time.sleep(5)
         assert False, f"Timed-out waiting CertificateSignignRequest '{csr}' certificate to become ready"
 
-    def create_application_namespace(self, namespace: str):
+    def create_application_namespace(self, namespace: str, cluster_environment: str):
         api_client = self.get_api_client()
         corev1 = client.CoreV1Api(api_client)
 
@@ -129,8 +129,8 @@ class WorkerCluster(Cluster):
         ns = client.V1Namespace(metadata=client.V1ObjectMeta(name=namespace))
         corev1.create_namespace(ns)
 
-        self.__create_application_agent_identity(namespace)
-        self.__allow_primaza_access_to_namespace(namespace)
+        self.__create_application_agent_identity(namespace, cluster_environment)
+        self.__allow_primaza_access_to_namespace(namespace, "app", cluster_environment)
 
     def create_service_namespace(self, namespace: str):
         api_client = self.get_api_client()
@@ -143,14 +143,15 @@ class WorkerCluster(Cluster):
         corev1.create_namespace(ns)
 
         self.__create_service_agent_identity(namespace)
-        self.__allow_primaza_access_to_namespace(namespace)
+        self.__allow_primaza_access_to_namespace(namespace, "svc")
 
-    def __allow_primaza_access_to_namespace(self, namespace: str):
+    def __allow_primaza_access_to_namespace(self, namespace: str, ns_kind: str, cluster_environment: str = "default"):
         api_client = self.get_api_client()
         rbacv1 = client.RbacAuthorizationV1Api(api_client)
 
+        role_name = f"pmz:cp:{cluster_environment}:{ns_kind}"
         r = client.V1Role(
-            metadata=client.V1ObjectMeta(name="primaza-role", namespace=namespace),
+            metadata=client.V1ObjectMeta(name=role_name, namespace=namespace),
             rules=[
                 client.V1PolicyRule(
                     api_groups=[""],
@@ -164,7 +165,7 @@ class WorkerCluster(Cluster):
                     api_groups=["apps"],
                     resources=["deployments"],
                     verbs=["delete"],
-                    resource_names=["primaza-controller-agentapp", "primaza-controller-agentsvc"]),
+                    resource_names=[f"pmz-app-{cluster_environment}", "primaza-controller-agentsvc"]),
                 client.V1PolicyRule(
                     api_groups=["primaza.io"],
                     resources=["servicebindings", "serviceclasses", "servicecatalogs"],
@@ -174,11 +175,11 @@ class WorkerCluster(Cluster):
 
         # bind role to service account
         rb = client.V1RoleBinding(
-            metadata=client.V1ObjectMeta(name="primaza-rolebinding", namespace=namespace),
+            metadata=client.V1ObjectMeta(name=role_name, namespace=namespace),
             role_ref=client.V1RoleRef(
                 api_group="rbac.authorization.k8s.io",
                 kind="Role",
-                name="primaza-role"),
+                name=role_name),
             subjects=[
                 client.V1Subject(
                     api_group="",
@@ -187,13 +188,13 @@ class WorkerCluster(Cluster):
             ])
         rbacv1.create_namespaced_role_binding(namespace=namespace, body=rb)
 
-    def __create_application_agent_identity(self, namespace: str):
-        self.__create_agent_identity(namespace, "agentapp")
+    def __create_application_agent_identity(self, namespace: str, cluster_environment: str):
+        self.__create_agent_identity(namespace, "agentapp", cluster_environment)
 
     def __create_service_agent_identity(self, namespace: str):
         self.__create_agent_identity(namespace, "agentsvc")
 
-    def __create_agent_identity(self, namespace: str, component: str):
+    def __create_agent_identity(self, namespace: str, component: str, cluster_environment: str = "default"):
         kubeconfig = self.cluster_provisioner.kubeconfig()
         with tempfile.NamedTemporaryFile(prefix=f"kubeconfig-{self.cluster_name}-") as t:
             t.write(kubeconfig.encode("utf-8"))
@@ -206,6 +207,7 @@ class WorkerCluster(Cluster):
                 .setenv("NAMESPACE", namespace) \
                 .setenv("GOCACHE", os.getenv("GOCACHE", "/tmp/gocache")) \
                 .setenv("GOPATH", os.getenv("GOPATH", "/tmp/go")) \
+                .setenv("CLUSTER_ENVIRONMENT", cluster_environment) \
                 .run(f"make {component} deploy-rbac")
 
             print(out)
@@ -293,11 +295,11 @@ class WorkerCluster(Cluster):
         """
         return self.get_user_kubeconfig_yaml(certificate_key, "primaza")
 
-    def is_app_agent_deployed(self, namespace: str) -> bool:
+    def is_app_agent_deployed(self, namespace: str, cluster_environment: str) -> bool:
         api_client = self.get_api_client()
         appsv1 = client.AppsV1Api(api_client)
 
-        appsv1.read_namespaced_deployment(name="primaza-controller-agentapp", namespace=namespace)
+        appsv1.read_namespaced_deployment(name=f"pmz-app-{cluster_environment}", namespace=namespace)
         return True
 
     def is_svc_agent_deployed(self, namespace: str) -> bool:
@@ -307,7 +309,7 @@ class WorkerCluster(Cluster):
         appsv1.read_namespaced_deployment(name="primaza-controller-agentsvc", namespace=namespace)
         return True
 
-    def deploy_agentapp(self, namespace: str):
+    def deploy_agentapp(self, namespace: str, cluster_environment: str):
         """
         Deploys Application Agent into a cluster's namespace
         """
@@ -353,38 +355,38 @@ def ensure_worker_cluster_running(context, cluster_name: str, primaza_cluster_na
     worker_cluster.create_primaza_user(p_csr_pem)
 
 
-@step(u'On Worker Cluster "{cluster_name}", application namespace "{namespace}" exists')
-def ensure_application_namespace_exists(context, cluster_name: str, namespace: str):
+@step(u'On Worker Cluster "{cluster_name}", application namespace "{namespace}" for ClusterEnvironment "{cluster_environment}" exists')
+def ensure_application_namespace_exists(context, cluster_name: str, namespace: str, cluster_environment: str):
     worker = context.cluster_provider.get_worker_cluster(cluster_name)  # type: WorkerCluster
-    worker.create_application_namespace(namespace)
+    worker.create_application_namespace(namespace, cluster_environment)
 
 
-@step(u'On Worker Cluster "{cluster_name}", Primaza Application Agent is deployed into namespace "{namespace}"')
-def application_agent_is_deployed(context, cluster_name: str, namespace: str):
+@step(u'On Worker Cluster "{cluster_name}", Primaza Application Agent for ClusterEnvironment "{cluster_environment}" is deployed into namespace "{namespace}"')
+def application_agent_is_deployed(context, cluster_name: str, cluster_environment: str, namespace: str):
     worker = context.cluster_provider.get_worker_cluster(cluster_name)  # type: WorkerCluster
-    worker.deploy_agentapp(namespace)
+    worker.deploy_agentapp(namespace, cluster_environment)
     polling2.poll(
-        target=lambda: worker.is_app_agent_deployed(namespace),
+        target=lambda: worker.is_app_agent_deployed(namespace, cluster_environment),
         step=1,
         timeout=30)
 
 
-@step(u'On Worker Cluster "{cluster_name}", Primaza Application Agent exists into namespace "{namespace}"')
-def application_agent_exists(context, cluster_name: str, namespace: str):
+@step(u'On Worker Cluster "{cluster_name}", Primaza Application Agent for ClusterEnvironment "{cluster_environment}" exists into namespace "{namespace}"')
+def application_agent_exists(context, cluster_name: str, cluster_environment: str, namespace: str):
     worker = context.cluster_provider.get_worker_cluster(cluster_name)  # type: WorkerCluster
     polling2.poll(
-        target=lambda: worker.is_app_agent_deployed(namespace),
+        target=lambda: worker.is_app_agent_deployed(namespace, cluster_environment),
         step=1,
         timeout=30)
 
 
-@step(u'On Worker Cluster "{cluster_name}", Primaza Application Agent does not exist into namespace "{namespace}"')
-def application_agent_does_not_exist(context, cluster_name: str, namespace: str):
+@step(u'On Worker Cluster "{cluster_name}", Primaza Application Agent for ClusterEnvironment "{ce_name}" does not exist into namespace "{namespace}"')
+def application_agent_does_not_exist(context, cluster_name: str, ce_name: str, namespace: str):
     worker = context.cluster_provider.get_worker_cluster(cluster_name)  # type: WorkerCluster
 
     def is_not_found():
         try:
-            worker.is_app_agent_deployed(namespace)
+            worker.is_app_agent_deployed(namespace, ce_name)
         except ApiException as e:
             return e.reason == "Not Found"
         return False

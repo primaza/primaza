@@ -2,11 +2,11 @@ Feature: On claim deletion, remove Bindings
 
     Scenario: Delete an active claim
         Given Primaza Cluster "main" is running
-        And Worker Cluster "worker" for "main" is running
-        And Clusters "main" and "worker" can communicate
-        And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
-        And On Worker Cluster "worker", application namespace "applications" exists
-        And On Primaza Cluster "main", Resource is created
+        And   Worker Cluster "worker" for "main" is running
+        And   Clusters "main" and "worker" can communicate
+        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
+        And   On Worker Cluster "worker", application namespace "applications" for ClusterEnvironment "worker" exists
+        And   On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
         kind: ClusterEnvironment
@@ -89,4 +89,4 @@ Feature: On claim deletion, remove Bindings
           namespace: primaza-system
         """
         Then On Worker Cluster "worker", Service Binding "sc-test" does not exist in "applications"
-        And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Available"
+        And  On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Available"

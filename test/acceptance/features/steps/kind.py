@@ -152,7 +152,7 @@ class PrimazaKind(PrimazaCluster):
             self.__load_image(image)
             self.__deploy_agentsvc(t.name, image, namespace)
 
-    def deploy_agentapp(self, namespace: str):
+    def deploy_agentapp(self, namespace: str, cluster_environment: str):
         """
         Deploys Application Agent into a cluster's namespace
         """
@@ -162,7 +162,7 @@ class PrimazaKind(PrimazaCluster):
             t.write(kubeconfig.encode("utf-8"))
             self.__install_crd_and_build_app_image(t.name, image)
             self.__load_image(image)
-            self.__deploy_agentapp(t.name, image, namespace)
+            self.__deploy_agentapp(t.name, image, namespace, cluster_environment)
 
     def __install_crd_and_build_app_image(self, kubeconfig_path: str, image: str):
         out, err = self.__build_install_base_cmd(kubeconfig_path, image).run("make agentapp install docker-build")
@@ -174,8 +174,11 @@ class PrimazaKind(PrimazaCluster):
         print(out)
         assert err == 0, "error installing manifests and building agent svc  controller"
 
-    def __deploy_agentapp(self, kubeconfig_path: str, img: str, namespace: str):
-        out, err = self.__build_install_base_cmd(kubeconfig_path, img).setenv("NAMESPACE", namespace).run("make agentapp deploy")
+    def __deploy_agentapp(self, kubeconfig_path: str, img: str, namespace: str, cluster_environment: str):
+        out, err = self.__build_install_base_cmd(kubeconfig_path, img) \
+            .setenv("NAMESPACE", namespace) \
+            .setenv("CLUSTER_ENVIRONMENT", cluster_environment) \
+            .run("make agentapp deploy")
         print(out)
         assert err == 0, f"error deploying Agent app's controller into cluster {self.cluster_name}"
 
@@ -192,9 +195,9 @@ class WorkerKind(WorkerCluster):
     def __init__(self, cluster_name, version=None):
         super().__init__(KindClusterProvisioner(cluster_name, version), cluster_name)
 
-    def create_application_namespace(self, namespace: str):
+    def create_application_namespace(self, namespace: str, cluster_environment: str):
         self.configure_application_cluster()
-        super().create_application_namespace(namespace)
+        super().create_application_namespace(namespace, cluster_environment)
 
     def create_service_namespace(self, namespace: str):
         print("creating service namespace")
@@ -273,7 +276,7 @@ class WorkerKind(WorkerCluster):
             self.__load_image(image)
             self.__deploy_agentsvc(t.name, image, namespace)
 
-    def deploy_agentapp(self, namespace: str):
+    def deploy_agentapp(self, namespace: str, cluster_environment: str):
         """
         Deploys Application Agent into a cluster's namespace
         """

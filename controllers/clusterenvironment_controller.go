@@ -327,7 +327,7 @@ func (r *ClusterEnvironmentReconciler) testTypedNamespacesPermissions(
 	namespaces []string) ([]string, error) {
 	l := log.FromContext(ctx)
 
-	pr, err := pc.TestPermissions(ctx, namespaces)
+	pr, err := pc.TestPermissions(ctx, ce.Name, namespaces)
 	if err != nil {
 		return nil, err
 	}

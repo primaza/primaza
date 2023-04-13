@@ -19,6 +19,7 @@ package workercluster
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -28,7 +29,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func DeleteApplicationAgent(ctx context.Context, cli *kubernetes.Clientset, namespace string) error {
+func DeleteApplicationAgent(ctx context.Context, cli *kubernetes.Clientset, namespace string, clusterEnvironment string) error {
 	s := runtime.NewScheme()
 	if err := appsv1.AddToScheme(s); err != nil {
 		return fmt.Errorf("decoder error: %w", err)
@@ -36,7 +37,8 @@ func DeleteApplicationAgent(ctx context.Context, cli *kubernetes.Clientset, name
 
 	decode := serializer.NewCodecFactory(s).UniversalDeserializer().Decode
 
-	obj, _, err := decode([]byte(agentAppDeployment), nil, nil)
+	ceDep := strings.ReplaceAll(agentAppDeployment, "primaza-controller-agentapp", "pmz-app-"+clusterEnvironment)
+	obj, _, err := decode([]byte(ceDep), nil, nil)
 	if err != nil {
 		return fmt.Errorf("decoder error: %w", err)
 	}
@@ -49,22 +51,23 @@ func DeleteApplicationAgent(ctx context.Context, cli *kubernetes.Clientset, name
 	return nil
 }
 
-func PushApplicationAgent(ctx context.Context, cli *kubernetes.Clientset, namespace string) error {
-	if _, err := createAgentAppDeployment(ctx, cli, namespace); err != nil && !errors.IsAlreadyExists(err) {
+func PushApplicationAgent(ctx context.Context, cli *kubernetes.Clientset, namespace string, clusterEnvironment string) error {
+	if _, err := createAgentAppDeployment(ctx, cli, namespace, clusterEnvironment); err != nil && !errors.IsAlreadyExists(err) {
 		return err
 	}
 
 	return nil
 }
 
-func createAgentAppDeployment(ctx context.Context, cli *kubernetes.Clientset, namespace string) (*appsv1.Deployment, error) {
+func createAgentAppDeployment(ctx context.Context, cli *kubernetes.Clientset, namespace string, clusterEnvironment string) (*appsv1.Deployment, error) {
 	s := runtime.NewScheme()
 	if err := appsv1.AddToScheme(s); err != nil {
 		return nil, fmt.Errorf("decoder error: %w", err)
 	}
 	decode := serializer.NewCodecFactory(s).UniversalDeserializer().Decode
 
-	obj, _, err := decode([]byte(agentAppDeployment), nil, nil)
+	ceDep := strings.ReplaceAll(agentAppDeployment, "primaza-controller-agentapp", "pmz-app-"+clusterEnvironment)
+	obj, _, err := decode([]byte(ceDep), nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("decoder error: %w", err)
 	}
