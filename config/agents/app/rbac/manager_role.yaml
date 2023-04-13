@@ -2,21 +2,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   creationTimestamp: null
-  name: agentapp-role
+  name: pmz:app:${CLUSTER_ENVIRONMENT}:manager
   namespace: system
 rules:
-- apiGroups:
-  - coordination.k8s.io
-  resources:
-  - leases
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
 - apiGroups:
   - primaza.io
   resources:
@@ -46,12 +34,6 @@ rules:
   - watch
   - update
   - patch
-- apiGroups:
-  - ""
-  resources:
-  - events
-  verbs:
-  - create
 - apiGroups:
   - ""
   resources:
