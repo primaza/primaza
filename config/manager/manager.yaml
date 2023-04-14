@@ -104,5 +104,15 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/primaza
+      volumes:
+      - name: config-volume
+        configMap:
+          name: primaza-manager
+          items:
+          - key: cluster_host_external
+            path: host
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
