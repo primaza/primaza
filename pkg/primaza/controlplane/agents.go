@@ -14,10 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package constants
+package controlplane
 
-const (
-	PrimazaNamespace               = "primaza-system"
-	ServiceAgentDeploymentName     = "primaza-svc-agent"
-	ApplicationAgentDeploymentName = "primaza-app-agent"
+import (
+	"fmt"
+	"strings"
 )
+
+var (
+	agentRoles = map[NamespaceType][]string{
+		ServiceNamespaceType:     {"primaza:reporter"},
+		ApplicationNamespaceType: {"primaza:claimer"},
+	}
+)
+
+func getAgentRoleNames(agentKind NamespaceType) []string {
+	if rr, ok := agentRoles[agentKind]; ok {
+		return rr
+	}
+	return nil
+}
+
+func bakeRoleBindingName(role, ceName, namespace string) string {
+	tr, _ := strings.CutPrefix(role, "primaza:")
+	return fmt.Sprintf("%s-%s-%s", tr, ceName, namespace)
+}

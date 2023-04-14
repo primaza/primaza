@@ -8,12 +8,12 @@ metadata:
     app.kubernetes.io/created-by: primaza
     app.kubernetes.io/part-of: primaza
     app.kubernetes.io/managed-by: kustomize
-  name: manager-rolebinding
+  name: primaza:svc:manager
+  namespace: system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: service-agent-role
+  name: primaza:svc:manager
 subjects:
 - kind: ServiceAccount
-  name: controller-manager
-  namespace: system
+  name: primaza-svc-agent

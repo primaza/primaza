@@ -100,14 +100,14 @@ class PrimazaCluster(Cluster):
         api_client = self.get_api_client()
         appsv1 = client.AppsV1Api(api_client)
 
-        appsv1.read_namespaced_deployment(name="primaza-controller-agentapp", namespace=namespace)
+        appsv1.read_namespaced_deployment(name="primaza-app-agent", namespace=namespace)
         return True
 
     def is_svc_agent_deployed(self, namespace: str) -> bool:
         api_client = self.get_api_client()
         appsv1 = client.AppsV1Api(api_client)
 
-        appsv1.read_namespaced_deployment(name="primaza-controller-agentsvc", namespace=namespace)
+        appsv1.read_namespaced_deployment(name="primaza-svc-agent", namespace=namespace)
         return True
 
     def deploy_agentapp(self, namespace: str):

@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/created-by: primaza
     app.kubernetes.io/part-of: primaza
     app.kubernetes.io/managed-by: kustomize
-  name: application-agent-role
+  name: primaza:claimer
 rules:
 - apiGroups:
   - primaza.io

@@ -81,25 +81,20 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app.kubernetes.io/component: manager
-    app.kubernetes.io/created-by: primaza
-    app.kubernetes.io/instance: primaza-controller-agentsvc
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: deployment
     app.kubernetes.io/part-of: primaza
-    control-plane: primaza-controller-agentsvc
-  name: primaza-controller-agentsvc
+    control-plane: primaza-svc-agent
+  name: primaza-svc-agent
 spec:
   replicas: 1
   selector:
     matchLabels:
-      control-plane: primaza-controller-agentsvc
+      control-plane: primaza-svc-agent
   template:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: manager
       labels:
-        control-plane: primaza-controller-agentsvc
+        control-plane: primaza-svc-agent
     spec:
       containers:
       - args:
@@ -144,7 +139,7 @@ spec:
           readOnly: true
       securityContext:
         runAsNonRoot: true
-      serviceAccountName: primaza-controller-agentsvc
+      serviceAccountName: primaza-svc-agent
       terminationGracePeriodSeconds: 10
       volumes:
       - name: cert

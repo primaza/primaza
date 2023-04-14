@@ -105,5 +105,5 @@ roleRef:
   name: backends-view
 subjects:
 - kind: ServiceAccount
-  name: primaza-controller-agentsvc
+  name: primaza-svc-agent
 ---
