@@ -82,25 +82,21 @@ const agentAppDeployment string = `
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: primaza-controller-agentapp
+  name: primaza-app-agent
   labels:
-    control-plane: primaza-controller-agentapp
-    app.kubernetes.io/name: deployment
-    app.kubernetes.io/instance: primaza-controller-agentapp
-    app.kubernetes.io/component: agentapp-manager
-    app.kubernetes.io/created-by: primaza
     app.kubernetes.io/part-of: primaza
+    control-plane: primaza-app-agent
 spec:
   selector:
     matchLabels:
-      control-plane: primaza-controller-agentapp
+      control-plane: primaza-app-agent
   replicas: 1
   template:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: manager
       labels:
-        control-plane: primaza-controller-agentapp
+        control-plane: primaza-app-agent
     spec:
       securityContext:
         runAsNonRoot: true
@@ -141,6 +137,6 @@ spec:
           requests:
             cpu: 10m
             memory: 64Mi
-      serviceAccountName: primaza-controller-agentapp
+      serviceAccountName: primaza-app-agent
       terminationGracePeriodSeconds: 10
 `

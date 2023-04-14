@@ -1,0 +1,14 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/part-of: primaza
+  name: primaza:svc:leader-election
+  namespace: system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: primaza:svc:leader-election
+subjects:
+- kind: ServiceAccount
+  name: primaza-svc-agent

@@ -34,17 +34,27 @@ type NamespacesUnbinder interface {
 }
 
 func NewApplicationNamespacesUnbinder(primazaClient client.Client, workerClient *kubernetes.Clientset) NamespacesUnbinder {
-	return &namespacesUnbinder{pcli: primazaClient, wcli: workerClient, kind: "application", deleteAgent: workercluster.DeleteApplicationAgent}
+	return &namespacesUnbinder{
+		pcli:        primazaClient,
+		wcli:        workerClient,
+		kind:        ApplicationNamespaceType,
+		deleteAgent: workercluster.DeleteApplicationAgent,
+	}
 }
 
 func NewServiceNamespacesUnbinder(primazaClient client.Client, workerClient *kubernetes.Clientset) NamespacesUnbinder {
-	return &namespacesUnbinder{pcli: primazaClient, wcli: workerClient, kind: "service", deleteAgent: workercluster.DeleteServiceAgent}
+	return &namespacesUnbinder{
+		pcli:        primazaClient,
+		wcli:        workerClient,
+		kind:        ServiceNamespaceType,
+		deleteAgent: workercluster.DeleteServiceAgent,
+	}
 }
 
 type namespacesUnbinder struct {
 	pcli client.Client
 	wcli *kubernetes.Clientset
-	kind string
+	kind NamespaceType
 
 	deleteAgent func(context.Context, *kubernetes.Clientset, string) error
 }
@@ -86,20 +96,7 @@ func (b *namespacesUnbinder) deleteRoleBinding(ctx context.Context, ceName, ceNa
 			Name:      n,
 			Namespace: ceNamespace,
 		},
-		RoleRef: rbacv1.RoleRef{
-			APIGroup: rbacv1.GroupName,
-			Kind:     "Role",
-			Name:     fmt.Sprintf("%s-agent-role", b.kind),
-		},
-		Subjects: []rbacv1.Subject{
-			{
-				APIGroup: rbacv1.GroupName,
-				Kind:     "User",
-				Name:     n,
-			},
-		},
 	}
-
 	if err := b.pcli.Delete(ctx, rb, &client.DeleteOptions{}); err != nil && !errors.IsAlreadyExists(err) {
 		return err
 	}
