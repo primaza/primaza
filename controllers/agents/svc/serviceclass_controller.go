@@ -46,7 +46,7 @@ import (
 // agents needs to write back registered services up to primaza.  It contains
 // two keys: `kubeconfig`, a serialized kubeconfig for the upstream kubeconfig
 // cluster, and `namespace`, the namespace to write registered services to
-const PRIMAZA_CONTROLLER_REFERENCE string = "primaza-kubeconfig"
+const PRIMAZA_CONTROLLER_REFERENCE string = "kubeconfig-primaza-svc"
 
 const finalizer = "serviceclasses.primaza.io/finalizer"
 

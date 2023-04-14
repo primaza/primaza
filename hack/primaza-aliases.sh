@@ -72,6 +72,7 @@ __primaza_wait_for_controller_logs()
                 --kubeconfig <(echo "$kfg") && \
             kubectl logs -f \
                 -n primaza-system \
+                --tail=-1 \
                 -l control-plane=controller-manager \
                 --kubeconfig <(echo "$kfg")
         } || ( echo "error getting logs: waiting 5 seconds and retrying..." && sleep 5)
@@ -84,7 +85,7 @@ alias pgc="__primaza_get_kind_cluster"
 
 # main
 alias epm='eval $(__primaza_export_env main) && kubectl config set-context --current --namespace primaza-system'
-alias pclo="kubectl logs -f -n primaza-system -l control-plane=controller-manager --kubeconfig=<(__primaza_get_kind_kubeconfig main)"
+alias pclo="kubectl logs -f -n primaza-system -l control-plane=controller-manager --kubeconfig=<(__primaza_get_kind_kubeconfig main) --tail=-1"
 alias pwclo="__primaza_wait_for_controller_logs"
 alias pmgpo="kubectl get pods -n primaza-system --kubeconfig=<(__primaza_get_kind_kubeconfig main)"
 alias pmgce="kubectl get clusterenvironments -n primaza-system --kubeconfig=<(__primaza_get_kind_kubeconfig main)"

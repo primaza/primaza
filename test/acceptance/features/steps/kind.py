@@ -1,5 +1,6 @@
 import os
 import tempfile
+from kubernetes import client
 from steps.command import Command
 from steps.clusterprovider import ClusterProvider
 from steps.clusterprovisioner import ClusterProvisioner
@@ -126,10 +127,25 @@ class PrimazaKind(PrimazaCluster):
         assert err == 0, f"error loading image {image} into kind cluster {self.cluster_name}"
 
     def __deploy_primaza(self, kubeconfig_path: str, img: str, namespace: str = "primaza-system"):
+        cmd = f"docker container inspect {self.cluster_name}-control-plane --format {{{{.NetworkSettings.Networks.kind.IPAddress}}}}"
+        ip, err = Command().run(cmd)
+        assert err == 0, f"error getting internal IP for kind cluster {self.cluster_name}"
+
         out, err = self.__build_install_base_cmd(kubeconfig_path, img) \
-            .setenv("NAMESPACE", namespace).run("make primaza deploy")
+            .setenv("NAMESPACE", namespace) \
+            .run("make primaza deploy")
         print(out)
         assert err == 0, f"error deploying Primaza's controller into cluster {self.cluster_name}"
+
+        api_client = self.get_api_client()
+        v1 = client.CoreV1Api(api_client)
+        cip = "https://"+ip.strip()+":6443"
+        print(cip)
+        cm = client.V1ConfigMap(
+            data={
+                "cluster_host_external": cip,
+            })
+        v1.patch_namespaced_config_map(name="primaza-manager", namespace=namespace, body=cm)
 
     def __build_install_base_cmd(self, kubeconfig_path: str, img: str) -> Command:
         return Command() \

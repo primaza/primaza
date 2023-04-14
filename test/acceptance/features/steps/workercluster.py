@@ -233,6 +233,11 @@ class WorkerCluster(Cluster):
                     resources=["secrets"],
                     verbs=["create"]),
                 client.V1PolicyRule(
+                    api_groups=[""],
+                    resources=["secrets"],
+                    verbs=["patch", "delete", "update"],
+                    resource_names=["kubeconfig-primaza-svc", "kubeconfig-primaza-app"]),
+                client.V1PolicyRule(
                     api_groups=["primaza.io/v1alpha1"],
                     resources=["servicebindings"],
                     verbs=["create"]),
@@ -331,14 +336,15 @@ class WorkerCluster(Cluster):
     def deploy_primaza_kubeconfig(self, primaza_cluster: Cluster, namespace: str):
         api_client = self.get_api_client()
         v1 = client.CoreV1Api(api_client)
-        secret = client.V1Secret(
-            metadata=client.V1ObjectMeta(name="primaza-kubeconfig"),
-            string_data={
-                "kubeconfig": primaza_cluster.get_admin_kubeconfig(internal=True),
-                # for now, assume primaza's default deployment namespace
-                "namespace": "primaza-system"
-            })
-        v1.create_namespaced_secret(namespace, secret)
+        for n in ["kubeconfig-primaza-svc", "kubeconfig-primaza-app"]:
+            secret = client.V1Secret(
+                metadata=client.V1ObjectMeta(name=n),
+                string_data={
+                    "kubeconfig": primaza_cluster.get_admin_kubeconfig(internal=True),
+                    # for now, assume primaza's default deployment namespace
+                    "namespace": "primaza-system"
+                })
+            v1.create_namespaced_secret(namespace, secret)
 
 
 # Behave steps

@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/created-by: primaza
     app.kubernetes.io/part-of: primaza
     app.kubernetes.io/managed-by: kustomize
-  name: primaza:reporter
+  name: reporter
 rules:
 - apiGroups:
   - primaza.io

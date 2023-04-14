@@ -85,7 +85,6 @@ func (b *namespacesUnbinder) unbindNamespace(ctx context.Context, ceName, ceName
 	if err := b.deleteAgent(ctx, b.wcli, namespace); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
-
 	return nil
 }
 

@@ -17,29 +17,28 @@ limitations under the License.
 package controlplane
 
 import (
-	"fmt"
-	"strings"
+	"os"
+
+	"k8s.io/client-go/rest"
 )
 
-var (
-	agentRoles = map[NamespaceType][]string{
-		ServiceNamespaceType:     {"primaza-reporter"},
-		ApplicationNamespaceType: {"primaza-claimer"},
-	}
+const (
+	externalHostFile string = "/etc/primaza/host"
 )
 
-func getAgentRoleNames(agentKind NamespaceType) []string {
-	if rr, ok := agentRoles[agentKind]; ok {
-		return rr
+func getExternalHost() (string, error) {
+	f, err := os.ReadFile(externalHostFile)
+	if err != nil {
+		return "", err
 	}
-	return nil
-}
+	if len(f) != 0 {
+		return string(f), nil
+	}
 
-func bakeRoleBindingName(role, ceName, namespace string) string {
-	tr, _ := strings.CutPrefix(role, "primaza:")
-	return fmt.Sprintf("%s-%s-%s", tr, ceName, namespace)
-}
+	cfg, err := rest.InClusterConfig()
+	if err != nil {
+		return "", err
+	}
 
-func getAgentIdentityName(t NamespaceType, ceName, namespace string) string {
-	return fmt.Sprintf("%s-%s-%s", t.Short(), ceName, namespace)
+	return cfg.Host, nil
 }

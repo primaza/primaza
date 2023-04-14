@@ -14,22 +14,4 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controlplane
-
-type NamespaceType string
-
-const (
-	ServiceNamespaceType     NamespaceType = "service"
-	ApplicationNamespaceType NamespaceType = "application"
-)
-
-func (t NamespaceType) Short() string {
-	switch t {
-	case ServiceNamespaceType:
-		return "svc"
-	case ApplicationNamespaceType:
-		return "app"
-	default:
-		return string(t)
-	}
-}
+package identity
