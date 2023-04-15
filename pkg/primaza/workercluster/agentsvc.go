@@ -48,12 +48,13 @@ func DeleteServiceAgent(ctx context.Context, cli *kubernetes.Clientset, namespac
 	return nil
 }
 
-func PushServiceAgent(ctx context.Context, cli *kubernetes.Clientset, namespace string) error {
-	if _, err := createAgentSvcDeployment(ctx, cli, namespace); err != nil && !errors.IsAlreadyExists(err) {
-		return err
+func PushServiceAgent(ctx context.Context, cli *kubernetes.Clientset, namespace string) (*appsv1.Deployment, error) {
+	d, err := createAgentSvcDeployment(ctx, cli, namespace)
+	if err != nil && !errors.IsAlreadyExists(err) {
+		return nil, err
 	}
 
-	return nil
+	return d, nil
 }
 
 func createAgentSvcDeployment(ctx context.Context, cli *kubernetes.Clientset, namespace string) (*appsv1.Deployment, error) {
@@ -71,7 +72,11 @@ func createAgentSvcDeployment(ctx context.Context, cli *kubernetes.Clientset, na
 	dep := obj.(*appsv1.Deployment)
 	r, err := cli.AppsV1().Deployments(namespace).Create(ctx, dep, metav1.CreateOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("error creating deployment: %w", err)
+		if !errors.IsAlreadyExists(err) {
+			return nil, fmt.Errorf("error creating deployment: %w", err)
+		}
+
+		return cli.AppsV1().Deployments(namespace).Get(ctx, dep.Name, metav1.GetOptions{})
 	}
 	return r, nil
 }

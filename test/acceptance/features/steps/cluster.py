@@ -66,3 +66,8 @@ class Cluster(object):
         except ApiException as e:
             if e.reason != "Not Found":
                 raise e
+
+    def get_secret_token(self, namespace: str, secret_name: str) -> str:
+        api_client = self.get_api_client()
+        corev1 = client.CoreV1Api(api_client)
+        return corev1.read_namespaced_secret(name=secret_name, namespace=namespace).data["token"]

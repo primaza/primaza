@@ -23,6 +23,7 @@ import (
 
 	"github.com/primaza/primaza/pkg/identity"
 	"github.com/primaza/primaza/pkg/primaza/workercluster"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -51,7 +52,7 @@ type namespacesBinder struct {
 	wcli *kubernetes.Clientset
 	kind NamespaceType
 
-	pushAgent func(context.Context, *kubernetes.Clientset, string) error
+	pushAgent func(context.Context, *kubernetes.Clientset, string) (*appsv1.Deployment, error)
 }
 
 func (b *namespacesBinder) BindNamespaces(ctx context.Context, ceName string, ceNamespace string, namespaces []string) error {
@@ -77,18 +78,19 @@ func (b *namespacesBinder) bindNamespace(ctx context.Context, ceName, ceNamespac
 		return err
 	}
 
-	if err := b.pushKubeconfigSecret(ctx, i, namespace); err != nil {
+	d, err := b.pushAgent(ctx, b.wcli, namespace)
+	if err != nil {
 		return err
 	}
 
-	if err := b.pushAgent(ctx, b.wcli, namespace); err != nil {
+	if err := b.pushKubeconfigSecret(ctx, i, namespace, d); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (b *namespacesBinder) pushKubeconfigSecret(ctx context.Context, i *identity.Instance, namespace string) error {
+func (b *namespacesBinder) pushKubeconfigSecret(ctx context.Context, i *identity.Instance, namespace string, d *appsv1.Deployment) error {
 	kcfg, err := b.buildIdentityKubeconfig(ctx, i, namespace)
 	if err != nil {
 		return err
@@ -99,6 +101,14 @@ func (b *namespacesBinder) pushKubeconfigSecret(ctx context.Context, i *identity
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      n,
 			Namespace: namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: "apps/v1",
+					Kind:       "Deployment",
+					Name:       d.Name,
+					UID:        d.UID,
+				},
+			},
 		},
 		Data: map[string][]byte{
 			"kubeconfig": kcfg,

@@ -208,14 +208,13 @@ class WorkerKind(WorkerCluster):
     def __init__(self, cluster_name, version=None):
         super().__init__(KindClusterProvisioner(cluster_name, version), cluster_name)
 
-    def create_application_namespace(self, namespace: str):
+    def create_application_namespace(self, namespace: str, tenant: str, cluster_environment: str):
         self.configure_application_cluster()
-        super().create_application_namespace(namespace)
+        super().create_application_namespace(namespace, tenant, cluster_environment)
 
-    def create_service_namespace(self, namespace: str):
-        print("creating service namespace")
+    def create_service_namespace(self, namespace: str, tenant: str, cluster_environment: str):
         self.configure_service_cluster()
-        super().create_service_namespace(namespace)
+        super().create_service_namespace(namespace, tenant, cluster_environment)
 
     def configure_application_cluster(self):
         if self.__agentapp_loaded:

@@ -1,10 +1,10 @@
 Feature: Reconcile Service Catalog in Application namespaces
     Scenario: Service Catalog is pushed to new Cluster Environments' application namespaces
         Given Primaza Cluster "main" is running
-        And Worker Cluster "worker" for "main" is running
+        And Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And Clusters "main" and "worker" can communicate
-        And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
-        And On Worker Cluster "worker", application namespace "applications" exists
+        And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
+        And On Worker Cluster "worker", application namespace "applications" for ClusterEnvironment "worker" exists
         And On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
@@ -63,10 +63,10 @@ Feature: Reconcile Service Catalog in Application namespaces
 
     Scenario: Service Catalog is pushed to application namespaces of new Cluster Environments
         Given Primaza Cluster "main" is running
-        And Worker Cluster "worker" for "main" is running
+        And Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And Clusters "main" and "worker" can communicate
-        And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
-        And On Worker Cluster "worker", application namespace "applications" exists
+        And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
+        And On Worker Cluster "worker", application namespace "applications" for ClusterEnvironment "worker" exists
         And On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1

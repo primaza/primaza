@@ -85,9 +85,8 @@ class ClusterProvider(object):
         """
         pass
 
+
 # Behave steps
-
-
 @given(u'Clusters "{cluster1}" and "{cluster2}" can communicate')
 def join_networks(context, cluster1: str, cluster2: str):
     context.cluster_provider.join_networks(cluster1, cluster2)

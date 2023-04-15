@@ -3,10 +3,10 @@ Feature: Claim for specific cluster
     Scenario: Application Namespace exists
 
         Given Primaza Cluster "main" is running
-        And Worker Cluster "worker" for "main" is running
+        And Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And Clusters "main" and "worker" can communicate
-        And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
-        And On Worker Cluster "worker", application namespace "applications" exists
+        And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
+        And On Worker Cluster "worker", application namespace "applications" for ClusterEnvironment "worker" exists
         And On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
@@ -108,9 +108,9 @@ Feature: Claim for specific cluster
     Scenario: Application Namespace does not exist
 
         Given Primaza Cluster "main" is running
-        And Worker Cluster "worker" for "main" is running
+        And Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And Clusters "main" and "worker" can communicate
-        And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
+        And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
         And On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1

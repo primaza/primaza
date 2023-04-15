@@ -2,9 +2,9 @@ Feature: Register a kubernetes cluster as Primaza Worker Cluster
 
     Scenario: Primaza Cluster can contact Worker cluster, authentication is successful
         Given Primaza Cluster "main" is running
-        And   Worker Cluster "worker" for "main" is running
+        And   Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And   Clusters "main" and "worker" can communicate
-        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
+        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
         When On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
@@ -23,7 +23,7 @@ Feature: Register a kubernetes cluster as Primaza Worker Cluster
 
     Scenario: Primaza Cluster can contact Worker cluster, but ClusterContext secret is missing
         Given Primaza Cluster "main" is running
-        And   Worker Cluster "worker" for "main" is running
+        And   Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And   Clusters "main" and "worker" can communicate
         When  On Primaza Cluster "main", Resource is created
         """
@@ -61,9 +61,9 @@ Feature: Register a kubernetes cluster as Primaza Worker Cluster
 
     Scenario: ServiceCatalog is created
         Given Primaza Cluster "main" is running
-        And Worker Cluster "worker" for "main" is running
+        And Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And Clusters "main" and "worker" can communicate
-        And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
+        And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
         When On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1

@@ -2,11 +2,9 @@ import base64
 import os
 import polling2
 import tempfile
-import time
 import yaml
 from behave import given, step
 from typing import Dict
-from datetime import datetime, timezone, timedelta
 from kubernetes import client
 from kubernetes.client.rest import ApiException
 from steps.command import Command
@@ -17,7 +15,7 @@ class WorkerCluster(Cluster):
     """
     Base class for instances of Worker clusters.
     Implements functionalities for configuration of kubernetes clusters that will act as Primaza workers,
-    like CertificateSigningRequest approval and Primaza CRD installation.
+    like Service Account management, and Primaza CRD installation.
     """
 
     def __init__(self, cluster_provisioner: str, cluster_name: str):
@@ -64,98 +62,102 @@ class WorkerCluster(Cluster):
             print(out)
             assert err == 0, f"error installing {component}'s manifests"
 
-    def create_primaza_user(self, csr_pem: bytes, timeout: int = 60):
+    def create_primaza_user(self, tenant: str, cluster_environment: str, timeout: int = 60):
         """
-        Creates a CertificateSigningRequest for user primaza, approves it,
-        and creates the needed roles and role bindings.
+        Creates a ServiceAccount for `tenant` and `cluster_environment`,
+        the secret with the JWT token, and creates the needed roles and role bindings.
+
+        This operation is usually performed via `primazactl`.
         """
-        csr = "primaza"
+        sa_name = f"primaza-{tenant}-{cluster_environment}"
+        sa_ns = "kube-system"
         api_client = self.get_api_client()
-        certs = client.CertificatesV1Api(api_client)
+        corev1 = client.CoreV1Api(api_client)
 
-        # Check if CertificateSigningRequest has yet been created and approved
-        try:
-            s = certs.read_certificate_signing_request_status(name=csr)
-            if s == "Approved":
-                print(f"cluster '{self.cluster_name}' already has an approved CertificateSigningRequest '{csr}'")
-                return
-        except ApiException as e:
-            if e.reason != "Not Found":
-                raise e
+        body = client.V1ServiceAccount(metadata=client.V1ObjectMeta(name=sa_name))
+        sa = corev1.create_namespaced_service_account(namespace=sa_ns, body=body)
 
-        # Create CertificateSigningRequest
-        v1csr = client.V1CertificateSigningRequest(
-            metadata=client.V1ObjectMeta(name="primaza"),
-            spec=client.V1CertificateSigningRequestSpec(
-                signer_name="kubernetes.io/kube-apiserver-client",
-                request=base64.b64encode(csr_pem).decode("utf-8"),
-                expiration_seconds=86400,
-                usages=["client auth"]))
-        certs.create_certificate_signing_request(v1csr)
+        sec_name = f"tkn-pmz-{tenant}-{cluster_environment}"
+        tkn = client.V1Secret(
+            metadata=client.V1ObjectMeta(
+                name=sec_name,
+                annotations={
+                    "kubernetes.io/service-account.name": sa.metadata.name,
+                },
+                owner_references=[
+                    client.V1OwnerReference(
+                        api_version=sa.api_version,
+                        kind=sa.kind,
+                        name=sa.metadata.name,
+                        uid=sa.metadata.uid),
+                ]),
+            type="kubernetes.io/service-account-token")
 
-        # Approve CertificateSigningRequest
-        v1csr = certs.read_certificate_signing_request(name=csr)
-        approval_condition = client.V1CertificateSigningRequestCondition(
-            last_update_time=datetime.now(timezone.utc).astimezone(),
-            message='This certificate was approved by Acceptance tests',
-            reason='Acceptance tests',
-            type='Approved',
-            status='True')
-        v1csr.status.conditions = [approval_condition]
-        certs.replace_certificate_signing_request_approval(name="primaza", body=v1csr)
+        corev1.create_namespaced_secret(namespace=sa_ns, body=tkn)
+        polling2.poll(
+            target=lambda: corev1.read_namespaced_secret(name=sec_name, namespace=sa_ns),
+            check_success=lambda s: s is not None and s.data is not None and "token" in s.data,
+            step=1,
+            timeout=timeout)
 
-        # Configure primaza user permissions
-        self.__configure_primaza_user_permissions()
-
-        # Wait for certificate emission
-        tend = datetime.now() + timedelta(seconds=timeout)
-        while datetime.now() < tend:
-            v1csr = certs.read_certificate_signing_request(name=csr)
-            status = v1csr.status
-            if hasattr(status, 'certificate') and status.certificate is not None:
-                print(f"CertificateSignignRequest '{csr}' certificate is ready")
-                return
-            print(f"CertificateSignignRequest '{csr}' certificate is not ready")
-            time.sleep(5)
-        assert False, f"Timed-out waiting CertificateSignignRequest '{csr}' certificate to become ready"
-
-    def create_application_namespace(self, namespace: str):
+    def create_application_namespace(self, namespace: str, tenant: str, cluster_environment: str):
         api_client = self.get_api_client()
         corev1 = client.CoreV1Api(api_client)
 
         self.install_agentapp_crd()
 
         # create application namespace
-        ns = client.V1Namespace(metadata=client.V1ObjectMeta(name=namespace))
-        corev1.create_namespace(ns)
+        try:
+            ns = client.V1Namespace(metadata=client.V1ObjectMeta(name=namespace))
+            corev1.create_namespace(ns)
+        except ApiException as e:
+            if e.reason != "Conflict":
+                raise e
 
         self.__create_application_agent_identity(namespace)
-        self.__allow_primaza_access_to_namespace(namespace)
+        self.__allow_primaza_access_to_namespace(namespace, "app", tenant, cluster_environment)
 
-    def create_service_namespace(self, namespace: str):
+    def create_service_namespace(self, namespace: str, tenant: str, cluster_environment: str):
         api_client = self.get_api_client()
         corev1 = client.CoreV1Api(api_client)
 
         self.install_agentsvc_crd()
 
         # create service namespace
-        ns = client.V1Namespace(metadata=client.V1ObjectMeta(name=namespace))
-        corev1.create_namespace(ns)
+        try:
+            ns = client.V1Namespace(metadata=client.V1ObjectMeta(name=namespace))
+            corev1.create_namespace(ns)
+        except ApiException as e:
+            if e.reason != "Conflict":
+                raise e
 
         self.__create_service_agent_identity(namespace)
-        self.__allow_primaza_access_to_namespace(namespace)
+        self.__allow_primaza_access_to_namespace(namespace, "svc", tenant, cluster_environment)
 
-    def __allow_primaza_access_to_namespace(self, namespace: str):
+    def __allow_primaza_access_to_namespace(self, namespace: str, nstype: str, tenant: str, cluster_environment: str):
         api_client = self.get_api_client()
         rbacv1 = client.RbacAuthorizationV1Api(api_client)
 
+        sa_name = f"primaza-{tenant}-{cluster_environment}"
+        sa_namespace = "kube-system"
+        role_name = f"primaza:controlplane:{nstype}"
+        pmz_rules = [client.V1PolicyRule(
+            api_groups=["primaza.io"],
+            resources=["serviceclasses"] if nstype == "svc" else ["servicebindings", "servicecatalogs"],
+            verbs=["get", "list", "watch", "create", "update", "patch", "delete"])]
+
         r = client.V1Role(
-            metadata=client.V1ObjectMeta(name="primaza-role", namespace=namespace),
+            metadata=client.V1ObjectMeta(name=role_name, namespace=namespace),
             rules=[
                 client.V1PolicyRule(
                     api_groups=[""],
-                    resources=["services"],
-                    verbs=["get", "list", "watch", "create", "update", "patch", "delete"]),
+                    resources=["secrets"],
+                    verbs=["create"]),
+                client.V1PolicyRule(
+                    api_groups=[""],
+                    resources=["secrets"],
+                    verbs=["update", "patch"],
+                    resource_names=[f"kubeconfig-primaza-{nstype}"]),
                 client.V1PolicyRule(
                     api_groups=["apps"],
                     resources=["deployments"],
@@ -164,26 +166,23 @@ class WorkerCluster(Cluster):
                     api_groups=["apps"],
                     resources=["deployments"],
                     verbs=["delete"],
-                    resource_names=["primaza-app-agent", "primaza-svc-agent"]),
-                client.V1PolicyRule(
-                    api_groups=["primaza.io"],
-                    resources=["servicebindings", "serviceclasses", "servicecatalogs"],
-                    verbs=["get", "list", "watch", "create", "update", "patch", "delete"])
-            ])
+                    resource_names=[f"primaza-{nstype}-agent"]),
+            ] + pmz_rules)
         rbacv1.create_namespaced_role(namespace, r)
 
         # bind role to service account
         rb = client.V1RoleBinding(
-            metadata=client.V1ObjectMeta(name="primaza-rolebinding", namespace=namespace),
+            metadata=client.V1ObjectMeta(name=role_name, namespace=namespace),
             role_ref=client.V1RoleRef(
                 api_group="rbac.authorization.k8s.io",
                 kind="Role",
-                name="primaza-role"),
+                name=role_name),
             subjects=[
                 client.V1Subject(
                     api_group="",
-                    kind="User",
-                    name="primaza")
+                    kind="ServiceAccount",
+                    name=sa_name,
+                    namespace=sa_namespace),
             ])
         rbacv1.create_namespaced_role_binding(namespace=namespace, body=rb)
 
@@ -211,92 +210,34 @@ class WorkerCluster(Cluster):
             print(out)
             assert err == 0, f"error deploying {component}'s rbac manifests"
 
-    def __configure_primaza_user_permissions(self):
-        api_client = self.get_api_client()
-        rbac = client.RbacAuthorizationV1Api(api_client)
-        try:
-            rbac.read_cluster_role_binding(name="primaza-primaza")
-            return
-        except ApiException as e:
-            if e.reason != "Not Found":
-                raise e
+    def get_primaza_sa_name(self, tenant: str, cluster_environment: str) -> str:
+        user = f"primaza-{tenant}-{cluster_environment}"
+        return user
 
-        role = client.V1ClusterRole(
-            metadata=client.V1ObjectMeta(name="primaza"),
-            rules=[
-                client.V1PolicyRule(
-                    api_groups=[""],
-                    resources=["pods"],
-                    verbs=["list", "get", "create"]),
-                client.V1PolicyRule(
-                    api_groups=[""],
-                    resources=["secrets"],
-                    verbs=["create"]),
-                client.V1PolicyRule(
-                    api_groups=[""],
-                    resources=["secrets"],
-                    verbs=["patch", "delete", "update"],
-                    resource_names=["kubeconfig-primaza-svc", "kubeconfig-primaza-app"]),
-                client.V1PolicyRule(
-                    api_groups=["primaza.io/v1alpha1"],
-                    resources=["servicebindings"],
-                    verbs=["create"]),
-            ])
-        rbac.create_cluster_role(role)
+    def get_primaza_sa_kubeconfig(self, tenant: str, cluster_environment: str) -> Dict:
+        sec_name = f"tkn-pmz-{tenant}-{cluster_environment}"
+        tkn = self.get_secret_token("kube-system", sec_name)
+        user = self.get_primaza_sa_name(tenant, cluster_environment)
 
-        role_binding = client.V1ClusterRoleBinding(
-            metadata=client.V1ObjectMeta(name="primaza-primaza"),
-            role_ref=client.V1RoleRef(api_group="rbac.authorization.k8s.io", kind="ClusterRole", name="primaza"),
-            subjects=[
-                client.V1Subject(api_group="rbac.authorization.k8s.io", kind="User", name="primaza"),
-            ])
-        rbac.create_cluster_role_binding(role_binding)
-
-    def get_csr_kubeconfig(self, certificate_key: str, csr: str) -> Dict:
-        """
-        Generates the kubeconfig for the CertificateSignignRequest `csr`.
-        The key used when creating the CSR is also needed.
-        """
-
-        # retrieve primaza's certificate
-        api_client = self.get_api_client()
-        certs = client.CertificatesV1Api(api_client)
-        v1csr = certs.read_certificate_signing_request(name=csr)
-        certificate = v1csr.status.certificate
-
-        # building kubeconfig
         kubeconfig = self.cluster_provisioner.kubeconfig(internal=True)
         kcd = yaml.safe_load(kubeconfig)
-        kcd["contexts"][0]["context"]["user"] = csr
-        kcd["users"][0]["name"] = csr
-        kcd["users"][0]["user"]["client-key-data"] = base64.b64encode(certificate_key.encode("utf-8")).decode("utf-8")
-        kcd["users"][0]["user"]["client-certificate-data"] = certificate  # yet in base64 encoding
+        kcd["contexts"][0]["context"]["user"] = user
+        kcd["users"][0]["name"] = user
+        kcd["users"][0]["user"]["token"] = base64.b64decode(tkn.encode("utf-8")).decode("utf-8")
+        del kcd["users"][0]["user"]["client-key-data"]
+        del kcd["users"][0]["user"]["client-certificate-data"]
 
         return kcd
 
-    def get_primaza_user_kubeconfig(self, certificate_key: str) -> Dict:
+    def get_primaza_sa_kubeconfig_yaml(self, tenant: str, cluster_environment: str) -> str:
         """
-        Generates the kubeconfig for the CertificateSignignRequest "primaza".
-        The key used when creating the CSR is also needed.
-        """
-        return self.get_csr_kubeconfig(certificate_key, "primaza")
-
-    def get_user_kubeconfig_yaml(self, certificate_key: str, csr: str) -> str:
-        """
-        Generates the kubeconfig for the CertificateSignignRequest `csr`.
+        Generates the kubeconfig for the Service Account for tenant `tenant`
+        and ClusterEnvironment `cluster_environment`.
         The key used when creating the CSR is also needed.
         Returns the YAML string
         """
-        kubeconfig = self.get_csr_kubeconfig(certificate_key, csr)
+        kubeconfig = self.get_primaza_sa_kubeconfig(tenant, cluster_environment)
         return yaml.safe_dump(kubeconfig)
-
-    def get_primaza_user_kubeconfig_yaml(self, certificate_key: str) -> str:
-        """
-        Generates the kubeconfig for the CertificateSignignRequest "primaza".
-        The key used when creating the CSR is also needed.
-        Returns the YAML string
-        """
-        return self.get_user_kubeconfig_yaml(certificate_key, "primaza")
 
     def is_app_agent_deployed(self, namespace: str) -> bool:
         api_client = self.get_api_client()
@@ -348,21 +289,28 @@ class WorkerCluster(Cluster):
 
 
 # Behave steps
-@given('Worker Cluster "{cluster_name}" for "{primaza_cluster_name}" is running')
-@given('Worker Cluster "{cluster_name}" for "{primaza_cluster_name}" is running with kubernetes version "{version}"')
-def ensure_worker_cluster_running(context, cluster_name: str, primaza_cluster_name: str, version: str = None):
+@given('Worker Cluster "{cluster_name}" for ClusterEnvironment "{ce_name}" is running')
+@given('Worker Cluster "{cluster_name}" for tenant "{tenant}", and ClusterEnvironment "{ce_name}" is running')
+@given('Worker Cluster "{cluster_name}" for ClusterEnvironment "{ce_name}" is running with kubernetes version "{version}"')
+def ensure_worker_cluster_running_with_primaza(context, cluster_name: str, ce_name: str, version: str = None, tenant: str = "primaza-system"):
     worker_cluster = context.cluster_provider.create_worker_cluster(cluster_name, version)
     worker_cluster.start()
 
-    primaza_cluster = context.cluster_provider.get_primaza_cluster(primaza_cluster_name)
-    p_csr_pem = primaza_cluster.create_certificate_signing_request_pem()
-    worker_cluster.create_primaza_user(p_csr_pem)
+    worker_cluster.create_primaza_user(tenant=tenant, cluster_environment=ce_name)
 
 
-@step(u'On Worker Cluster "{cluster_name}", application namespace "{namespace}" exists')
-def ensure_application_namespace_exists(context, cluster_name: str, namespace: str):
+@given('On Worker Cluster "{cluster_name}", a ServiceAccount for ClusterEnvironment "{cluster_environment}" exists')
+@given('On Worker Cluster "{cluster_name}", a ServiceAccount for tenant "{tenant}" and ClusterEnvironment "{cluster_environment}" exists')
+def on_worker_ensure_primaza_user(context, cluster_name: str, cluster_environment: str, version: str = None, tenant: str = "primaza-system"):
+    worker_cluster = context.cluster_provider.create_worker_cluster(cluster_name, version)
+    worker_cluster.create_primaza_user(tenant=tenant, cluster_environment=cluster_environment)
+
+
+@step(u'On Worker Cluster "{cluster_name}", application namespace "{namespace}" for ClusterEnvironment "{cluster_environment}" exists')
+def ensure_application_namespace_exists(
+        context, cluster_name: str, namespace: str, cluster_environment: str, tenant: str = "primaza-system"):
     worker = context.cluster_provider.get_worker_cluster(cluster_name)  # type: WorkerCluster
-    worker.create_application_namespace(namespace)
+    worker.create_application_namespace(namespace, tenant, cluster_environment)
 
 
 @step(u'On Worker Cluster "{cluster_name}", Primaza Application Agent is deployed into namespace "{namespace}"')
@@ -401,10 +349,10 @@ def application_agent_does_not_exist(context, cluster_name: str, namespace: str)
         timeout=30)
 
 
-@given(u'On Worker Cluster "{cluster_name}", service namespace "{namespace}" exists')
-def ensure_service_namespace_exists(context, cluster_name: str, namespace: str):
+@given(u'On Worker Cluster "{cluster_name}", service namespace "{namespace}" for ClusterEnvironment "{cluster_environment}" exists')
+def ensure_service_namespace_exists(context, cluster_name: str, namespace: str, cluster_environment: str, tenant: str = "primaza-system"):
     worker = context.cluster_provider.get_worker_cluster(cluster_name)  # type: WorkerCluster
-    worker.create_service_namespace(namespace)
+    worker.create_service_namespace(namespace, tenant, cluster_environment)
 
 
 @step(u'On Worker Cluster "{cluster_name}", Primaza Service Agent is deployed into namespace "{namespace}"')

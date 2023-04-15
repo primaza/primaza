@@ -3,9 +3,9 @@ Feature: Initialize ServiceCatalog
 
     Background:
         Given Primaza Cluster "main" is running
-        And  Worker Cluster "worker" for "main" is running
+        And  Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And  Clusters "main" and "worker" can communicate
-        And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
+        And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
 
     Scenario: Empty Service Catalog
         When  On Primaza Cluster "main", Resource is created
