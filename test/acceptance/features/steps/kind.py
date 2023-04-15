@@ -126,8 +126,13 @@ class PrimazaKind(PrimazaCluster):
         assert err == 0, f"error loading image {image} into kind cluster {self.cluster_name}"
 
     def __deploy_primaza(self, kubeconfig_path: str, img: str, namespace: str = "primaza-system"):
+        cmd = f"docker container inspect {self.cluster_name}-control-plane --format {{{{.NetworkSettings.Networks.kind.IPAddress}}}}"
+        ip, err = Command().run(cmd)
+        assert err == 0, f"error getting internal IP for kind cluster {self.cluster_name}"
+
         out, err = self.__build_install_base_cmd(kubeconfig_path, img) \
-            .setenv("NAMESPACE", namespace).run("make primaza deploy")
+            .setenv("NAMESPACE", namespace) \
+            .run("make primaza deploy")
         print(out)
         assert err == 0, f"error deploying Primaza's controller into cluster {self.cluster_name}"
 
@@ -192,14 +197,13 @@ class WorkerKind(WorkerCluster):
     def __init__(self, cluster_name, version=None):
         super().__init__(KindClusterProvisioner(cluster_name, version), cluster_name)
 
-    def create_application_namespace(self, namespace: str):
+    def create_application_namespace(self, namespace: str, tenant: str, cluster_environment: str, kubeconfig: str):
         self.configure_application_cluster()
-        super().create_application_namespace(namespace)
+        super().create_application_namespace(namespace, tenant, cluster_environment, kubeconfig)
 
-    def create_service_namespace(self, namespace: str):
-        print("creating service namespace")
+    def create_service_namespace(self, namespace: str, tenant: str, cluster_environment: str, kubeconfig: str):
         self.configure_service_cluster()
-        super().create_service_namespace(namespace)
+        super().create_service_namespace(namespace, tenant, cluster_environment, kubeconfig)
 
     def configure_application_cluster(self):
         if self.__agentapp_loaded:

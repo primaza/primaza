@@ -49,31 +49,30 @@ func DeleteServiceAgent(ctx context.Context, cli *kubernetes.Clientset, namespac
 }
 
 func PushServiceAgent(ctx context.Context, cli *kubernetes.Clientset, namespace string) error {
-	if _, err := createAgentSvcDeployment(ctx, cli, namespace); err != nil && !errors.IsAlreadyExists(err) {
+	if err := createAgentSvcDeployment(ctx, cli, namespace); err != nil && !errors.IsAlreadyExists(err) {
 		return err
 	}
 
 	return nil
 }
 
-func createAgentSvcDeployment(ctx context.Context, cli *kubernetes.Clientset, namespace string) (*appsv1.Deployment, error) {
+func createAgentSvcDeployment(ctx context.Context, cli *kubernetes.Clientset, namespace string) error {
 	s := runtime.NewScheme()
 	if err := appsv1.AddToScheme(s); err != nil {
-		return nil, fmt.Errorf("decoder error: %w", err)
+		return fmt.Errorf("decoder error: %w", err)
 	}
 	decode := serializer.NewCodecFactory(s).UniversalDeserializer().Decode
 
 	obj, _, err := decode([]byte(agentSvcDeployment), nil, nil)
 	if err != nil {
-		return nil, fmt.Errorf("decoder error: %w", err)
+		return fmt.Errorf("decoder error: %w", err)
 	}
 
 	dep := obj.(*appsv1.Deployment)
-	r, err := cli.AppsV1().Deployments(namespace).Create(ctx, dep, metav1.CreateOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("error creating deployment: %w", err)
+	if _, err := cli.AppsV1().Deployments(namespace).Create(ctx, dep, metav1.CreateOptions{}); err != nil {
+		return fmt.Errorf("error creating deployment: %w", err)
 	}
-	return r, nil
+	return nil
 }
 
 const agentSvcDeployment string = `

@@ -2,10 +2,10 @@ Feature: Application Namespaces initialization: Service Bindings
 
     Background:
         Given Primaza Cluster "main" is running
-        And   Worker Cluster "worker" for "main" is running
+        And   Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And   Clusters "main" and "worker" can communicate
-        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
-        And   On Worker Cluster "worker", application namespace "applications" exists
+        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
+        And   On Worker Cluster "worker", application namespace "applications" for ClusterEnvironment "worker" exists
 
     Scenario: Service Bindings are pushed to new Cluster Environments' application namespaces
         Given On Primaza Cluster "main", Resource is created

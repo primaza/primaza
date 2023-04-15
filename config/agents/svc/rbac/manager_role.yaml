@@ -41,3 +41,11 @@ rules:
   - get
   - list
   - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments/finalizers
+  verbs:
+  - update
+  resourceNames:
+  - primaza-svc-agent

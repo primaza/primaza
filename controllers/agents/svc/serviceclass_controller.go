@@ -42,6 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/primaza/primaza/api/v1alpha1"
+	"github.com/primaza/primaza/pkg/primaza/constants"
 	"github.com/primaza/primaza/pkg/primaza/workercluster"
 )
 
@@ -124,6 +125,7 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, err
 	}
 	// then, write all the registered services up to the primaza cluster
+	errs := []error{}
 	if serviceClass.DeletionTimestamp.IsZero() {
 		handler := func(remote_client client.Client, rs v1alpha1.RegisteredService, secret *v1.Secret) []error {
 			spec := rs.Spec
@@ -160,6 +162,7 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		if err != nil {
 			reconcileLog.Error(err, "Failed to write registered services")
 			// fallthrough: we still want to write the service class status field
+			errs = append(errs, err)
 		}
 	} else if controllerutil.ContainsFinalizer(&serviceClass, finalizer) {
 		handler := func(remote_client client.Client, rs v1alpha1.RegisteredService, secret *v1.Secret) []error {
@@ -200,9 +203,9 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	err = r.Client.Status().Update(ctx, &serviceClass)
 	if err != nil {
 		reconcileLog.Error(err, "Failed to write service class status")
-		return ctrl.Result{}, err
+		errs = append(errs, err)
 	}
-	return ctrl.Result{}, nil
+	return ctrl.Result{}, errors.Join(errs...)
 }
 
 func (r *ServiceClassReconciler) GetResources(ctx context.Context, serviceClass *v1alpha1.ServiceClass) (*unstructured.UnstructuredList, error) {
@@ -237,7 +240,7 @@ func (r *ServiceClassReconciler) HandleRegisteredServices(ctx context.Context, s
 		return err
 	}
 
-	config, remote_namespace, err := workercluster.GetPrimazaKubeconfig(ctx, serviceClass.Namespace, r.Client)
+	config, remote_namespace, err := workercluster.GetPrimazaKubeconfig(ctx, serviceClass.Namespace, r.Client, constants.ServiceAgentKubeconfigSecretName)
 	if err != nil {
 		return err
 	}
@@ -510,7 +513,7 @@ func (r *ServiceClassReconciler) CreateOrUpdateRegisteredService(ctx context.Con
 	if mappings, err = ServiceEndpointDefinitionMapping(serviceClass); err != nil {
 		return err
 	}
-	config, remote_namespace, err := workercluster.GetPrimazaKubeconfig(ctx, serviceClass.Namespace, r.Client)
+	config, remote_namespace, err := workercluster.GetPrimazaKubeconfig(ctx, serviceClass.Namespace, r.Client, constants.ServiceAgentKubeconfigSecretName)
 	if err != nil {
 		return err
 	}
@@ -551,7 +554,7 @@ func (r *ServiceClassReconciler) CreateOrUpdateRegisteredService(ctx context.Con
 
 func (r *ServiceClassReconciler) DeleteRegisteredService(ctx context.Context, serviceClass v1alpha1.ServiceClass) error {
 	l := log.FromContext(ctx)
-	config, _, err := workercluster.GetPrimazaKubeconfig(ctx, serviceClass.Namespace, r.Client)
+	config, _, err := workercluster.GetPrimazaKubeconfig(ctx, serviceClass.Namespace, r.Client, constants.ServiceAgentKubeconfigSecretName)
 	if err != nil {
 		return err
 	}

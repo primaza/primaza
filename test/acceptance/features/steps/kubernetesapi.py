@@ -136,12 +136,12 @@ def on_primaza_cluster_claim_registered_service(context, primaza_cluster, primaz
     api_client = context.cluster_provider.get_primaza_cluster(primaza_cluster).get_api_client()
     cobj = client.CustomObjectsApi(api_client)
     cobj.patch_namespaced_custom_object_status(
-            group="primaza.io",
-            version="v1alpha1",
-            namespace="primaza-system",
-            plural="registeredservices",
-            name=primaza_rs,
-            body={"status": {"state": state}})
+        group="primaza.io",
+        version="v1alpha1",
+        namespace="primaza-system",
+        plural="registeredservices",
+        name=primaza_rs,
+        body={"status": {"state": state}})
 
 
 @step(u'On Primaza Cluster "{cluster_name}", ServiceCatalog "{catalog_name}" will contain RegisteredService "{rs_name}"')
@@ -179,16 +179,16 @@ def on_primaza_cluster_check_service_catalog_reduced(context, cluster_name, cata
 @step(u'On Primaza Cluster "{cluster_name}", ServiceBinding "{name}" on namespace "{namespace}" state will eventually move to "{state}"')
 def on_primaza_cluster_check_service_binding_status(context, cluster_name, name, namespace, state, timeout=120):
     cluster = context.cluster_provider.get_primaza_cluster(cluster_name)
-    return on_cluster_cluster_check_service_binding_status(context, cluster, name, namespace, state, timeout)
+    return on_cluster_cluster_check_service_binding_status(cluster, name, namespace, state, timeout)
 
 
 @step(u'On Worker Cluster "{cluster_name}", ServiceBinding "{name}" on namespace "{namespace}" state will eventually move to "{state}"')
 def on_worker_cluster_check_service_binding_status(context, cluster_name, name, namespace, state, timeout=60):
     cluster = context.cluster_provider.get_worker_cluster(cluster_name)
-    return on_cluster_cluster_check_service_binding_status(context, cluster, name, namespace, state, timeout)
+    return on_cluster_cluster_check_service_binding_status(cluster, name, namespace, state, timeout)
 
 
-def on_cluster_cluster_check_service_binding_status(context, cluster, name, namespace, state, timeout):
+def on_cluster_cluster_check_service_binding_status(cluster, name, namespace, state, timeout):
     polling2.poll(
         target=lambda: cluster.read_primaza_custom_object(
             version="v1alpha1",
@@ -196,6 +196,7 @@ def on_cluster_cluster_check_service_binding_status(context, cluster, name, name
             plural="servicebindings",
             name=name).get("status", {}).get("state", None),
         check_success=lambda x: x is not None and x == state,
+        ignore_exceptions=(ApiException,),
         step=1,
         timeout=timeout)
 
@@ -281,13 +282,12 @@ def on_primaza_cluster_check_service_catalog_exists(context, cluster_name, catal
             namespace="primaza-system",
             plural="servicecatalogs",
             name=catalog),
-        check_success=lambda x: x is not None,
         step=1,
         timeout=60)
 
 
-@step(u'On Primaza Cluster "{cluster_name}", ServiceCatalog "{catalog}" does not exist')
-def on_primaza_cluster_check_service_catalog_does_not_exists(context, cluster_name, catalog):
+@step(u'On Primaza Cluster "{cluster_name}", ServiceCatalog "{catalog_name}" does not exist')
+def on_primaza_cluster_check_service_catalog_does_not_exists(context, cluster_name, catalog_name):
     cluster = context.cluster_provider.get_primaza_cluster(cluster_name)
 
     polling2.poll(
@@ -295,7 +295,7 @@ def on_primaza_cluster_check_service_catalog_does_not_exists(context, cluster_na
             version="v1alpha1",
             namespace="primaza-system",
             plural="servicecatalogs",
-            name=catalog),
+            name=catalog_name),
         step=1,
         timeout=60)
 
