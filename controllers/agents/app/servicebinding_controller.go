@@ -70,6 +70,7 @@ const (
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
 func (r *ServiceBindingReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	l := log.FromContext(ctx)
+	l.Info("Reconciling service binding in agent app", "namespace", req.Namespace, "name", req.Name)
 
 	l.Info("starting reconciliation")
 
