@@ -46,48 +46,6 @@ class PrimazaCluster(Cluster):
             string_data={"kubeconfig": kubeconfig})
         corev1.create_namespaced_secret(namespace=namespace, body=secret)
 
-    def install_primaza(self):
-        """
-        Installs Primaza on the cluster. This method MUST be implemented by inheriting classes.
-        """
-        pass
-
-    def read_custom_resource_status(self, group: str, version: str, plural: str, name: str) -> str:
-        api_client = self.get_api_client()
-        namespace = self.primaza_namespace
-        api_instance = client.CustomObjectsApi(api_client)
-
-        try:
-            api_response = api_instance.get_namespaced_custom_object_status(group, version, namespace, plural, name)
-            return api_response
-        except ApiException as e:
-            print("Exception when calling CustomObjectsApi->get_namespaced_custom_object_status: %s\n" % e)
-            raise e
-
-    def is_app_agent_deployed(self, namespace: str) -> bool:
-        api_client = self.get_api_client()
-        appsv1 = client.AppsV1Api(api_client)
-
-        appsv1.read_namespaced_deployment(name="primaza-app-agent", namespace=namespace)
-        return True
-
-    def is_svc_agent_deployed(self, namespace: str) -> bool:
-        api_client = self.get_api_client()
-        appsv1 = client.AppsV1Api(api_client)
-
-        appsv1.read_namespaced_deployment(name="primaza-svc-agent", namespace=namespace)
-        return True
-
-    def deploy_agentapp(self, namespace: str):
-        """
-        Deploys Application Agent into a cluster's namespace
-        """
-
-    def deploy_agentsvc(self, namespace: str):
-        """
-        Deploys the Service Agent into a cluster's namespace
-        """
-
 
 # Behave steps
 @given('Primaza Cluster "{cluster_name}" is running')
@@ -129,12 +87,12 @@ def ensure_primaza_cluster_has_clustercontext(context, primaza_cluster_name: str
 
 
 @step(u'On Primaza Cluster "{primaza_cluster_name}", the status of ServiceClaim "{service_claim_name}" is "{status}"')
-def ensure_status_of_service_claim(context, primaza_cluster_name: str, service_claim_name: str, status: str):
+def ensure_status_of_service_claim(context, primaza_cluster_name: str, service_claim_name: str, status: str, tenant: str = "primaza-system"):
     primaza_cluster = context.cluster_provider.get_primaza_cluster(primaza_cluster_name)
     group = "primaza.io"
     version = "v1alpha1"
     plural = "serviceclaims"
-    response = primaza_cluster.read_custom_resource_status(group, version, plural, service_claim_name)
+    response = primaza_cluster.read_custom_resource_status(group, version, plural, service_claim_name, tenant)
     assert response["status"]["state"] == status
 
 
@@ -165,3 +123,10 @@ def application_agent_is_deployed(context, cluster_name: str, namespace: str):
         target=lambda: primaza_cluster.is_app_agent_deployed(namespace),
         step=1,
         timeout=30)
+
+
+@step(u'On Primaza Cluster "{cluster_name}", application namespace "{namespace}" for ClusterEnvironment "{cluster_environment}" exists')
+def ensure_application_namespace_exists(
+        context, cluster_name: str, namespace: str, cluster_environment: str, tenant: str = "primaza-system"):
+    primaza = context.cluster_provider.get_primaza_cluster(cluster_name)  # type: PrimazaCluster
+    primaza.create_application_namespace(namespace, tenant, cluster_environment)

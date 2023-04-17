@@ -3,7 +3,7 @@ Feature: Bind application to the secret pushed by agent app controller
     Scenario: Service binding projection of a secret into an application with direct reference
 
         Given Primaza Cluster "main" is running
-        And   On Primaza Cluster "main", namespace "applications" exists
+        And   On Primaza Cluster "main", application namespace "applications" for ClusterEnvironment "worker" exists
         And   On Primaza Cluster "main", Primaza Application Agent is deployed into namespace "applications"
         And   On Primaza Cluster "main", test application "newapp" is running in namespace "applications"
         And   On Primaza Cluster "main", Resource is created
