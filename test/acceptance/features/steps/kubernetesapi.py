@@ -317,6 +317,26 @@ def on_primaza_cluster_check_service_catalog_exists(context, cluster, catalog):
         timeout=60)
 
 
+@step(u'On Primaza Cluster "{cluster}", ServiceCatalog "{catalog}" does not exist')
+def on_primaza_cluster_check_service_catalog_does_not_exists(context, cluster, catalog):
+    api_client = context.cluster_provider.get_primaza_cluster(cluster).get_api_client()
+    cobj = client.CustomObjectsApi(api_client)
+    try:
+        polling2.poll(
+            target=lambda: cobj.get_namespaced_custom_object(
+                group="primaza.io",
+                version="v1alpha1",
+                namespace="primaza-system",
+                plural="servicecatalogs",
+                name=catalog),
+            check_success=lambda x: x is not None,
+            step=5,
+            timeout=60)
+    except Exception:
+        return
+    raise Exception(f"not expecting service catalog '{catalog}' in primaza")
+
+
 @then(u'On Primaza Cluster "{cluster}", ServiceCatalog "{catalog_name}" is empty')
 def on_primaza_cluster_check_service_catalog_empty(context, cluster, catalog_name):
     api_client = context.cluster_provider.get_primaza_cluster(cluster).get_api_client()
