@@ -20,4 +20,9 @@ const (
 	PrimazaNamespace               = "primaza-system"
 	ServiceAgentDeploymentName     = "primaza-svc-agent"
 	ApplicationAgentDeploymentName = "primaza-app-agent"
+	// This is the name of the secret that contains the information the service
+	// agents needs to write back registered services up to primaza.  It contains
+	// two keys: `kubeconfig`, a serialized kubeconfig for the upstream kubeconfig
+	// cluster, and `namespace`, the namespace to write registered services to
+	PRIMAZA_CONTROLLER_REFERENCE = "primaza-kubeconfig"
 )

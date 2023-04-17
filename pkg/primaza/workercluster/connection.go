@@ -21,9 +21,13 @@ import (
 	"fmt"
 
 	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
+	"github.com/primaza/primaza/pkg/primaza/constants"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type ConnectionStatusReason string
@@ -64,6 +68,29 @@ func TestConnection(ctx context.Context, cfg *rest.Config) ConnectionStatus {
 		Reason:  ConnectionSuccessful,
 		Message: fmt.Sprintf("successfully connected to target cluster: kubernetes version found %s", v),
 	}
+}
+
+func GetPrimazaKubeconfig(ctx context.Context, namespace string, cli client.Client) (*rest.Config, string, error) {
+	// TODO(sadlerap): can we use the functionality in GetClusterRESTConfig
+	// from pkg/primaza/clustercontext to do de-duplicate this?
+	s := v1.Secret{}
+	k := client.ObjectKey{Namespace: namespace, Name: constants.PRIMAZA_CONTROLLER_REFERENCE}
+	if err := cli.Get(ctx, k, &s); err != nil {
+		return nil, "", err
+	}
+	if _, found := s.Data["kubeconfig"]; !found {
+		return nil, "", fmt.Errorf("Field \"kubeconfig\" field in secret %s:%s does not exist", s.Name, s.Namespace)
+	}
+
+	if _, found := s.Data["namespace"]; !found {
+		return nil, "", fmt.Errorf("Field \"namespace\" field in secret %s:%s does not exist", s.Name, s.Namespace)
+	}
+
+	restConfig, err := clientcmd.RESTConfigFromKubeConfig(s.Data["kubeconfig"])
+	if err != nil {
+		return nil, "", err
+	}
+	return restConfig, string(s.Data["namespace"]), nil
 }
 
 func (c ConnectionStatus) Condition() metav1.Condition {
