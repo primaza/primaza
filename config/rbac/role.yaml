@@ -1,38 +1,5 @@
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  creationTimestamp: null
-  name: manager-role
-rules:
-- apiGroups:
-  - primaza.io.primaza.io
-  resources:
-  - servicecatalogs
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - primaza.io.primaza.io
-  resources:
-  - servicecatalogs/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - primaza.io.primaza.io
-  resources:
-  - servicecatalogs/status
-  verbs:
-  - get
-  - patch
-  - update
----
-apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   creationTimestamp: null
@@ -173,6 +140,32 @@ rules:
   - primaza.io
   resources:
   - serviceclasses/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - primaza.io.primaza.io
+  resources:
+  - servicecatalogs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - primaza.io.primaza.io
+  resources:
+  - servicecatalogs/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - primaza.io.primaza.io
+  resources:
+  - servicecatalogs/status
   verbs:
   - get
   - patch
