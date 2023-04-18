@@ -48,6 +48,8 @@ import (
 // cluster, and `namespace`, the namespace to write registered services to
 const PRIMAZA_CONTROLLER_REFERENCE string = "primaza-kubeconfig"
 
+const finalizer = "serviceclasses.primaza.io/finalizer"
+
 // ServiceClassReconciler reconciles a ServiceClass object
 type ServiceClassReconciler struct {
 	client.Client
@@ -56,7 +58,11 @@ type ServiceClassReconciler struct {
 	Mapper       meta.RESTMapper
 }
 
-const finalizer = "serviceclasses.primaza.io/finalizer"
+type SEDMapping struct {
+	key    string
+	path   *jsonpath.JSONPath
+	secret bool
+}
 
 func NewServiceClassReconciler(mgr ctrl.Manager) *ServiceClassReconciler {
 	return &ServiceClassReconciler{
@@ -106,8 +112,12 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	// then, write all the registered services up to the primaza cluster
 	if serviceClass.DeletionTimestamp.IsZero() {
-		handler := func(remote_client client.Client, rs v1alpha1.RegisteredService) error {
-			op, err := controllerutil.CreateOrUpdate(ctx, remote_client, &rs, func() error { return nil })
+		handler := func(remote_client client.Client, rs v1alpha1.RegisteredService, secret *v1.Secret) []error {
+			clone := &v1alpha1.RegisteredService{ObjectMeta: *rs.ObjectMeta.DeepCopy()}
+			op, err := controllerutil.CreateOrUpdate(ctx, remote_client, clone, func() error {
+				*clone = rs
+				return nil
+			})
 			if err != nil {
 				reconcileLog.Error(err, "Failed to create registered service",
 					"service", rs.Name,
@@ -115,7 +125,13 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			} else {
 				reconcileLog.Info("Wrote registered service", "service", rs.Name, "namespace", rs.Namespace, "operation", op)
 			}
-			return err
+            errs := []error{err}
+
+			if secret != nil {
+				_, err := controllerutil.CreateOrUpdate(ctx, remote_client, secret, func() error { return controllerutil.SetOwnerReference(clone, secret, remote_client.Scheme()) })
+				errs = append(errs, err)
+			}
+			return errs
 		}
 
 		// add a finalizer since we have deletion logic
@@ -130,15 +146,17 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			// fallthrough: we still want to write the service class status field
 		}
 	} else if controllerutil.ContainsFinalizer(&serviceClass, finalizer) {
-		handler := func(remote_client client.Client, rs v1alpha1.RegisteredService) error {
+		handler := func(remote_client client.Client, rs v1alpha1.RegisteredService, secret *v1.Secret) []error {
 			if err := remote_client.Delete(ctx, &rs); err != nil {
 				if apierrors.IsNotFound(err) {
 					// we tried to delete an object that doesn't exist, so
 					return nil
 				}
 				reconcileLog.Error(err, "Failed to delete registered service", "namespace", rs.Namespace)
+				return []error{err}
 			}
-			return err
+
+			return nil
 		}
 
 		err = r.HandleRegisteredServices(ctx, &serviceClass, *services, handler)
@@ -189,18 +207,22 @@ func (r *ServiceClassReconciler) GetResources(ctx context.Context, serviceClass 
 	return services, nil
 }
 
-type HandleFunc func(client.Client, v1alpha1.RegisteredService) error
+type HandleFunc func(client.Client, v1alpha1.RegisteredService, *v1.Secret) []error
 
 func (r *ServiceClassReconciler) HandleRegisteredServices(ctx context.Context, serviceClass *v1alpha1.ServiceClass, services unstructured.UnstructuredList, handleFunc HandleFunc) error {
 	l := log.FromContext(ctx)
-	mappings := map[string]*jsonpath.JSONPath{}
+	mappings := []SEDMapping{}
 	for _, mapping := range serviceClass.Spec.Resource.ServiceEndpointDefinitionMapping {
 		path := jsonpath.New("")
 		err := path.Parse(fmt.Sprintf("{%s}", mapping.JsonPath))
 		if err != nil {
 			return err
 		}
-		mappings[mapping.Name] = path
+		mappings = append(mappings, SEDMapping{
+			key:    mapping.Name,
+			path:   path,
+			secret: mapping.Secret,
+		})
 	}
 
 	config, remote_namespace, err := r.getPrimazaKubeconfig(ctx, serviceClass.Namespace)
@@ -218,11 +240,11 @@ func (r *ServiceClassReconciler) HandleRegisteredServices(ctx context.Context, s
 	} else if status.State == v1alpha1.ClusterEnvironmentStateOffline {
 		state = metav1.ConditionFalse
 	}
-    meta.SetStatusCondition(&serviceClass.Status.Conditions, metav1.Condition{
-		Type:               "Connection",
-		Message:            status.Message,
-		Reason:             string(status.Reason),
-		Status:             state,
+	meta.SetStatusCondition(&serviceClass.Status.Conditions, metav1.Condition{
+		Type:    "Connection",
+		Message: status.Message,
+		Reason:  string(status.Reason),
+		Status:  state,
 	})
 	if status.State == v1alpha1.ClusterEnvironmentStateOffline {
 		return fmt.Errorf("Failed to connect to cluster")
@@ -238,7 +260,7 @@ func (r *ServiceClassReconciler) HandleRegisteredServices(ctx context.Context, s
 
 	var errorList []error
 	for _, data := range services.Items {
-		sedMappings, err := LookupServiceEndpointDescriptor(mappings, data)
+		sedMappings, secret, err := LookupServiceEndpointDescriptor(mappings, data)
 		if err != nil {
 			l.Error(err, "Failed to lookup service endpoint descriptor values",
 				"name", data.GetName(),
@@ -266,33 +288,60 @@ func (r *ServiceClassReconciler) HandleRegisteredServices(ctx context.Context, s
 			}
 		}
 
-		if err = handleFunc(remote_client, rs); err != nil {
-			errorList = append(errorList, err)
+		if secret != nil {
+			secret.SetNamespace(remote_namespace)
+		}
+
+		// modify the registered service
+        if errs := handleFunc(remote_client, rs, secret); errs != nil {
+			errorList = append(errorList, errs...)
 		}
 	}
 
 	return errors.Join(errorList...)
 }
 
-func LookupServiceEndpointDescriptor(mappings map[string]*jsonpath.JSONPath, service unstructured.Unstructured) ([]v1alpha1.ServiceEndpointDefinitionItem, error) {
+func LookupServiceEndpointDescriptor(mappings []SEDMapping, service unstructured.Unstructured) ([]v1alpha1.ServiceEndpointDefinitionItem, *v1.Secret, error) {
 	var sedMappings []v1alpha1.ServiceEndpointDefinitionItem
-	for key, jsonPath := range mappings {
-		results, err := jsonPath.FindResults(service.Object)
+	var errorList []error
+	secret := &v1.Secret{StringData: map[string]string{}}
+	secret.SetName(fmt.Sprintf("%s-descriptor", service.GetName()))
+	for _, mapping := range mappings {
+		results, err := mapping.path.FindResults(service.Object)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		if len(results) == 1 && len(results[0]) == 1 {
-			value := fmt.Sprintf("%v", results[0][0])
-			sedMappings = append(sedMappings, v1alpha1.ServiceEndpointDefinitionItem{
-				Name:  key,
-				Value: value,
-			})
-		} else {
-			return nil, fmt.Errorf("jsonPath lookup into resource returned multiple results: %v", results)
+		if len(results) != 1 || len(results[0]) != 1 {
+			errorList = append(errorList, fmt.Errorf("jsonPath lookup into resource returned multiple results: %v", results))
+			continue
 		}
+
+		value := fmt.Sprintf("%v", results[0][0])
+		item := v1alpha1.ServiceEndpointDefinitionItem{
+			Name:  mapping.key,
+			Value: value,
+		}
+		if mapping.secret {
+			item = v1alpha1.ServiceEndpointDefinitionItem{
+				Name: mapping.key,
+				ValueFromSecret: &v1alpha1.ServiceEndpointDefinitionSecretRef{
+					Name: secret.GetName(),
+					Key:  mapping.key,
+				},
+			}
+			secret.StringData[mapping.key] = value
+		}
+		sedMappings = append(sedMappings, item)
 	}
 
-	return sedMappings, nil
+	if len(errorList) != 0 {
+		return nil, nil, errors.Join(errorList...)
+	}
+
+	if len(secret.StringData) == 0 {
+		secret = nil
+	}
+	return sedMappings, secret, nil
 }
 
 func (r *ServiceClassReconciler) getPrimazaKubeconfig(ctx context.Context, namespace string) (*rest.Config, string, error) {
@@ -335,6 +384,7 @@ func (r *ServiceClassReconciler) setOwnerReference(ctx context.Context, scclass 
 	if err := ctrl.SetControllerReference(&agentsvcdeployment, scclass, r.Client.Scheme()); err != nil {
 		return err
 	}
+	reconcileLog.Info("updating service class with owner reference", "service class", scclass.Spec)
 	if err := r.Update(ctx, scclass); err != nil {
 		return err
 	}

@@ -11,6 +11,8 @@ The Primaza environment will push these resources to worker environments, where 
 Within a Service Class, there are two required properties:
 - `resource` defines the APIVersion and Kind of the resource to be transformed into a service mapping.
   It also contains a service endpoint definition mapping, which defines how binding information for a particular service may be obtained.
+  This mapping contains the name of the key and a json path defining where the corresponding data will be retrieved.
+  It also contains a `secret` flag which indicates whether this information should be stored in a secret, which defaults to true.
 - `serviceClassIdentity` defines a set of attributes that are sufficient to identify a Service Class.
   This field is copied to the generated registered services.
 

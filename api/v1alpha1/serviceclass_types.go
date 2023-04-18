@@ -27,6 +27,11 @@ type ServiceClassMapping struct {
 	// JsonPath defines where data lives in the service resource.  This query
 	// must resolve to a single value (e.g. not an array of values).
 	JsonPath string `json:"jsonPath"`
+
+	// Secret indicates whether or not the mapping data needs to be stored in a secret.
+	// +optional
+	// +kubebuilder:default=true
+	Secret bool `json:"secret"`
 }
 
 // ServiceClassResource defines

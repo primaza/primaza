@@ -92,6 +92,11 @@ spec:
                         name:
                           description: Name of the data referred to
                           type: string
+                        secret:
+                          default: true
+                          description: Secret indicates whether or not the mapping
+                            data needs to be stored in a secret.
+                          type: boolean
                       required:
                       - jsonPath
                       - name
