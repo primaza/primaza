@@ -65,15 +65,6 @@ rules:
 - apiGroups:
   - primaza.io
   resources:
-  - serviceclaims
-  verbs:
-  - get
-  - list
-  - watch
-  - update
-- apiGroups:
-  - primaza.io
-  resources:
   - servicebindings/finalizers
   verbs:
   - update
