@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/primaza/primaza/api/v1alpha1"
+	"github.com/primaza/primaza/pkg/primaza/constants"
 	app1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -63,7 +64,7 @@ func (r *ServiceCatalogReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 func (r *ServiceCatalogReconciler) setOwnerReference(ctx context.Context, scat *v1alpha1.ServiceCatalog, namespace string) error {
 	reconcileLog := log.FromContext(ctx)
 	objKey := client.ObjectKey{
-		Name:      "pkg/primaza/constants/ApplicationAgentDeploymentName",
+		Name:      constants.ApplicationAgentDeploymentName,
 		Namespace: namespace,
 	}
 	var deployment app1.Deployment
