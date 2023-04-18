@@ -241,12 +241,12 @@ class Cluster(object):
         rbacv1.create_namespaced_role_binding(namespace=namespace, body=rb)
 
     def __create_application_agent_identity(self, namespace: str):
-        self.__create_agent_identity(namespace, "agentapp")
+        self.__prepare_agent_namespace(namespace, "agentapp")
 
     def __create_service_agent_identity(self, namespace: str):
-        self.__create_agent_identity(namespace, "agentsvc")
+        self.__prepare_agent_namespace(namespace, "agentsvc")
 
-    def __create_agent_identity(self, namespace: str, component: str):
+    def __prepare_agent_namespace(self, namespace: str, component: str):
         kubeconfig = self.cluster_provisioner.kubeconfig()
         with tempfile.NamedTemporaryFile(prefix=f"kubeconfig-{self.cluster_name}-") as t:
             t.write(kubeconfig.encode("utf-8"))
@@ -259,7 +259,7 @@ class Cluster(object):
                 .setenv("NAMESPACE", namespace) \
                 .setenv("GOCACHE", os.getenv("GOCACHE", "/tmp/gocache")) \
                 .setenv("GOPATH", os.getenv("GOPATH", "/tmp/go")) \
-                .run(f"make {component} deploy-rbac")
+                .run(f"make {component} prepare-namespace")
 
             print(out)
             assert err == 0, f"error deploying {component}'s rbac manifests"
