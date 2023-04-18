@@ -6,6 +6,7 @@ Feature: Forward Service Class into Service namespaces
         And Clusters "main" and "worker" can communicate
         And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
         And On Worker Cluster "worker", service namespace "services" for ClusterEnvironment "worker" exists
+        And Resource "backend_crd.yaml" is installed on worker cluster "worker" in namespace "services"
 
     Scenario: On Service Class creation, Primaza control plane forwards it into all matching services namespace
         Given On Primaza Cluster "main", Resource is created
@@ -50,7 +51,7 @@ Feature: Forward Service Class into Service namespaces
         Then On Worker Cluster "worker", Resource "ServiceClass" with name "demo-service-sc" exists in namespace "services"
 
     Scenario: Service Classes are pushed to new Cluster Environments' service namespaces
-        Given   On Primaza Cluster "main", Resource is created
+        Given On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
         kind: ClusterEnvironment
@@ -160,7 +161,7 @@ Feature: Forward Service Class into Service namespaces
             serviceNamespaces:
             - "services"
         """
-        And On Worker Cluster "worker", Primaza Service Agent exists into namespace "services"
+        And On Worker Cluster "worker", Primaza Service Agent is deployed into namespace "services"
         And On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
@@ -187,6 +188,7 @@ Feature: Forward Service Class into Service namespaces
                   value: v1
         """
         And  On Worker Cluster "worker", Resource "ServiceClass" with name "demo-service-sc" exists in namespace "services"
+        And  On Worker Cluster "worker", Primaza resource "serviceclasses/demo-service-sc" in namespace "services" has agent's ownership set
         When On Primaza Cluster "main", Resource is deleted
         """
         apiVersion: primaza.io/v1alpha1

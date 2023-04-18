@@ -2,13 +2,13 @@ Feature: Cleanup service namespace
 
     Background:
         Given Primaza Cluster "main" is running
-        And Worker Cluster "worker" for ClusterEnvironment "worker" is running
-        And Clusters "main" and "worker" can communicate
+        And   Worker Cluster "worker" for ClusterEnvironment "worker" is running
+        And   Clusters "main" and "worker" can communicate
         And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
-        And On Worker Cluster "worker", service namespace "services" for ClusterEnvironment "worker" exists
-        And On Worker Cluster "worker", Primaza Service Agent is deployed into namespace "services"
-        And Primaza cluster's "main" kubeconfig is available on "worker" in namespace "services"
-        And Resource "backend_crd.yaml" is installed on worker cluster "worker" in namespace "services"
+        And   On Worker Cluster "worker", service namespace "services" for ClusterEnvironment "worker" exists
+        And   On Worker Cluster "worker", Primaza Service Agent is deployed into namespace "services"
+        And   Primaza cluster's "main" kubeconfig is available on "worker" in namespace "services"
+        And   Resource "backend_crd.yaml" is installed on worker cluster "worker" in namespace "services"
         And   On Primaza Cluster "main", Resource is created
             """
             apiVersion: primaza.io/v1alpha1
@@ -22,6 +22,7 @@ Feature: Cleanup service namespace
                 serviceNamespaces:
                 - services
             """
+        And On Worker Cluster "worker", Primaza Service Agent is deployed into namespace "services"
         And On Primaza Cluster "main", ClusterEnvironment "worker" state will eventually move to "Online"
         And On Primaza Cluster "main", Resource is created
             """
@@ -48,7 +49,8 @@ Feature: Cleanup service namespace
                     - name: version
                       value: v1
             """
-        And  On Worker Cluster "worker", Service Class "$scenario_id-serviceclass" exists in "services"
+        And On Worker Cluster "worker", Service Class "$scenario_id-serviceclass" exists in "services"
+        And On Worker Cluster "worker", Primaza resource "serviceclasses/$scenario_id-serviceclass" in namespace "services" has agent's ownership set
 
     Scenario: Service Class is removed on Service Namespace deletion
         When On Primaza Cluster "main", Resource is updated
@@ -62,7 +64,7 @@ Feature: Cleanup service namespace
                 environmentName: dev
                 clusterContextSecret: primaza-kw
             """
-        Then On Worker Cluster "worker", Service Class "$scenario_id-serviceclass" does not exists in "services"
+        Then On Worker Cluster "worker", Service Class "$scenario_id-serviceclass" does not exist in "services"
 
     Scenario: Service Class is removed on Cluster Environment deletion
         When On Primaza Cluster "main", Resource is deleted
@@ -73,4 +75,4 @@ Feature: Cleanup service namespace
                 name: worker
                 namespace: primaza-system
             """
-        Then On Worker Cluster "worker", Service Class "$scenario_id-serviceclass" does not exists in "services"
+        Then On Worker Cluster "worker", Service Class "$scenario_id-serviceclass" does not exist in "services"

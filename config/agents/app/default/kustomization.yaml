@@ -3,8 +3,4 @@ kind: Kustomization
 resources:
 - ../namespace
 - ../agent
-images:
-- name: agentapp
-  newName: agentapp
-  newTag: latest
 namespace: applications

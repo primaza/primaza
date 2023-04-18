@@ -31,6 +31,7 @@ Feature: Register a kubernetes cluster as Primaza Worker Cluster
         Then On Primaza Cluster "main", ClusterEnvironment "worker" state will eventually move to "Partial"
         And  On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ServiceNamespacePermissionsRequired" has Status "True"
         And  On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ApplicationNamespacePermissionsRequired" has Status "False"
+        And  On Worker Cluster "worker", Primaza Service Agent is deployed into namespace "services"
 
     Scenario: Cluster Environment status is Online if Service namespaces permissions are present
 
@@ -56,3 +57,4 @@ Feature: Register a kubernetes cluster as Primaza Worker Cluster
         And  On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "Online" has Status "True"
         And  On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ServiceNamespacePermissionsRequired" has Status "False"
         And  On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ApplicationNamespacePermissionsRequired" has Status "False"
+        And  On Worker Cluster "worker", Primaza Service Agent is deployed into namespace "services"

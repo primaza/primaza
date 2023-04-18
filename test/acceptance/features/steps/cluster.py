@@ -219,7 +219,7 @@ class Cluster(object):
                 client.V1PolicyRule(
                     api_groups=["apps"],
                     resources=["deployments"],
-                    verbs=["delete"],
+                    verbs=["delete", "get"],
                     resource_names=[f"primaza-{nstype}-agent"]),
             ] + pmz_rules)
         rbacv1.create_namespaced_role(namespace, r)
@@ -290,18 +290,20 @@ class Cluster(object):
         return yaml.safe_dump(kubeconfig)
 
     def is_app_agent_deployed(self, namespace: str) -> bool:
-        api_client = self.get_api_client()
-        appsv1 = client.AppsV1Api(api_client)
-
-        appsv1.read_namespaced_deployment(name="primaza-app-agent", namespace=namespace)
-        return True
+        return self.agent_is_running(namespace, "app")
 
     def is_svc_agent_deployed(self, namespace: str) -> bool:
+        return self.agent_is_running(namespace, "svc")
+
+    def agent_is_running(self, namespace: str, agent_type: str) -> bool:
         api_client = self.get_api_client()
         appsv1 = client.AppsV1Api(api_client)
 
-        appsv1.read_namespaced_deployment(name="primaza-svc-agent", namespace=namespace)
-        return True
+        dp = appsv1.read_namespaced_deployment_status(f"primaza-{agent_type}-agent", namespace)
+        ar = dp.status.available_replicas
+        er = dp.status.replicas
+
+        return ar == er
 
     def read_custom_resource_status(self, group: str, version: str, plural: str, name: str, namespace: str) -> str:
         api_client = self.get_api_client()
@@ -326,3 +328,19 @@ class Cluster(object):
                     "namespace": "primaza-system"
                 })
             v1.create_namespaced_secret(namespace, secret)
+
+    def has_agent_ownership_set(self, resource_plural: str, resource_name: str, namespace: str, group: str, version: str):
+        agent_names = ["primaza-app-agent", "primaza-svc-agent"]
+        api_client = self.get_api_client()
+        api_instance = client.CustomObjectsApi(api_client)
+
+        api_response = api_instance.get_namespaced_custom_object(group, version, namespace, resource_plural, resource_name)
+        print(api_response)
+        owner_ref = api_response.get("metadata", {}).get("ownerReferences", [])
+        if len(owner_ref) == 0:
+            return False
+
+        for r in owner_ref:
+            if r["kind"] == "Deployment" and (r["name"] in agent_names):
+                return True
+        return False

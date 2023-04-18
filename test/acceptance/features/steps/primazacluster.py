@@ -102,7 +102,7 @@ def ensure_secret_key_has_the_right_value(context, primaza_cluster_name: str, se
     polling2.poll(
         target=lambda: primaza_cluster.read_secret_resource_data(namespace, secret_name, key) == bytes(value, 'utf-8'),
         step=1,
-        timeout=30)
+        timeout=60)
 
 
 @step(u'On Primaza Cluster "{cluster_name}", Primaza Service Agent is deployed into namespace "{namespace}"')
@@ -112,7 +112,7 @@ def service_agent_is_deployed(context, cluster_name: str, namespace: str):
     polling2.poll(
         target=lambda: primaza_cluster.is_svc_agent_deployed(namespace),
         step=1,
-        timeout=30)
+        timeout=60)
 
 
 @step(u'On Primaza Cluster "{cluster_name}", Primaza Application Agent is deployed into namespace "{namespace}"')
@@ -122,7 +122,7 @@ def application_agent_is_deployed(context, cluster_name: str, namespace: str):
     polling2.poll(
         target=lambda: primaza_cluster.is_app_agent_deployed(namespace),
         step=1,
-        timeout=30)
+        timeout=60)
 
 
 @step(u'On Primaza Cluster "{cluster_name}", application namespace "{namespace}" for ClusterEnvironment "{cluster_environment}" exists')

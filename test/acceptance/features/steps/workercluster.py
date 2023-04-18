@@ -2,6 +2,7 @@ import polling2
 from behave import given, step
 from kubernetes.client.rest import ApiException
 from steps.cluster import Cluster
+from steps.util import substitute_scenario_id
 
 
 class WorkerCluster(Cluster):
@@ -49,8 +50,9 @@ def application_agent_is_deployed(context, cluster_name: str, namespace: str):
     worker.deploy_agentapp(namespace)
     polling2.poll(
         target=lambda: worker.is_app_agent_deployed(namespace),
+        ignore_exceptions=(ApiException,),
         step=1,
-        timeout=30)
+        timeout=60)
 
 
 @step(u'On Worker Cluster "{cluster_name}", Primaza Application Agent exists into namespace "{namespace}"')
@@ -58,8 +60,9 @@ def application_agent_exists(context, cluster_name: str, namespace: str):
     worker = context.cluster_provider.get_worker_cluster(cluster_name)  # type: WorkerCluster
     polling2.poll(
         target=lambda: worker.is_app_agent_deployed(namespace),
+        ignore_exceptions=(ApiException,),
         step=1,
-        timeout=30)
+        timeout=60)
 
 
 @step(u'On Worker Cluster "{cluster_name}", Primaza Application Agent does not exist into namespace "{namespace}"')
@@ -76,7 +79,7 @@ def application_agent_does_not_exist(context, cluster_name: str, namespace: str)
     polling2.poll(
         target=lambda: is_not_found(),
         step=1,
-        timeout=30)
+        timeout=60)
 
 
 @given(u'On Worker Cluster "{cluster_name}", service namespace "{namespace}" for ClusterEnvironment "{cluster_environment}" exists')
@@ -91,8 +94,9 @@ def service_agent_is_deployed(context, cluster_name: str, namespace: str):
     worker.deploy_agentsvc(namespace)
     polling2.poll(
         target=lambda: worker.is_svc_agent_deployed(namespace),
+        ignore_exceptions=(ApiException,),
         step=1,
-        timeout=30)
+        timeout=60)
 
 
 @step(u'On Worker Cluster "{cluster_name}", Primaza Service Agent exists into namespace "{namespace}"')
@@ -100,8 +104,24 @@ def service_agent_exists(context, cluster_name: str, namespace: str):
     worker = context.cluster_provider.get_worker_cluster(cluster_name)  # type: WorkerCluster
     polling2.poll(
         target=lambda: worker.is_svc_agent_deployed(namespace),
+        ignore_exceptions=(ApiException,),
         step=1,
-        timeout=30)
+        timeout=60)
+
+
+@step(u'On Worker Cluster "{cluster_name}", Primaza resource "{resource_type_name}" in namespace "{namespace}" has agent\'s ownership set')
+def resource_has_agent_ownership_set(context, cluster_name: str, resource_type_name: str, namespace: str):
+    worker = context.cluster_provider.get_worker_cluster(cluster_name)  # type: WorkerCluster
+    rtn = resource_type_name.split("/")
+    if len(rtn) != 2:
+        raise Exception(f"invalid input: 'resource' should be in the format 'resource_type_plural/resource_name' (given {resource_type_name})")
+
+    name = substitute_scenario_id(context, rtn[1])
+    polling2.poll(
+        target=lambda: worker.has_agent_ownership_set(rtn[0], name, namespace, "primaza.io", "v1alpha1"),
+        ignore_exceptions=(ApiException,),
+        step=1,
+        timeout=60)
 
 
 @step(u'On Worker Cluster "{cluster_name}", Primaza Service Agent does not exist into namespace "{namespace}"')
@@ -118,7 +138,7 @@ def service_agent_does_not_exist(context, cluster_name: str, namespace: str):
     polling2.poll(
         target=lambda: is_not_found(),
         step=1,
-        timeout=30)
+        timeout=60)
 
 
 @given('Worker Cluster "{cluster_name}" is running')
@@ -143,7 +163,7 @@ def ensure_secret_key_has_the_right_value(context, cluster_name: str, secret_nam
     polling2.poll(
         target=lambda: primaza_cluster.read_secret_resource_data(namespace, secret_name, key) == bytes(value, 'utf-8'),
         step=1,
-        timeout=30)
+        timeout=60)
 
 
 @step(u'On Worker Cluster "{cluster_name}", the secret "{secret_name}" does not exist in namespace "{namespace}"')

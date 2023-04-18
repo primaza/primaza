@@ -79,7 +79,7 @@ Feature: Push ServiceCatalog
       And  On Worker Cluster "worker", ServiceCatalog "dev" in application namespace "applications" will contain RegisteredService "primaza-rsdb"
 
   Scenario: Update Registered Service in Service Catalog
-      And On Primaza Cluster "main", Resource is created
+      Given On Primaza Cluster "main", Resource is created
       """
       apiVersion: primaza.io/v1alpha1
       kind: ClusterEnvironment

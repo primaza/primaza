@@ -24,6 +24,7 @@ Feature: Cleanup application namespace
         And On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "Online" has Status "True"
         And On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ApplicationNamespacePermissionsRequired" has Status "False"
         And On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ServiceNamespacePermissionsRequired" has Status "False"
+        And On Worker Cluster "worker", Primaza Application Agent is deployed into namespace "applications"
         And On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
@@ -120,4 +121,4 @@ Feature: Cleanup application namespace
                 namespace: primaza-system
             """
         Then On Worker Cluster "worker", Service Catalog "dev" does not exist in "applications"
-        And On Worker Cluster "worker", Service Binding "sc-test" does not exist in "applications"
+        And  On Worker Cluster "worker", Service Binding "sc-test" does not exist in "applications"
