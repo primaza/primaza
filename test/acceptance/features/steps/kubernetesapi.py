@@ -440,3 +440,18 @@ def on_worker_cluster_check_service_catalog_not_exists_in_application_namespace(
     except Exception:
         return
     raise Exception(f"not expecting service catalog '{catalog}' to be found in namespace '{application_namespace}'")
+
+
+@then(u'On Primaza Cluster "{cluster}", there are no ServiceCatalogs')
+def on_primaza_cluster_no_service_catalogs_found(context, cluster):
+    api_client = context.cluster_provider.get_primaza_cluster(cluster).get_api_client()
+    cobj = client.CustomObjectsApi(api_client)
+
+    response = cobj.list_namespaced_custom_object(
+        group="primaza.io",
+        version="v1alpha1",
+        namespace="primaza-system",
+        plural="servicecatalogs"
+    )
+
+    assert not response["items"]

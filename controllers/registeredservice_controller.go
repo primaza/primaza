@@ -18,16 +18,16 @@ package controllers
 
 import (
 	"context"
+	"errors"
 
-	"k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
+	"github.com/primaza/primaza/pkg/envtag"
 )
 
 // RegisteredServiceReconciler reconciles a RegisteredService object
@@ -35,8 +35,6 @@ type RegisteredServiceReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
-
-const primazaServiceCatalog = "primaza-service-catalog"
 
 func ServiceInCatalog(sc primazaiov1alpha1.ServiceCatalog, serviceName string) int {
 	for i, service := range sc.Spec.Services {
@@ -47,17 +45,40 @@ func ServiceInCatalog(sc primazaiov1alpha1.ServiceCatalog, serviceName string) i
 	return -1
 }
 
-func (r *RegisteredServiceReconciler) removeServiceFromCatalog(ctx context.Context, catalogName string, namespace string, serviceName string) error {
+func (r *RegisteredServiceReconciler) getServiceCatalogs(ctx context.Context, namespace string) (primazaiov1alpha1.ServiceCatalogList, error) {
 	log := log.FromContext(ctx)
-	var sc primazaiov1alpha1.ServiceCatalog
-	err := r.Get(ctx, types.NamespacedName{
-		Name:      catalogName,
-		Namespace: namespace, // "primaza-system",
-	}, &sc)
+	var cl primazaiov1alpha1.ServiceCatalogList
+	lo := client.ListOptions{Namespace: namespace}
+	if err := r.List(ctx, &cl, &lo); err != nil {
+		log.Info("Unable to retrieve ServiceCatalogList", "error", err)
+		return cl, err
+	}
+
+	return cl, nil
+}
+
+func (r *RegisteredServiceReconciler) removeServiceFromCatalogs(ctx context.Context, namespace string, serviceName string) error {
+	log := log.FromContext(ctx)
+	catalogs, err := r.getServiceCatalogs(ctx, namespace)
 	if err != nil {
-		log.Error(err, "Error fetching Service Catalog")
+		log.Error(err, "Error found getting list of ServiceCatalog")
 		return err
 	}
+
+	var errs []error
+	for _, sc := range catalogs.Items {
+		err = r.removeServiceFromCatalog(ctx, sc, namespace, serviceName)
+		if err != nil {
+			log.Error(err, "Error found removing RegisteredService to ServiceCatalog")
+			errs = append(errs, err)
+		}
+	}
+
+	return errors.Join(errs...)
+}
+
+func (r *RegisteredServiceReconciler) removeServiceFromCatalog(ctx context.Context, sc primazaiov1alpha1.ServiceCatalog, namespace string, serviceName string) error {
+	log := log.FromContext(ctx)
 
 	si := ServiceInCatalog(sc, serviceName)
 
@@ -70,19 +91,39 @@ func (r *RegisteredServiceReconciler) removeServiceFromCatalog(ctx context.Conte
 	log.Info("Updating Service Catalog")
 	if err := r.Update(ctx, &sc); err != nil {
 		// Service Catalog update failed
+		log.Error(err, "Error found updating ServiceCatalog")
 		return err
 	}
 
+	log.Info("Removed RegisteredService from ServiceCatalog", "RegisteredService", serviceName, "ServiceCatalog", sc.Name)
 	return nil
 }
 
-func (r *RegisteredServiceReconciler) addServiceToCatalog(ctx context.Context, catalogName string, rs primazaiov1alpha1.RegisteredService) error {
+func (r *RegisteredServiceReconciler) addServiceToCatalogs(ctx context.Context, rs primazaiov1alpha1.RegisteredService) error {
 	log := log.FromContext(ctx)
-	var sc primazaiov1alpha1.ServiceCatalog
-	err := r.Get(ctx, types.NamespacedName{
-		Name:      catalogName,
-		Namespace: rs.Namespace,
-	}, &sc)
+	catalogs, err := r.getServiceCatalogs(ctx, rs.Namespace)
+	if err != nil {
+		log.Error(err, "Error found getting list of ServiceCatalog")
+		return err
+	}
+
+	var errs []error
+	for _, sc := range catalogs.Items {
+		if rs.Spec.Constraints == nil || envtag.Match(sc.Name, rs.Spec.Constraints.Environments) {
+			err = r.addServiceToCatalog(ctx, sc, rs)
+			if err != nil {
+				log.Error(err, "Error found adding RegisteredService to ServiceCatalog")
+				errs = append(errs, err)
+			}
+			log.Info("Added RegisteredService to ServiceCatalog", "RegisteredService", rs.Name, "ServiceCatalog", sc.Name)
+		}
+	}
+
+	return errors.Join(errs...)
+}
+
+func (r *RegisteredServiceReconciler) addServiceToCatalog(ctx context.Context, sc primazaiov1alpha1.ServiceCatalog, rs primazaiov1alpha1.RegisteredService) error {
+	log := log.FromContext(ctx)
 
 	// Extracting Keys of SED
 	sedKeys := make([]string, 0, len(rs.Spec.ServiceEndpointDefinition))
@@ -97,37 +138,10 @@ func (r *RegisteredServiceReconciler) addServiceToCatalog(ctx context.Context, c
 		ServiceEndpointDefinitionKeys: sedKeys,
 	}
 
-	if err != nil && errors.IsNotFound(err) {
-		log.Info("Service Catalog not found, creating new")
-		// Initializing the Service Catalog
-		serviceCatalog := primazaiov1alpha1.ServiceCatalog{
-			TypeMeta: v1.TypeMeta{
-				Kind:       "ServiceCatalog",
-				APIVersion: "v1alpha1",
-			},
-			ObjectMeta: v1.ObjectMeta{
-				Name:      catalogName,
-				Namespace: rs.Namespace,
-			},
-			Spec: primazaiov1alpha1.ServiceCatalogSpec{
-				Services: []primazaiov1alpha1.ServiceCatalogService{scs},
-			},
-		}
-
-		// Create the Service Catalog
-		err = r.Create(ctx, &serviceCatalog)
-		if err != nil {
-			// Service Catalog creation failed
-			return err
-		}
-
-	} else if err != nil {
-		// Error that isn't due to the ServiceCatalog not found
-		return err
-	} else if ServiceInCatalog(sc, scs.Name) == -1 {
+	if ServiceInCatalog(sc, scs.Name) == -1 {
 		log.Info("Updating Service Catalog")
 		sc.Spec.Services = append(sc.Spec.Services, scs)
-		err = r.Update(ctx, &sc)
+		err := r.Update(ctx, &sc)
 		if err != nil {
 			// Service Catalog update failed
 			return err
@@ -159,9 +173,9 @@ func (r *RegisteredServiceReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	var rs primazaiov1alpha1.RegisteredService
 	err := r.Client.Get(ctx, req.NamespacedName, &rs)
-	if err != nil && errors.IsNotFound(err) {
+	if err != nil && k8errors.IsNotFound(err) {
 		log.Info("Registered Service not found, handling delete event")
-		err = r.removeServiceFromCatalog(ctx, primazaServiceCatalog, req.NamespacedName.Namespace, req.Name)
+		err = r.removeServiceFromCatalogs(ctx, req.NamespacedName.Namespace, req.Name)
 
 		if err != nil {
 			// Service Catalog update failed
@@ -187,7 +201,7 @@ func (r *RegisteredServiceReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			return ctrl.Result{}, err
 		}
 
-		err = r.addServiceToCatalog(ctx, primazaServiceCatalog, rs)
+		err = r.addServiceToCatalogs(ctx, rs)
 
 		if err != nil {
 			// Service Catalog update failed
@@ -196,7 +210,7 @@ func (r *RegisteredServiceReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		}
 
 	} else if rs.Status.State == primazaiov1alpha1.RegisteredServiceStateAvailable {
-		err = r.addServiceToCatalog(ctx, primazaServiceCatalog, rs)
+		err = r.addServiceToCatalogs(ctx, rs)
 
 		if err != nil {
 			// Service Catalog update failed
@@ -206,7 +220,7 @@ func (r *RegisteredServiceReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	} else if rs.Status.State == primazaiov1alpha1.RegisteredServiceStateClaimed ||
 		rs.Status.State == primazaiov1alpha1.RegisteredServiceStateUnreachable {
 
-		err = r.removeServiceFromCatalog(ctx, primazaServiceCatalog, req.NamespacedName.Namespace, req.Name)
+		err = r.removeServiceFromCatalogs(ctx, req.NamespacedName.Namespace, req.Name)
 
 		if err != nil {
 			// Service Catalog update failed

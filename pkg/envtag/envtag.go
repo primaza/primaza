@@ -52,6 +52,10 @@ func match(environment, constraint string) matchResult {
 		if environment == pc {
 			return forbidden
 		}
+
+		// environment is not excluded by constraint
+		return matched
+
 	}
 
 	if environment == constraint {
