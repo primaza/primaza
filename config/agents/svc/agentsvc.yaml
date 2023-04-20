@@ -72,7 +72,7 @@ spec:
         - /manager
         args:
         - --leader-elect
-        image: ghcr.io/primaza/primaza-agentsvc:latest
+        image: agentsvc:latest
         imagePullPolicy: IfNotPresent
         name: manager
         env:
