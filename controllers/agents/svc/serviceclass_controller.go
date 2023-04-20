@@ -111,6 +111,7 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	// then, write all the registered services up to the primaza cluster
+	errs := []error{}
 	if serviceClass.DeletionTimestamp.IsZero() {
 		handler := func(remote_client client.Client, rs v1alpha1.RegisteredService, secret *v1.Secret) []error {
 			spec := rs.Spec
@@ -148,6 +149,7 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		if err != nil {
 			reconcileLog.Error(err, "Failed to write registered services")
 			// fallthrough: we still want to write the service class status field
+			errs = append(errs, err)
 		}
 	} else if controllerutil.ContainsFinalizer(&serviceClass, finalizer) {
 		handler := func(remote_client client.Client, rs v1alpha1.RegisteredService, secret *v1.Secret) []error {
@@ -181,12 +183,12 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	// finally, write the status of the service class
-	err = r.Client.Status().Update(ctx, &serviceClass)
-	if err != nil {
+	if err := r.Client.Status().Update(ctx, &serviceClass); err != nil {
 		reconcileLog.Error(err, "Failed to write service class status")
-		return ctrl.Result{}, err
+		errs = append(errs, err)
 	}
-	return ctrl.Result{}, nil
+
+	return ctrl.Result{}, errors.Join(errs...)
 }
 
 func (r *ServiceClassReconciler) GetResources(ctx context.Context, serviceClass *v1alpha1.ServiceClass) (*unstructured.UnstructuredList, error) {
@@ -250,7 +252,7 @@ func (r *ServiceClassReconciler) HandleRegisteredServices(ctx context.Context, s
 		Reason:  string(status.Reason),
 		Status:  state,
 	})
-	if status.State == v1alpha1.ClusterEnvironmentStateOffline {
+	if status.State != v1alpha1.ClusterEnvironmentStateOnline {
 		return fmt.Errorf("Failed to connect to cluster")
 	}
 

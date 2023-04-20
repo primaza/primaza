@@ -53,7 +53,7 @@ type ServiceClassReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
 func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	l := log.FromContext(ctx)
 
 	sc := &primazaiov1alpha1.ServiceClass{}
 	if err := r.Get(ctx, req.NamespacedName, sc, &client.GetOptions{}); err != nil {
@@ -65,6 +65,7 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		if controllerutil.ContainsFinalizer(sc, clusterEnvironmentFinalizer) {
 			// run finalizer
 			if err := r.finalize(ctx, sc); err != nil {
+				l.Error(err, "error finalizing service class")
 				return ctrl.Result{}, err
 			}
 
@@ -131,7 +132,9 @@ func (r *ServiceClassReconciler) removeFromEnvironments(ctx context.Context, sc 
 	for _, ce := range ff {
 		cli, err := clustercontext.CreateClient(ctx, r.Client, ce, r.Scheme, r.Client.RESTMapper())
 		if err != nil {
-			return err
+			errs = append(errs,
+				fmt.Errorf("error building client for cluster environment '%s': %w", ce.Name, err))
+			continue
 		}
 
 		if err := controlplane.DeleteServiceClassFromNamespaces(ctx, cli, *sc, ce.Spec.ServiceNamespaces); err != nil {
