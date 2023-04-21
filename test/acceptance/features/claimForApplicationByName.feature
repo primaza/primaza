@@ -104,7 +104,7 @@ Feature: Claim for an Application by Name
         And On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "type" with value "psqlserver"
         And On Worker Cluster "worker", ServiceBinding "sc-test" on namespace "applications" state will eventually move to "Ready"
 
-    Scenario: Application does not exists with Claim for an Application by Name
+    Scenario: Application does not exist with Claim for an Application by Name
 
         Given Primaza Cluster "main" is running
         And Worker Cluster "worker" for "main" is running
