@@ -31,3 +31,6 @@ out
 
 # generated files
 **/*/__pycache__
+
+# git
+.worktrees/
