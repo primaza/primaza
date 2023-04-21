@@ -374,7 +374,7 @@ func (r *ServiceClassReconciler) getPrimazaKubeconfig(ctx context.Context, names
 func (r *ServiceClassReconciler) setOwnerReference(ctx context.Context, scclass *v1alpha1.ServiceClass, namespace string) error {
 	reconcileLog := log.FromContext(ctx)
 	objKey := client.ObjectKey{
-		Name:      "primaza-controller-agentsvc",
+		Name:      "primaza-svc-agent",
 		Namespace: namespace,
 	}
 	var agentsvcdeployment appsv1.Deployment

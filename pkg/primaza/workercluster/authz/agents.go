@@ -33,7 +33,7 @@ func GetAgentAppRequiredPermissions() []authz.ResourcePermissions {
 			Version:  "",
 			Group:    "apps",
 			Resource: "deployments",
-			Name:     "primaza-controller-agentapp",
+			Name:     "primaza-app-agent",
 		},
 	}
 }
@@ -51,7 +51,7 @@ func GetAgentSvcRequiredPermissions() []authz.ResourcePermissions {
 			Version:  "",
 			Group:    "apps",
 			Resource: "deployments",
-			Name:     "primaza-controller-agentsvc",
+			Name:     "primaza-svc-agent",
 		},
 	}
 }

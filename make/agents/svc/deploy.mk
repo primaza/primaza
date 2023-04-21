@@ -25,7 +25,7 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 		$(KUSTOMIZE) edit set image agentsvc=${IMG} && \
 		$(KUSTOMIZE) edit set namespace $(NAMESPACE)
 	$(KUSTOMIZE) build $(KUSTOMIZE_ARGS) config/agents/svc | kubectl apply -f -
-	kubectl rollout status deploy/primaza-controller-agentsvc -n $(NAMESPACE) -w --timeout=120s
+	kubectl rollout status deploy/primaza-svc-agent -n $(NAMESPACE) -w --timeout=120s
 
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.

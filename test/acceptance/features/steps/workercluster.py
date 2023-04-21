@@ -164,7 +164,7 @@ class WorkerCluster(Cluster):
                     api_groups=["apps"],
                     resources=["deployments"],
                     verbs=["delete"],
-                    resource_names=["primaza-controller-agentapp", "primaza-controller-agentsvc"]),
+                    resource_names=["primaza-app-agent", "primaza-svc-agent"]),
                 client.V1PolicyRule(
                     api_groups=["primaza.io"],
                     resources=["servicebindings", "serviceclasses", "servicecatalogs"],
@@ -297,14 +297,14 @@ class WorkerCluster(Cluster):
         api_client = self.get_api_client()
         appsv1 = client.AppsV1Api(api_client)
 
-        appsv1.read_namespaced_deployment(name="primaza-controller-agentapp", namespace=namespace)
+        appsv1.read_namespaced_deployment(name="primaza-app-agent", namespace=namespace)
         return True
 
     def is_svc_agent_deployed(self, namespace: str) -> bool:
         api_client = self.get_api_client()
         appsv1 = client.AppsV1Api(api_client)
 
-        appsv1.read_namespaced_deployment(name="primaza-controller-agentsvc", namespace=namespace)
+        appsv1.read_namespaced_deployment(name="primaza-svc-agent", namespace=namespace)
         return True
 
     def deploy_agentapp(self, namespace: str):
@@ -365,6 +365,7 @@ def application_agent_is_deployed(context, cluster_name: str, namespace: str):
     worker.deploy_agentapp(namespace)
     polling2.poll(
         target=lambda: worker.is_app_agent_deployed(namespace),
+        ignore_exceptions=(ApiException,),
         step=1,
         timeout=30)
 
@@ -374,6 +375,7 @@ def application_agent_exists(context, cluster_name: str, namespace: str):
     worker = context.cluster_provider.get_worker_cluster(cluster_name)  # type: WorkerCluster
     polling2.poll(
         target=lambda: worker.is_app_agent_deployed(namespace),
+        ignore_exceptions=(ApiException,),
         step=1,
         timeout=30)
 
@@ -407,6 +409,7 @@ def service_agent_is_deployed(context, cluster_name: str, namespace: str):
     worker.deploy_agentsvc(namespace)
     polling2.poll(
         target=lambda: worker.is_svc_agent_deployed(namespace),
+        ignore_exceptions=(ApiException,),
         step=1,
         timeout=30)
 
@@ -416,6 +419,7 @@ def service_agent_exists(context, cluster_name: str, namespace: str):
     worker = context.cluster_provider.get_worker_cluster(cluster_name)  # type: WorkerCluster
     polling2.poll(
         target=lambda: worker.is_svc_agent_deployed(namespace),
+        ignore_exceptions=(ApiException,),
         step=1,
         timeout=30)
 
@@ -456,6 +460,7 @@ def ensure_secret_key_has_the_right_value(context, cluster_name: str, secret_nam
     primaza_cluster = context.cluster_provider.get_worker_cluster(cluster_name)
     polling2.poll(
         target=lambda: primaza_cluster.read_secret_resource_data(namespace, secret_name, key) == bytes(value, 'utf-8'),
+        ignore_exceptions=(ApiException,),
         step=1,
         timeout=30)
 
