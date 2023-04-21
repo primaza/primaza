@@ -113,9 +113,9 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	// then, write all the registered services up to the primaza cluster
 	if serviceClass.DeletionTimestamp.IsZero() {
 		handler := func(remote_client client.Client, rs v1alpha1.RegisteredService, secret *v1.Secret) []error {
-			clone := &v1alpha1.RegisteredService{ObjectMeta: *rs.ObjectMeta.DeepCopy()}
-			op, err := controllerutil.CreateOrUpdate(ctx, remote_client, clone, func() error {
-				*clone = rs
+			spec := rs.Spec
+			op, err := controllerutil.CreateOrUpdate(ctx, remote_client, &rs, func() error {
+				rs.Spec = spec
 				return nil
 			})
 			if err != nil {
@@ -125,10 +125,14 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			} else {
 				reconcileLog.Info("Wrote registered service", "service", rs.Name, "namespace", rs.Namespace, "operation", op)
 			}
-            errs := []error{err}
 
+			errs := []error{err}
 			if secret != nil {
-				_, err := controllerutil.CreateOrUpdate(ctx, remote_client, secret, func() error { return controllerutil.SetOwnerReference(clone, secret, remote_client.Scheme()) })
+				data := secret.StringData
+				_, err := controllerutil.CreateOrUpdate(ctx, remote_client, secret, func() error {
+					secret.StringData = data
+					return controllerutil.SetOwnerReference(&rs, secret, remote_client.Scheme())
+				})
 				errs = append(errs, err)
 			}
 			return errs
@@ -293,7 +297,7 @@ func (r *ServiceClassReconciler) HandleRegisteredServices(ctx context.Context, s
 		}
 
 		// modify the registered service
-        if errs := handleFunc(remote_client, rs, secret); errs != nil {
+		if errs := handleFunc(remote_client, rs, secret); errs != nil {
 			errorList = append(errorList, errs...)
 		}
 	}
