@@ -20,6 +20,7 @@ import (
 	"context"
 
 	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -35,7 +36,10 @@ func PushServiceClassToNamespaces(ctx context.Context, cli client.Client, sc pri
 		}
 
 		if err := cli.Create(ctx, sccp, &client.CreateOptions{}); err != nil {
-			return err
+			// TODO(filariow): eventually implement resource Update
+			if !apierrors.IsAlreadyExists(err) {
+				return err
+			}
 		}
 	}
 
