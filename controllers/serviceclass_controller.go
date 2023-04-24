@@ -102,6 +102,11 @@ func (r *ServiceClassReconciler) reconcileEnvironments(ctx context.Context, sc *
 		return err
 	}
 
+	if sc.Spec.Constraints == nil {
+		// nothing to do, no environments
+		return nil
+	}
+
 	ff := r.filterClusterEnvironments(sc.Spec.Constraints.Environments, cee.Items)
 
 	errs := []error{}
@@ -122,6 +127,11 @@ func (r *ServiceClassReconciler) reconcileEnvironments(ctx context.Context, sc *
 }
 
 func (r *ServiceClassReconciler) removeFromEnvironments(ctx context.Context, sc *primazaiov1alpha1.ServiceClass) error {
+	if sc.Spec.Constraints == nil {
+		// nothing to do
+		return nil
+	}
+
 	ff, err := r.getRelatedClusterEnvironments(ctx, sc.Spec.Constraints.Environments)
 	if err != nil {
 		return err
