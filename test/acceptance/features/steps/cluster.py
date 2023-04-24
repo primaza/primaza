@@ -3,6 +3,7 @@ from kubernetes import client
 from kubernetes.client.rest import ApiException
 from steps.clusterprovisioner import ClusterProvisioner
 from steps.util import get_api_client_from_kubeconfig
+from typing import Dict
 
 
 class Cluster(object):
@@ -66,3 +67,44 @@ class Cluster(object):
         except ApiException as e:
             if e.reason != "Not Found":
                 raise e
+
+    def read_custom_object(self, namespace: str, group: str, version: str, plural: str, name: str) -> Dict:
+        api_client = self.get_api_client()
+        cobj = client.CustomObjectsApi(api_client)
+
+        return cobj.get_namespaced_custom_object(
+            namespace=namespace,
+            group=group,
+            version=version,
+            plural=plural,
+            name=name)
+
+    def custom_object_exists(self, namespace: str, group: str, version: str, plural: str, name: str) -> bool:
+        try:
+            self.read_custom_object(
+                namespace=namespace,
+                group=group,
+                version=version,
+                plural=plural,
+                name=name)
+        except ApiException as e:
+            if e.reason == "Not Found":
+                return False
+            raise e
+        return True
+
+    def read_primaza_custom_object(self, namespace: str, plural: str, name: str, version: str = "v1alpha1") -> Dict:
+        return self.read_custom_object(
+            namespace=namespace,
+            group="primaza.io",
+            version=version,
+            plural=plural,
+            name=name)
+
+    def primaza_custom_object_exists(self, namespace: str, plural: str, name: str, version: str = "v1alpha1") -> bool:
+        return self.custom_object_exists(
+                namespace=namespace,
+                group="primaza.io",
+                version=version,
+                plural=plural,
+                name=name)

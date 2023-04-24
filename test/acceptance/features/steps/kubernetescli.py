@@ -409,7 +409,7 @@ def check_secret_key_value(context, secret_key, secret_value):
         ValueError,), check_success=lambda v: v is not None)
     json_path = f'{{.data.{secret_key}}}'
     polling2.poll(lambda: kubernetes.get_resource_info_by_jsonpath("secrets", secret, context.namespace.name,
-                  json_path) == secret_value, step=5, timeout=120, ignore_exceptions=(binascii.Error,))
+                  json_path) == secret_value, step=1, timeout=120, ignore_exceptions=(binascii.Error,))
 
 
 @step(u'Secret contains "{secret_key}" key with dynamic IP addess as the value')
@@ -421,7 +421,7 @@ def check_secret_key_with_ip_value(context, secret_key):
     json_path = f'{{.data.{secret_key}}}'
     polling2.poll(lambda: ipaddress.ip_address(
         kubernetes.get_resource_info_by_jsonpath("secrets", secret, context.namespace.name, json_path)),
-        step=5, timeout=120, ignore_exceptions=(ValueError,))
+        step=1, timeout=120, ignore_exceptions=(ValueError,))
 
 
 @step(u'The Custom Resource is deleted')
@@ -450,7 +450,7 @@ def verify_injected_secretRef(context, cr_name, crd_name, json_path):
     secret = polling2.poll(lambda: sb.get_secret_name(), step=100, timeout=1000, ignore_exceptions=(
         ValueError,), check_success=lambda v: v is not None)
     polling2.poll(lambda: kubernetes.get_resource_info_by_jsonpath(crd_name, name, context.namespace.name, json_path) == secret,
-                  step=5, timeout=400)
+                  step=1, timeout=400)
 
 
 @step(u'Error message is thrown')
@@ -467,12 +467,20 @@ def validate_error(context, err_msg=None):
 def check_secret_key(context, key):
     sb = list(context.bindings.values())[0]
     kubernetes = context.kubernetes
-    secret = polling2.poll(lambda: sb.get_secret_name(context), step=100, timeout=1000,
-                           ignore_exceptions=(ValueError,), check_success=lambda v: v is not None)
+    secret = polling2.poll(
+            target=lambda: sb.get_secret_name(context),
+            check_success=lambda v: v is not None,
+            ignore_exceptions=(ValueError,),
+            step=10,
+            timeout=300)
     json_path = f'{{.data.{key}}}'
-    polling2.poll(lambda: kubernetes.get_resource_info_by_jsonpath("secrets", secret, context.namespace.name,
-                                                                   json_path) == "",
-                  step=5, timeout=120, ignore_exceptions=(binascii.Error,))
+    polling2.poll(
+        target=lambda: kubernetes.get_resource_info_by_jsonpath("secrets", secret, context.namespace.name, json_path),
+        check_success=lambda x: x == "",
+        ignore_exceptions=(binascii.Error,),
+        step=1,
+        timeout=120,
+    )
 
 
 def assert_generation(context, count):
@@ -641,8 +649,8 @@ def on_worker_cluster_check_resource_not_exists(context, cluster_name: str, reso
         k = Kubernetes(kubeconfig=tf.name)
         polling2.poll(
             target=lambda: not k.resource_exists(resource_type, resource_name, namespace),
-            step=1,
-            timeout=30)
+            step=3,
+            timeout=180)
 
 
 @step(u'Resource "{resource}" is installed on worker cluster "{cluster}" in namespace "{namespace}"')
@@ -695,8 +703,10 @@ def check_resource_exists(context, resource_type, name, namespace, cluster):
         tf.flush()
 
         kubernetes = Kubernetes(kubeconfig=tf.name)
-        assert kubernetes.is_resource_in(resource_type, resource_name, namespace), \
-            f"Could not find the resource: '{resource_type}/{resource_name}' in the cluster"
+        polling2.poll(
+            target=lambda: kubernetes.is_resource_in(resource_type, resource_name, namespace),
+            step=3,
+            timeout=120)
 
 
 @step(u'The resource {resource_type}/{name}:{namespace} is not available in cluster "{cluster}"')

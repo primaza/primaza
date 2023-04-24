@@ -62,7 +62,7 @@ Feature: Cleanup service namespace
                 environmentName: dev
                 clusterContextSecret: primaza-kw
             """
-        Then On Worker Cluster "worker", Service Class "$scenario_id-serviceclass" does not exists in "services"
+        Then On Worker Cluster "worker", Service Class "$scenario_id-serviceclass" does not exist in "services"
 
     Scenario: Service Class is removed on Cluster Environment deletion
         When On Primaza Cluster "main", Resource is deleted
@@ -73,4 +73,4 @@ Feature: Cleanup service namespace
                 name: worker
                 namespace: primaza-system
             """
-        Then On Worker Cluster "worker", Service Class "$scenario_id-serviceclass" does not exists in "services"
+        Then On Worker Cluster "worker", Service Class "$scenario_id-serviceclass" does not exist in "services"
