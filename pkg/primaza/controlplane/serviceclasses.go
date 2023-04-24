@@ -22,6 +22,7 @@ import (
 	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func PushServiceClassToNamespaces(ctx context.Context, cli client.Client, sc primazaiov1alpha1.ServiceClass, namespaces []string) error {
@@ -31,10 +32,13 @@ func PushServiceClassToNamespaces(ctx context.Context, cli client.Client, sc pri
 				Name:      sc.Name,
 				Namespace: ns,
 			},
-			Spec: sc.Spec,
 		}
 
-		if err := cli.Create(ctx, sccp, &client.CreateOptions{}); err != nil {
+		_, err := controllerutil.CreateOrUpdate(ctx, cli, sccp, func() error {
+			sccp.Spec = sc.Spec
+			return nil
+		})
+		if err != nil {
 			return err
 		}
 	}
