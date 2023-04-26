@@ -19,6 +19,8 @@ package svc
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/primaza/primaza/api/v1alpha1"
 	"github.com/primaza/primaza/pkg/primaza/constants"
@@ -70,6 +72,15 @@ func (r *AgentServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		if err := r.removeServiceClasses(ctx, req); err != nil {
 			return ctrl.Result{}, err
 		}
+
+		scc := v1alpha1.ServiceClassList{}
+		if err := r.List(ctx, &scc, &client.ListOptions{Namespace: req.Namespace}); err != nil {
+			return ctrl.Result{}, err
+		}
+		if len(scc.Items) > 0 {
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, fmt.Errorf("waiting for Service Classes deletion")
+		}
+
 		// remove the finalizer so we don't requeue
 		if controllerutil.RemoveFinalizer(&agentsvcdeployment, agentsvcfinalizer) {
 			if err = r.Update(ctx, &agentsvcdeployment, &client.UpdateOptions{}); err != nil {
