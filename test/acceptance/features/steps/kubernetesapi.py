@@ -402,3 +402,31 @@ def on_primaza_cluster_no_service_catalogs_found(context, cluster_name):
     )
 
     assert not response["items"]
+
+
+@step(u'On Primaza Cluster "{cluster_name}", RegisteredService "{rs}" is available')
+def on_primaza_cluster_check_registered_service_exists(context, cluster_name, rs):
+    cluster = context.cluster_provider.get_primaza_cluster(cluster_name)
+    name = substitute_scenario_id(context, rs)
+    polling2.poll(
+        target=lambda: cluster.primaza_custom_object_exists(
+            version="v1alpha1",
+            namespace="primaza-system",
+            plural="registeredservices",
+            name=name),
+        step=1,
+        timeout=60)
+
+
+@step(u'On Primaza Cluster "{cluster_name}", RegisteredService "{rs}" is not available')
+def on_primaza_cluster_check_registered_service_does_not_exists(context, cluster_name, rs):
+    cluster = context.cluster_provider.get_primaza_cluster(cluster_name)
+    name = substitute_scenario_id(context, rs)
+    polling2.poll(
+        target=lambda: not cluster.primaza_custom_object_exists(
+            version="v1alpha1",
+            namespace="primaza-system",
+            plural="registeredservices",
+            name=name),
+        step=1,
+        timeout=60)

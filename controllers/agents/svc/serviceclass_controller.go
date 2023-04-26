@@ -20,18 +20,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
+	"go.uber.org/atomic"
 	appsv1 "k8s.io/api/apps/v1"
-
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/jsonpath"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -42,12 +45,6 @@ import (
 	"github.com/primaza/primaza/pkg/primaza/workercluster"
 )
 
-// This is the name of the secret that contains the information the service
-// agents needs to write back registered services up to primaza.  It contains
-// two keys: `kubeconfig`, a serialized kubeconfig for the upstream kubeconfig
-// cluster, and `namespace`, the namespace to write registered services to
-const PRIMAZA_CONTROLLER_REFERENCE string = "primaza-kubeconfig"
-
 const finalizer = "serviceclasses.primaza.io/finalizer"
 
 // ServiceClassReconciler reconciles a ServiceClass object
@@ -56,6 +53,17 @@ type ServiceClassReconciler struct {
 	dynamic.Interface
 	RemoteScheme *runtime.Scheme
 	Mapper       meta.RESTMapper
+	informers    map[string]informer
+}
+
+type informer struct {
+	informer   cache.SharedIndexInformer
+	ctx        context.Context
+	cancelFunc context.CancelFunc
+}
+
+func (i *informer) run() {
+	i.informer.Run(i.ctx.Done())
 }
 
 type SEDMapping struct {
@@ -68,6 +76,7 @@ func NewServiceClassReconciler(mgr ctrl.Manager) *ServiceClassReconciler {
 	return &ServiceClassReconciler{
 		Client:    mgr.GetClient(),
 		Interface: dynamic.NewForConfigOrDie(mgr.GetConfig()),
+		informers: make(map[string]informer, 0),
 	}
 }
 
@@ -103,13 +112,17 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, err
 	}
 
+	if err = r.SetWatchersForResources(ctx, serviceClass); err != nil {
+		reconcileLog.Error(err, "Failed to set watchers on ServiceClass resources ", "namespace", req.Namespace, "name", req.Name)
+		return ctrl.Result{}, err
+	}
+
 	// next, get all the services that this service class controls
 	services, err := r.GetResources(ctx, &serviceClass)
 	if err != nil {
 		reconcileLog.Error(err, "Failed to retrieve resources")
 		return ctrl.Result{}, err
 	}
-
 	// then, write all the registered services up to the primaza cluster
 	if serviceClass.DeletionTimestamp.IsZero() {
 		handler := func(remote_client client.Client, rs v1alpha1.RegisteredService, secret *v1.Secret) []error {
@@ -125,7 +138,6 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			} else {
 				reconcileLog.Info("Wrote registered service", "service", rs.Name, "namespace", rs.Namespace, "operation", op)
 			}
-
 			errs := []error{err}
 			if secret != nil {
 				data := secret.StringData
@@ -163,12 +175,17 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			return nil
 		}
 
+		// need to stop the informers if the service class is deleted
+		if i, ok := r.informers[serviceClass.Name]; ok {
+			i.cancelFunc()
+			delete(r.informers, serviceClass.Name)
+		}
+
 		err = r.HandleRegisteredServices(ctx, &serviceClass, *services, handler)
 		if err != nil {
 			reconcileLog.Error(err, "Failed to delete registered services")
 			return ctrl.Result{}, err
 		}
-
 		// remove the finalizer so we don't requeue
 		if controllerutil.RemoveFinalizer(&serviceClass, finalizer) {
 			if err = r.Update(ctx, &serviceClass, &client.UpdateOptions{}); err != nil {
@@ -179,7 +196,6 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		// nothing to do
 		return ctrl.Result{}, nil
 	}
-
 	// finally, write the status of the service class
 	err = r.Client.Status().Update(ctx, &serviceClass)
 	if err != nil {
@@ -215,21 +231,13 @@ type HandleFunc func(client.Client, v1alpha1.RegisteredService, *v1.Secret) []er
 
 func (r *ServiceClassReconciler) HandleRegisteredServices(ctx context.Context, serviceClass *v1alpha1.ServiceClass, services unstructured.UnstructuredList, handleFunc HandleFunc) error {
 	l := log.FromContext(ctx)
-	mappings := []SEDMapping{}
-	for _, mapping := range serviceClass.Spec.Resource.ServiceEndpointDefinitionMapping {
-		path := jsonpath.New("")
-		err := path.Parse(fmt.Sprintf("{%s}", mapping.JsonPath))
-		if err != nil {
-			return err
-		}
-		mappings = append(mappings, SEDMapping{
-			key:    mapping.Name,
-			path:   path,
-			secret: mapping.Secret,
-		})
+	var mappings []SEDMapping
+	var err error
+	if mappings, err = ServiceEndpointDefinitionMapping(*serviceClass); err != nil {
+		return err
 	}
 
-	config, remote_namespace, err := r.getPrimazaKubeconfig(ctx, serviceClass.Namespace)
+	config, remote_namespace, err := workercluster.GetPrimazaKubeconfig(ctx, serviceClass.Namespace, r.Client)
 	if err != nil {
 		return err
 	}
@@ -264,36 +272,12 @@ func (r *ServiceClassReconciler) HandleRegisteredServices(ctx context.Context, s
 
 	var errorList []error
 	for _, data := range services.Items {
-		sedMappings, secret, err := LookupServiceEndpointDescriptor(mappings, data)
-		if err != nil {
-			l.Error(err, "Failed to lookup service endpoint descriptor values",
-				"name", data.GetName(),
-				"namespace", data.GetNamespace(),
-				"gvk", data.GroupVersionKind())
-		}
-
-		rs := v1alpha1.RegisteredService{
-			ObjectMeta: metav1.ObjectMeta{
-				// FIXME(sadlerap): this could cause naming conflicts; we need
-				// to take into account the type of resource somehow.
-				Name:      data.GetName(),
-				Namespace: remote_namespace,
-			},
-			Spec: v1alpha1.RegisteredServiceSpec{
-				ServiceEndpointDefinition: sedMappings,
-				ServiceClassIdentity:      serviceClass.Spec.ServiceClassIdentity,
-				HealthCheck:               serviceClass.Spec.HealthCheck,
-			},
-		}
-
-		if serviceClass.Spec.Constraints != nil {
-			rs.Spec.Constraints = &v1alpha1.RegisteredServiceConstraints{
-				Environments: serviceClass.Spec.Constraints.Environments,
-			}
-		}
-
-		if secret != nil {
-			secret.SetNamespace(remote_namespace)
+		var rs v1alpha1.RegisteredService
+		var err error
+		var secret *v1.Secret
+		if rs, secret, err = PrepareRegisteredService(ctx, *serviceClass, mappings, data, remote_namespace); err != nil {
+			errorList = append(errorList, err)
+			continue
 		}
 
 		// modify the registered service
@@ -348,27 +332,57 @@ func LookupServiceEndpointDescriptor(mappings []SEDMapping, service unstructured
 	return sedMappings, secret, nil
 }
 
-func (r *ServiceClassReconciler) getPrimazaKubeconfig(ctx context.Context, namespace string) (*rest.Config, string, error) {
-	// TODO(sadlerap): can we use the functionality in GetClusterRESTConfig
-	// from pkg/primaza/clustercontext to do de-duplicate this?
-	s := v1.Secret{}
-	k := client.ObjectKey{Namespace: namespace, Name: PRIMAZA_CONTROLLER_REFERENCE}
-	if err := r.Get(ctx, k, &s); err != nil {
-		return nil, "", err
-	}
-	if _, found := s.Data["kubeconfig"]; !found {
-		return nil, "", fmt.Errorf("Field \"kubeconfig\" field in secret %s:%s does not exist", s.Name, s.Namespace)
-	}
-
-	if _, found := s.Data["namespace"]; !found {
-		return nil, "", fmt.Errorf("Field \"namespace\" field in secret %s:%s does not exist", s.Name, s.Namespace)
-	}
-
-	restConfig, err := clientcmd.RESTConfigFromKubeConfig(s.Data["kubeconfig"])
+func PrepareRegisteredService(ctx context.Context, serviceClass v1alpha1.ServiceClass, mappings []SEDMapping, data unstructured.Unstructured, remote_namespace string) (v1alpha1.RegisteredService, *v1.Secret, error) {
+	l := log.FromContext(ctx)
+	sedMappings, secret, err := LookupServiceEndpointDescriptor(mappings, data)
 	if err != nil {
-		return nil, "", err
+		l.Error(err, "Failed to lookup service endpoint descriptor values",
+			"name", data.GetName(),
+			"namespace", data.GetNamespace(),
+			"gvk", data.GroupVersionKind())
+		return v1alpha1.RegisteredService{}, nil, err
 	}
-	return restConfig, string(s.Data["namespace"]), nil
+	rs := v1alpha1.RegisteredService{
+		ObjectMeta: metav1.ObjectMeta{
+			// FIXME(sadlerap): this could cause naming conflicts; we need
+			// to take into account the type of resource somehow.
+			Name:      data.GetName(),
+			Namespace: remote_namespace,
+		},
+		Spec: v1alpha1.RegisteredServiceSpec{
+			ServiceEndpointDefinition: sedMappings,
+			ServiceClassIdentity:      serviceClass.Spec.ServiceClassIdentity,
+			HealthCheck:               serviceClass.Spec.HealthCheck,
+		},
+	}
+
+	if serviceClass.Spec.Constraints != nil {
+		rs.Spec.Constraints = &v1alpha1.RegisteredServiceConstraints{
+			Environments: serviceClass.Spec.Constraints.Environments,
+		}
+	}
+
+	if secret != nil {
+		secret.SetNamespace(remote_namespace)
+	}
+	return rs, secret, nil
+}
+
+func ServiceEndpointDefinitionMapping(serviceClass v1alpha1.ServiceClass) ([]SEDMapping, error) {
+	mappings := []SEDMapping{}
+	for _, mapping := range serviceClass.Spec.Resource.ServiceEndpointDefinitionMapping {
+		path := jsonpath.New("")
+		err := path.Parse(fmt.Sprintf("{%s}", mapping.JsonPath))
+		if err != nil {
+			return nil, err
+		}
+		mappings = append(mappings, SEDMapping{
+			key:    mapping.Name,
+			path:   path,
+			secret: mapping.Secret,
+		})
+	}
+	return mappings, nil
 }
 
 func (r *ServiceClassReconciler) setOwnerReference(ctx context.Context, scclass *v1alpha1.ServiceClass, namespace string) error {
@@ -393,6 +407,173 @@ func (r *ServiceClassReconciler) setOwnerReference(ctx context.Context, scclass 
 		return err
 	}
 
+	return nil
+}
+
+func (r *ServiceClassReconciler) SetWatchersForResources(ctx context.Context, serviceClass v1alpha1.ServiceClass) error {
+	reconcileLog := log.FromContext(ctx)
+	typemeta := metav1.TypeMeta{
+		Kind:       serviceClass.Spec.Resource.Kind,
+		APIVersion: serviceClass.Spec.Resource.APIVersion,
+	}
+	gvk := typemeta.GroupVersionKind()
+	mapping, err := r.Client.RESTMapper().RESTMapping(gvk.GroupKind(), gvk.Version)
+	if err != nil {
+		reconcileLog.Error(err, "error on creating mapping")
+		return err
+	}
+	reconcileLog.Info("resource to be watched", "resource", mapping.Resource)
+	if err = r.RunInformer(ctx, mapping.Resource, serviceClass); err != nil {
+		reconcileLog.Error(err, "error running informer")
+		return err
+	}
+	return nil
+}
+
+func (r *ServiceClassReconciler) RunInformer(ctx context.Context, resource schema.GroupVersionResource, serviceClass v1alpha1.ServiceClass) error {
+	l := log.FromContext(ctx)
+
+	// check if informer already exists
+	if _, ok := r.informers[serviceClass.GetName()]; ok {
+		l.Info("Informer already exists")
+		return nil
+	}
+	clusterConfig, err := rest.InClusterConfig()
+	if err != nil {
+		l.Info("failed creating cluster config")
+		panic(err)
+	}
+	clusterClient, err := dynamic.NewForConfig(clusterConfig)
+	if err != nil {
+		l.Info("failed creating cluster config")
+		panic(err)
+	}
+	factory := dynamicinformer.NewFilteredDynamicSharedInformerFactory(clusterClient, time.Minute, serviceClass.Namespace, nil)
+	i := factory.ForResource(resource).Informer()
+
+	var synced atomic.Bool
+	synced.Store(false)
+	if _, err := i.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			if !synced.Load() {
+				return
+			}
+			serviceClassResource := obj.(*unstructured.Unstructured)
+			if err := r.CreateOrUpdateRegisteredService(ctx, *serviceClassResource, serviceClass); err != nil {
+				return
+			}
+		},
+		UpdateFunc: func(past, future interface{}) {
+			if !synced.Load() {
+				return
+			}
+			serviceClassResource := future.(*unstructured.Unstructured)
+			if err := r.CreateOrUpdateRegisteredService(ctx, *serviceClassResource, serviceClass); err != nil {
+				return
+			}
+		},
+		DeleteFunc: func(obj interface{}) {
+			if !synced.Load() {
+				return
+			}
+			if err := r.DeleteRegisteredService(ctx, serviceClass); err != nil {
+				return
+			}
+		},
+	}); err != nil {
+		return err
+	}
+
+	l.Info("run informer", "GroupVersionResource", resource)
+	c, fc := context.WithCancel(ctx)
+
+	li := informer{informer: i, ctx: c, cancelFunc: fc}
+	r.informers[serviceClass.GetName()] = li
+	go li.run()
+
+	if !cache.WaitForCacheSync(ctx.Done(), i.HasSynced) {
+		fc()
+		delete(r.informers, serviceClass.GetName())
+		return fmt.Errorf("could not sync cache")
+	}
+
+	synced.Store(true)
+
+	return nil
+}
+
+func (r *ServiceClassReconciler) CreateOrUpdateRegisteredService(ctx context.Context, obj unstructured.Unstructured, serviceClass v1alpha1.ServiceClass) error {
+	l := log.FromContext(ctx)
+	var mappings []SEDMapping
+	var err error
+
+	if mappings, err = ServiceEndpointDefinitionMapping(serviceClass); err != nil {
+		return err
+	}
+	config, remote_namespace, err := workercluster.GetPrimazaKubeconfig(ctx, serviceClass.Namespace, r.Client)
+	if err != nil {
+		return err
+	}
+	remote_client, err := client.New(config, client.Options{
+		Scheme: r.Client.Scheme(),
+		Mapper: r.Client.RESTMapper(),
+	})
+	if err != nil {
+		return err
+	}
+	errs := []error{err}
+	var rs v1alpha1.RegisteredService
+	var secret *v1.Secret
+	if rs, secret, err = PrepareRegisteredService(ctx, serviceClass, mappings, obj, remote_namespace); err != nil {
+		return err
+	}
+	spec := rs.Spec
+	op, err := controllerutil.CreateOrUpdate(ctx, remote_client, &rs, func() error {
+		rs.Spec = spec
+		return nil
+	})
+	if err != nil {
+		l.Error(err, "Failed to create or update registered service")
+		errs = append(errs, err)
+	} else {
+		l.Info("Wrote registered service", "registered service", rs.Name, "namespace", rs.Namespace, "operation", op)
+	}
+	if secret != nil {
+		data := secret.StringData
+		_, err := controllerutil.CreateOrUpdate(ctx, remote_client, secret, func() error {
+			secret.StringData = data
+			return controllerutil.SetOwnerReference(&rs, secret, remote_client.Scheme())
+		})
+		errs = append(errs, err)
+	}
+	return errors.Join(errs...)
+}
+
+func (r *ServiceClassReconciler) DeleteRegisteredService(ctx context.Context, serviceClass v1alpha1.ServiceClass) error {
+	l := log.FromContext(ctx)
+	config, _, err := workercluster.GetPrimazaKubeconfig(ctx, serviceClass.Namespace, r.Client)
+	if err != nil {
+		return err
+	}
+	remote_client, err := client.New(config, client.Options{
+		Scheme: r.Client.Scheme(),
+		Mapper: r.Client.RESTMapper(),
+	})
+	if err != nil {
+		return err
+	}
+	l.Info("remote cluster", "address", config.Host)
+
+	// TODO: Deletion of Registered Services to be made dynamic
+	registeredService := v1alpha1.RegisteredService{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      serviceClass.Name,
+			Namespace: "primaza-system",
+		},
+	}
+	if err = remote_client.Delete(ctx, &registeredService, &client.DeleteOptions{}); !apierrors.IsNotFound(err) {
+		return err
+	}
 	return nil
 }
 

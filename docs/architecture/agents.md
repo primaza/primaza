@@ -61,11 +61,11 @@ More specifically, an application agent requires the following resources to exis
 
 # Service agent
 
-Service agents are installed int Cluster Enviuronment's service namespaces.
+Service agents are installed into Cluster Environment's service namespaces.
 Namespaces on worker cluster need to be previously configured to allow, agents to run properly.
-Application agents just need to access resources in the namespace they are published into.
+Service agents just need to access resources in the namespace they are published into.
 
-More specifically, an application agent requires the following resources to exists into the namespace:
+More specifically, a Service agent requires the following resources to exists into the namespace:
 
 * A Role granting
     * full access to `leases.coordination.k8s.io`
@@ -73,6 +73,11 @@ More specifically, an application agent requires the following resources to exis
 * A Service Account for the agent
 * A RoleBinding that binds the ServiceAccount to the Role
 
+When a Service Class is created, the Service Agent looks for resources matching its specification.
+
+A Role needs to be created which allows to retrive, list and watch Service Class Resources as Primaza Service Agent runs a dynamic informer for each resource.
+
+The informer monitors changes to resources matching the Service Class specifications and updates the Registered Services on Primaza control plane.
 
 ## Service Discovery
 
