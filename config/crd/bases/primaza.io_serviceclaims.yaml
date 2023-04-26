@@ -222,6 +222,7 @@ spec:
                 enum:
                 - Pending
                 - Resolved
+                - Invalid
                 type: string
             required:
             - registeredService

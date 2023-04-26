@@ -47,7 +47,7 @@ type ServiceClaimSpec struct {
 
 // ServiceClaimStatus defines the observed state of ServiceClaim
 type ServiceClaimStatus struct {
-	//+kubebuilder:validation:Enum=Pending;Resolved
+	//+kubebuilder:validation:Enum=Pending;Resolved;Invalid
 	//+kubebuilder:default:=Pending
 	State             ServiceClaimState  `json:"state"`
 	ClaimID           string             `json:"claimID,omitempty"`
@@ -60,6 +60,7 @@ type ServiceClaimState string
 const (
 	ServiceClaimStatePending  ServiceClaimState = "Pending"
 	ServiceClaimStateResolved ServiceClaimState = "Resolved"
+	ServiceClaimStateInvalid  ServiceClaimState = "Invalid"
 )
 
 //+kubebuilder:object:root=true

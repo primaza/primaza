@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -132,14 +133,19 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return nil
 	})
 	if err != nil {
-		l.Error(err, "Failed to create service claim",
-			"service", sclaim.Name,
-			"namespace", sclaim.Namespace)
-		return ctrl.Result{}, err
+		if strings.Contains(err.Error(), "admission webhook \"vserviceclaim.kb.io\" denied the request") {
+			sclaimCopy.Status.State = primazaiov1alpha1.ServiceClaimStateInvalid
+		} else {
+			sclaimCopy.Status.State = primazaiov1alpha1.ServiceClaimStatePending
+			l.Error(err, "Failed to create/update service claim",
+				"service", sclaim.Name,
+				"namespace", sclaim.Namespace)
+		}
+
 	} else {
+		sclaimCopy.Status.State = primazaiov1alpha1.ServiceClaimStateResolved
 		l.Info("Wrote service claim", "claim", sclaim.Name, "namespace", sclaim.Namespace, "operation", op)
 	}
-
 	sclaim.Status.ClaimID = sclaimCopy.Status.ClaimID
 	sclaim.Status.State = sclaimCopy.Status.State
 	sclaim.Status.RegisteredService = sclaimCopy.Status.RegisteredService
@@ -150,6 +156,7 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	return ctrl.Result{}, nil
 }
+
 func (r *ServiceClaimReconciler) createServiceClaimCopy(sclaim primazaiov1alpha1.ServiceClaim, deployment appsv1.Deployment, remote_namespace string) *primazaiov1alpha1.ServiceClaim {
 	sclaimCopy := sclaim.DeepCopy()
 	sclaimCopy.Spec.EnvironmentTag = ""

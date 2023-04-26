@@ -269,7 +269,7 @@ class Cluster(object):
                 client.V1PolicyRule(
                     api_groups=[""],
                     resources=["secrets"],
-                    verbs=["create"]),
+                    verbs=["create", "get", "update"]),
                 client.V1PolicyRule(
                     api_groups=[""],
                     resources=["secrets"],
