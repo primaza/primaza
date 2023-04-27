@@ -22,3 +22,14 @@ const (
 	ServiceNamespaceType     NamespaceType = "service"
 	ApplicationNamespaceType NamespaceType = "application"
 )
+
+func (t NamespaceType) Short() string {
+	switch t {
+	case ServiceNamespaceType:
+		return "svc"
+	case ApplicationNamespaceType:
+		return "app"
+	default:
+		return ""
+	}
+}
