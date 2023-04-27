@@ -36,7 +36,8 @@ Feature: Cleanup service namespace
                 resource:
                     apiVersion: stable.example.com/v1
                     kind: Backend
-                    serviceEndpointDefinitionMapping:
+                    serviceEndpointDefinitionMappings:
+                        resourceFields:
                         - name: host
                           jsonPath: .spec.host
                 serviceClassIdentity:

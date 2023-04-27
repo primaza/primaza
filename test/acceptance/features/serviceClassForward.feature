@@ -36,7 +36,8 @@ Feature: Forward Service Class into Service namespaces
             resource:
                 apiVersion: stable.example.com/v1
                 kind: Backend
-                serviceEndpointDefinitionMapping:
+                serviceEndpointDefinitionMappings:
+                    resourceFields:
                     - name: host
                       jsonPath: .spec.host
             serviceClassIdentity:
@@ -77,9 +78,10 @@ Feature: Forward Service Class into Service namespaces
             resource:
                 apiVersion: stable.example.com/v1
                 kind: Backend
-                serviceEndpointDefinitionMapping:
-                - name: host
-                  jsonPath: .spec.host
+                serviceEndpointDefinitionMappings:
+                    resourceFields:
+                    - name: host
+                      jsonPath: .spec.host
             serviceClassIdentity:
             - name: type
               value: backend
@@ -144,7 +146,8 @@ Feature: Forward Service Class into Service namespaces
             resource:
                 apiVersion: stable.example.com/v1
                 kind: Backend
-                serviceEndpointDefinitionMapping:
+                serviceEndpointDefinitionMappings:
+                    resourceFields:
                     - name: host
                       jsonPath: .spec.host
             serviceClassIdentity:
@@ -171,9 +174,10 @@ Feature: Forward Service Class into Service namespaces
             resource:
                 apiVersion: stable.example.com/v1
                 kind: Backend
-                serviceEndpointDefinitionMapping:
-                - name: host
-                  jsonPath: .spec.host
+                serviceEndpointDefinitionMappings:
+                    resourceFields:
+                    - name: host
+                      jsonPath: .spec.host
             serviceClassIdentity:
             - name: type
               value: backend
@@ -230,7 +234,8 @@ Feature: Forward Service Class into Service namespaces
             resource:
                 apiVersion: stable.example.com/v1
                 kind: Backend
-                serviceEndpointDefinitionMapping:
+                serviceEndpointDefinitionMappings:
+                    resourceFields:
                     - name: host
                       jsonPath: .spec.host
             serviceClassIdentity:

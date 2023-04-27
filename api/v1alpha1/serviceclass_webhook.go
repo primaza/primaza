@@ -55,7 +55,7 @@ func (r *ServiceClassResource) ValidateMapping() field.ErrorList {
 	errs := field.ErrorList{}
 	names := map[string]struct{}{}
 	childPath := field.NewPath("spec", "resource")
-	for i, mapping := range r.ServiceEndpointDefinitionMapping {
+	for i, mapping := range r.ServiceEndpointDefinitionMappings.ResourceFields {
 		path := childPath.Child("serviceEndpointDefinitionMapping").Index(i)
 		j := jsonpath.New("")
 		formatted := fmt.Sprintf("{%v}", mapping.JsonPath)
@@ -128,18 +128,18 @@ func (v *serviceClassValidator) ValidateUpdate(ctx context.Context, oldObj runti
 		errs = append(errs, field.Invalid(childPath.Child("kind"), newClass.Spec.Resource.Kind, "Kind is immutable"))
 	}
 	// a cheap way of doing data sets; struct{} is zero-sized, so we don't needlessly make allocations
-	oldMappings := map[ServiceClassMapping]struct{}{}
-	newMappings := map[ServiceClassMapping]struct{}{}
-	for _, item := range oldServiceClass.Spec.Resource.ServiceEndpointDefinitionMapping {
+	oldMappings := map[ServiceClassResourceFieldMapping]struct{}{}
+	newMappings := map[ServiceClassResourceFieldMapping]struct{}{}
+	for _, item := range oldServiceClass.Spec.Resource.ServiceEndpointDefinitionMappings.ResourceFields {
 		oldMappings[item] = struct{}{}
 	}
-	for _, item := range newClass.Spec.Resource.ServiceEndpointDefinitionMapping {
+	for _, item := range newClass.Spec.Resource.ServiceEndpointDefinitionMappings.ResourceFields {
 		newMappings[item] = struct{}{}
 	}
 	if !reflect.DeepEqual(oldMappings, newMappings) {
 		errs = append(errs,
 			field.Invalid(childPath.Child("serviceEndpointDefinitionMapping"),
-				newClass.Spec.Resource.ServiceEndpointDefinitionMapping,
+				newClass.Spec.Resource.ServiceEndpointDefinitionMappings,
 				"ServiceEndpointDefinitionMapping is immutable"))
 	}
 	errs = append(errs, newClass.Spec.Resource.ValidateMapping()...)

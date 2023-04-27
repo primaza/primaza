@@ -34,10 +34,11 @@ Feature: Service Agent watches Service Class Resource
             resource:
                 apiVersion: stable.example.com/v1
                 kind: Backend
-                serviceEndpointDefinitionMapping:
-                  - name: host
-                    jsonPath: .spec.host
-                    secret: false
+                serviceEndpointDefinitionMappings:
+                    resourceFields:
+                    - name: host
+                      jsonPath: .spec.host
+                      secret: false
             serviceClassIdentity:
               - name: type
                 value: backend

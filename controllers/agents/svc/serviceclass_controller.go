@@ -35,7 +35,6 @@ import (
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/jsonpath"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -43,6 +42,7 @@ import (
 
 	"github.com/primaza/primaza/api/v1alpha1"
 	"github.com/primaza/primaza/pkg/primaza/constants"
+	"github.com/primaza/primaza/pkg/primaza/sed"
 	"github.com/primaza/primaza/pkg/primaza/workercluster"
 )
 
@@ -65,12 +65,6 @@ type informer struct {
 
 func (i *informer) run() {
 	i.informer.Run(i.ctx.Done())
-}
-
-type SEDMapping struct {
-	key    string
-	path   *jsonpath.JSONPath
-	secret bool
 }
 
 func NewServiceClassReconciler(mgr ctrl.Manager) *ServiceClassReconciler {
@@ -134,9 +128,7 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 				return nil
 			})
 			if err != nil {
-				reconcileLog.Error(err, "Failed to create registered service",
-					"service", rs.Name,
-					"namespace", rs.Namespace)
+				reconcileLog.Error(err, "Failed to create registered service", "service", rs.Name, "namespace", rs.Namespace)
 			} else {
 				reconcileLog.Info("Wrote registered service", "service", rs.Name, "namespace", rs.Namespace, "operation", op)
 			}
@@ -234,11 +226,7 @@ type HandleFunc func(client.Client, v1alpha1.RegisteredService, *v1.Secret) []er
 
 func (r *ServiceClassReconciler) HandleRegisteredServices(ctx context.Context, serviceClass *v1alpha1.ServiceClass, services unstructured.UnstructuredList, handleFunc HandleFunc) error {
 	l := log.FromContext(ctx)
-	var mappings []SEDMapping
 	var err error
-	if mappings, err = ServiceEndpointDefinitionMapping(*serviceClass); err != nil {
-		return err
-	}
 
 	config, remote_namespace, err := workercluster.GetPrimazaKubeconfig(ctx, serviceClass.Namespace, r.Client, constants.ServiceAgentKubeconfigSecretName)
 	if err != nil {
@@ -275,6 +263,11 @@ func (r *ServiceClassReconciler) HandleRegisteredServices(ctx context.Context, s
 
 	var errorList []error
 	for _, data := range services.Items {
+		var mappings []sed.SEDMapping
+		if mappings, err = ServiceEndpointDefinitionMapping(r.Client, data, *serviceClass); err != nil {
+			return err
+		}
+
 		var rs v1alpha1.RegisteredService
 		var err error
 		var secret *v1.Secret
@@ -292,35 +285,31 @@ func (r *ServiceClassReconciler) HandleRegisteredServices(ctx context.Context, s
 	return errors.Join(errorList...)
 }
 
-func LookupServiceEndpointDescriptor(mappings []SEDMapping, service unstructured.Unstructured) ([]v1alpha1.ServiceEndpointDefinitionItem, *v1.Secret, error) {
+func LookupServiceEndpointDescriptor(ctx context.Context, mappings []sed.SEDMapping, service unstructured.Unstructured) ([]v1alpha1.ServiceEndpointDefinitionItem, *v1.Secret, error) {
 	var sedMappings []v1alpha1.ServiceEndpointDefinitionItem
 	var errorList []error
 	secret := &v1.Secret{StringData: map[string]string{}}
 	secret.SetName(fmt.Sprintf("%s-descriptor", service.GetName()))
 	for _, mapping := range mappings {
-		results, err := mapping.path.FindResults(service.Object)
+		value, err := mapping.ReadKey(ctx)
 		if err != nil {
-			return nil, nil, err
-		}
-		if len(results) != 1 || len(results[0]) != 1 {
-			errorList = append(errorList, fmt.Errorf("jsonPath lookup into resource returned multiple results: %v", results))
+			errorList = append(errorList, err)
 			continue
 		}
 
-		value := fmt.Sprintf("%v", results[0][0])
 		item := v1alpha1.ServiceEndpointDefinitionItem{
-			Name:  mapping.key,
-			Value: value,
+			Name:  mapping.Key(),
+			Value: *value,
 		}
-		if mapping.secret {
+		if mapping.InSecret() {
 			item = v1alpha1.ServiceEndpointDefinitionItem{
-				Name: mapping.key,
+				Name: mapping.Key(),
 				ValueFromSecret: &v1alpha1.ServiceEndpointDefinitionSecretRef{
 					Name: secret.GetName(),
-					Key:  mapping.key,
+					Key:  mapping.Key(),
 				},
 			}
-			secret.StringData[mapping.key] = value
+			secret.StringData[mapping.Key()] = *value
 		}
 		sedMappings = append(sedMappings, item)
 	}
@@ -335,9 +324,15 @@ func LookupServiceEndpointDescriptor(mappings []SEDMapping, service unstructured
 	return sedMappings, secret, nil
 }
 
-func PrepareRegisteredService(ctx context.Context, serviceClass v1alpha1.ServiceClass, mappings []SEDMapping, data unstructured.Unstructured, remote_namespace string) (v1alpha1.RegisteredService, *v1.Secret, error) {
+func PrepareRegisteredService(
+	ctx context.Context,
+	serviceClass v1alpha1.ServiceClass,
+	mappings []sed.SEDMapping,
+	data unstructured.Unstructured,
+	remote_namespace string,
+) (v1alpha1.RegisteredService, *v1.Secret, error) {
 	l := log.FromContext(ctx)
-	sedMappings, secret, err := LookupServiceEndpointDescriptor(mappings, data)
+	sedMappings, secret, err := LookupServiceEndpointDescriptor(ctx, mappings, data)
 	if err != nil {
 		l.Error(err, "Failed to lookup service endpoint descriptor values",
 			"name", data.GetName(),
@@ -369,27 +364,32 @@ func PrepareRegisteredService(ctx context.Context, serviceClass v1alpha1.Service
 	return rs, secret, nil
 }
 
-func ServiceEndpointDefinitionMapping(serviceClass v1alpha1.ServiceClass) ([]SEDMapping, error) {
-	mappings := []SEDMapping{}
-	for _, mapping := range serviceClass.Spec.Resource.ServiceEndpointDefinitionMapping {
-		path := jsonpath.New("")
-		err := path.Parse(fmt.Sprintf("{%s}", mapping.JsonPath))
+func ServiceEndpointDefinitionMapping(cli client.Client, obj unstructured.Unstructured, serviceClass v1alpha1.ServiceClass) ([]sed.SEDMapping, error) {
+	mappings := []sed.SEDMapping{}
+
+	for _, mapping := range serviceClass.Spec.Resource.ServiceEndpointDefinitionMappings.ResourceFields {
+		m, err := sed.NewSEDResourceMapping(obj, mapping)
 		if err != nil {
 			return nil, err
 		}
-		mappings = append(mappings, SEDMapping{
-			key:    mapping.Name,
-			path:   path,
-			secret: mapping.Secret,
-		})
+		mappings = append(mappings, m)
 	}
+
+	for _, m := range serviceClass.Spec.Resource.ServiceEndpointDefinitionMappings.SecretRefFields {
+		m, err := sed.NewSEDSecretRefMapping(serviceClass.GetNamespace(), obj, cli, m)
+		if err != nil {
+			return nil, err
+		}
+		mappings = append(mappings, m)
+	}
+
 	return mappings, nil
 }
 
 func (r *ServiceClassReconciler) setOwnerReference(ctx context.Context, scclass *v1alpha1.ServiceClass, namespace string) error {
 	reconcileLog := log.FromContext(ctx)
 	objKey := client.ObjectKey{
-		Name:      "primaza-svc-agent",
+		Name:      constants.ServiceAgentDeploymentName,
 		Namespace: namespace,
 	}
 	var agentsvcdeployment appsv1.Deployment
@@ -505,10 +505,10 @@ func (r *ServiceClassReconciler) RunInformer(ctx context.Context, resource schem
 
 func (r *ServiceClassReconciler) CreateOrUpdateRegisteredService(ctx context.Context, obj unstructured.Unstructured, serviceClass v1alpha1.ServiceClass) error {
 	l := log.FromContext(ctx)
-	var mappings []SEDMapping
+	var mappings []sed.SEDMapping
 	var err error
 
-	if mappings, err = ServiceEndpointDefinitionMapping(serviceClass); err != nil {
+	if mappings, err = ServiceEndpointDefinitionMapping(r.Client, obj, serviceClass); err != nil {
 		return err
 	}
 	config, remote_namespace, err := workercluster.GetPrimazaKubeconfig(ctx, serviceClass.Namespace, r.Client, constants.ServiceAgentKubeconfigSecretName)

@@ -53,6 +53,15 @@ spec:
                         type: string
                       url:
                         type: string
+                fromSecret:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      secretName:
+                        type: string
+                      secretKey:
+                        type: string
             status:
               type: object
               properties:

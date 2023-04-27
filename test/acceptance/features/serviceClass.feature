@@ -56,10 +56,11 @@ Feature: Use ServicesClass resources to manage RegisteredService resources
                 resource:
                     apiVersion: stable.example.com/v1
                     kind: Backend
-                    serviceEndpointDefinitionMapping:
-                      - name: host
-                        jsonPath: .spec.host
-                        secret: false
+                    serviceEndpointDefinitionMappings:
+                        resourceFields:
+                        - name: host
+                          jsonPath: .spec.host
+                          secret: false
                 serviceClassIdentity:
                   - name: type
                     value: backend
@@ -96,10 +97,11 @@ Feature: Use ServicesClass resources to manage RegisteredService resources
                 resource:
                     apiVersion: stable.example.com/v1
                     kind: Backend
-                    serviceEndpointDefinitionMapping:
-                      - name: host
-                        jsonPath: .spec.host
-                        secret: false
+                    serviceEndpointDefinitionMappings:
+                        resourceFields:
+                        - name: host
+                          jsonPath: .spec.host
+                          secret: false
                 serviceClassIdentity:
                   - name: type
                     value: backend
@@ -143,10 +145,11 @@ Feature: Use ServicesClass resources to manage RegisteredService resources
                 resource:
                     apiVersion: stable.example.com/v1
                     kind: Backend
-                    serviceEndpointDefinitionMapping:
-                      - name: host
-                        jsonPath: .spec.host
-                        secret: false
+                    serviceEndpointDefinitionMappings:
+                        resourceFields:
+                        - name: host
+                          jsonPath: .spec.host
+                          secret: false
                 serviceClassIdentity:
                   - name: type
                     value: backend
@@ -184,10 +187,11 @@ Feature: Use ServicesClass resources to manage RegisteredService resources
                 resource:
                     apiVersion: stable.example.com/v1
                     kind: Backend
-                    serviceEndpointDefinitionMapping:
-                      - name: host
-                        jsonPath: .spec.host
-                        secret: true
+                    serviceEndpointDefinitionMappings:
+                        resourceFields:
+                        - name: host
+                          jsonPath: .spec.host
+                          secret: true
                 serviceClassIdentity:
                   - name: type
                     value: backend
@@ -224,10 +228,11 @@ Feature: Use ServicesClass resources to manage RegisteredService resources
                 resource:
                     apiVersion: stable.example.com/v1
                     kind: Backend
-                    serviceEndpointDefinitionMapping:
-                      - name: host
-                        jsonPath: .spec.host
-                        secret: true
+                    serviceEndpointDefinitionMappings:
+                        resourceFields:
+                        - name: host
+                          jsonPath: .spec.host
+                          secret: true
                 serviceClassIdentity:
                   - name: type
                     value: backend

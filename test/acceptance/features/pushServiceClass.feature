@@ -34,7 +34,8 @@ Feature: Create or Update Service Class
             resource:
                 apiVersion: stable.example.com/v1
                 kind: Backend
-                serviceEndpointDefinitionMapping:
+                serviceEndpointDefinitionMappings:
+                    resourceFields:
                     - name: host
                       jsonPath: .spec.host
             serviceClassIdentity:
@@ -64,7 +65,8 @@ Feature: Create or Update Service Class
             resource:
                 apiVersion: stable.example.com/v1
                 kind: Backend
-                serviceEndpointDefinitionMapping:
+                serviceEndpointDefinitionMappings:
+                    resourceFields:
                     - name: host
                       jsonPath: .spec.host
             serviceClassIdentity:

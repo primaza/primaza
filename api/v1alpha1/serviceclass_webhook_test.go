@@ -60,10 +60,12 @@ var _ = Describe("Webhook tests", func() {
 					Resource: ServiceClassResource{
 						APIVersion: "foo.bar/v1",
 						Kind:       "baz",
-						ServiceEndpointDefinitionMapping: []ServiceClassMapping{
-							{
-								Name:     "x",
-								JsonPath: ".invalid[*",
+						ServiceEndpointDefinitionMappings: ServiceEndpointDefinitionMappings{
+							ResourceFields: []ServiceClassResourceFieldMapping{
+								{
+									Name:     "x",
+									JsonPath: ".invalid[*",
+								},
 							},
 						},
 					},
@@ -78,14 +80,16 @@ var _ = Describe("Webhook tests", func() {
 					Resource: ServiceClassResource{
 						APIVersion: "foo.bar/v1",
 						Kind:       "baz",
-						ServiceEndpointDefinitionMapping: []ServiceClassMapping{
-							{
-								Name:     "x",
-								JsonPath: ".spec",
-							},
-							{
-								Name:     "x",
-								JsonPath: ".metadata",
+						ServiceEndpointDefinitionMappings: ServiceEndpointDefinitionMappings{
+							ResourceFields: []ServiceClassResourceFieldMapping{
+								{
+									Name:     "x",
+									JsonPath: ".spec",
+								},
+								{
+									Name:     "x",
+									JsonPath: ".metadata",
+								},
 							},
 						},
 					},
@@ -106,10 +110,12 @@ var _ = Describe("Webhook tests", func() {
 					Resource: ServiceClassResource{
 						APIVersion: "foo.bar/v1",
 						Kind:       "baz",
-						ServiceEndpointDefinitionMapping: []ServiceClassMapping{
-							{
-								Name:     "x",
-								JsonPath: ".spec",
+						ServiceEndpointDefinitionMappings: ServiceEndpointDefinitionMappings{
+							ResourceFields: []ServiceClassResourceFieldMapping{
+								{
+									Name:     "x",
+									JsonPath: ".spec",
+								},
 							},
 						},
 					},
@@ -119,10 +125,12 @@ var _ = Describe("Webhook tests", func() {
 					Resource: ServiceClassResource{
 						APIVersion: "foo.bar/v1",
 						Kind:       "bam",
-						ServiceEndpointDefinitionMapping: []ServiceClassMapping{
-							{
-								Name:     "x",
-								JsonPath: ".spec",
+						ServiceEndpointDefinitionMappings: ServiceEndpointDefinitionMappings{
+							ResourceFields: []ServiceClassResourceFieldMapping{
+								{
+									Name:     "x",
+									JsonPath: ".spec",
+								},
 							},
 						},
 					},
@@ -136,10 +144,12 @@ var _ = Describe("Webhook tests", func() {
 					Resource: ServiceClassResource{
 						APIVersion: "foo.bar/v1",
 						Kind:       "baz",
-						ServiceEndpointDefinitionMapping: []ServiceClassMapping{
-							{
-								Name:     "x",
-								JsonPath: ".spec",
+						ServiceEndpointDefinitionMappings: ServiceEndpointDefinitionMappings{
+							ResourceFields: []ServiceClassResourceFieldMapping{
+								{
+									Name:     "x",
+									JsonPath: ".spec",
+								},
 							},
 						},
 					},
@@ -149,10 +159,12 @@ var _ = Describe("Webhook tests", func() {
 					Resource: ServiceClassResource{
 						APIVersion: "foo.bam",
 						Kind:       "baz",
-						ServiceEndpointDefinitionMapping: []ServiceClassMapping{
-							{
-								Name:     "x",
-								JsonPath: ".spec",
+						ServiceEndpointDefinitionMappings: ServiceEndpointDefinitionMappings{
+							ResourceFields: []ServiceClassResourceFieldMapping{
+								{
+									Name:     "x",
+									JsonPath: ".spec",
+								},
 							},
 						},
 					},
@@ -166,10 +178,12 @@ var _ = Describe("Webhook tests", func() {
 					Resource: ServiceClassResource{
 						APIVersion: "foo.bar/v1",
 						Kind:       "baz",
-						ServiceEndpointDefinitionMapping: []ServiceClassMapping{
-							{
-								Name:     "x",
-								JsonPath: ".spec",
+						ServiceEndpointDefinitionMappings: ServiceEndpointDefinitionMappings{
+							ResourceFields: []ServiceClassResourceFieldMapping{
+								{
+									Name:     "x",
+									JsonPath: ".spec",
+								},
 							},
 						},
 					},
@@ -179,18 +193,27 @@ var _ = Describe("Webhook tests", func() {
 					Resource: ServiceClassResource{
 						APIVersion: "foo.bar/v1",
 						Kind:       "baz",
-						ServiceEndpointDefinitionMapping: []ServiceClassMapping{
+						ServiceEndpointDefinitionMappings: ServiceEndpointDefinitionMappings{
+							ResourceFields: []ServiceClassResourceFieldMapping{
+								{
+									Name:     "x",
+									JsonPath: ".metadata",
+								},
+							},
+						},
+					},
+				}),
+			field.ErrorList{
+				field.Invalid(
+					field.NewPath("spec", "resource", "serviceEndpointDefinitionMapping"),
+					ServiceEndpointDefinitionMappings{
+						ResourceFields: []ServiceClassResourceFieldMapping{
 							{
 								Name:     "x",
 								JsonPath: ".metadata",
 							},
 						},
 					},
-				}),
-			field.ErrorList{
-				field.Invalid(field.NewPath("spec", "resource",
-					"serviceEndpointDefinitionMapping"),
-					[]ServiceClassMapping{{Name: "x", JsonPath: ".metadata"}},
 					"ServiceEndpointDefinitionMapping is immutable"),
 			}.ToAggregate()),
 	)
@@ -201,10 +224,12 @@ var _ = Describe("Webhook tests", func() {
 			Resource: ServiceClassResource{
 				APIVersion: "foo.bar/v1",
 				Kind:       "baz",
-				ServiceEndpointDefinitionMapping: []ServiceClassMapping{
-					{
-						Name:     "x",
-						JsonPath: ".metadata",
+				ServiceEndpointDefinitionMappings: ServiceEndpointDefinitionMappings{
+					ResourceFields: []ServiceClassResourceFieldMapping{
+						{
+							Name:     "x",
+							JsonPath: ".metadata",
+						},
 					},
 				},
 			},
@@ -220,10 +245,12 @@ var _ = Describe("Webhook tests", func() {
 			Resource: ServiceClassResource{
 				APIVersion: "foo.bar/v1",
 				Kind:       "baz",
-				ServiceEndpointDefinitionMapping: []ServiceClassMapping{
-					{
-						Name:     "x",
-						JsonPath: ".metadata",
+				ServiceEndpointDefinitionMappings: ServiceEndpointDefinitionMappings{
+					ResourceFields: []ServiceClassResourceFieldMapping{
+						{
+							Name:     "x",
+							JsonPath: ".metadata",
+						},
 					},
 				},
 			},
@@ -239,10 +266,12 @@ var _ = Describe("Webhook tests", func() {
 			Resource: ServiceClassResource{
 				APIVersion: "foo.bar/v1",
 				Kind:       "baz",
-				ServiceEndpointDefinitionMapping: []ServiceClassMapping{
-					{
-						Name:     "x",
-						JsonPath: ".metadata",
+				ServiceEndpointDefinitionMappings: ServiceEndpointDefinitionMappings{
+					ResourceFields: []ServiceClassResourceFieldMapping{
+						{
+							Name:     "x",
+							JsonPath: ".metadata",
+						},
 					},
 				},
 			},
