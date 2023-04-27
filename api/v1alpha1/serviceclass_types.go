@@ -68,6 +68,14 @@ type ServiceClassSpec struct {
 	ServiceClassIdentity []ServiceClassIdentityItem `json:"serviceClassIdentity"`
 }
 
+func (s ServiceClassSpec) GetEnvironmentConstraints() []string {
+	if s.Constraints != nil {
+		return s.Constraints.Environments
+	}
+
+	return nil
+}
+
 // ServiceClassStatus defines the observed state of ServiceClass
 type ServiceClassStatus struct {
 	Conditions []metav1.Condition `json:"conditions,omitempty"`

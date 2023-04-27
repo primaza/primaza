@@ -359,10 +359,8 @@ func PrepareRegisteredService(ctx context.Context, serviceClass v1alpha1.Service
 		},
 	}
 
-	if serviceClass.Spec.Constraints != nil {
-		rs.Spec.Constraints = &v1alpha1.RegisteredServiceConstraints{
-			Environments: serviceClass.Spec.Constraints.Environments,
-		}
+	rs.Spec.Constraints = &v1alpha1.RegisteredServiceConstraints{
+		Environments: serviceClass.Spec.GetEnvironmentConstraints(),
 	}
 
 	if secret != nil {

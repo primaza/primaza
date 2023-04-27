@@ -194,7 +194,7 @@ func (r *ClusterEnvironmentReconciler) reconcileServiceNamespaces(ctx context.Co
 	var serviceclassFilteredList []primazaiov1alpha1.ServiceClass
 	for _, serviceclass := range serviceclassesList.Items {
 		if serviceclass.Spec.Constraints != nil &&
-			envtag.Match(ce.Spec.EnvironmentName, serviceclass.Spec.Constraints.Environments) {
+			envtag.Match(ce.Spec.EnvironmentName, serviceclass.Spec.GetEnvironmentConstraints()) {
 			serviceclassFilteredList = append(serviceclassFilteredList, serviceclass)
 		}
 	}

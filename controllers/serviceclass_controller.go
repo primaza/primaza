@@ -102,12 +102,7 @@ func (r *ServiceClassReconciler) reconcileEnvironments(ctx context.Context, sc *
 		return err
 	}
 
-	if sc.Spec.Constraints == nil {
-		// nothing to do, no environments
-		return nil
-	}
-
-	ff := r.filterClusterEnvironments(sc.Spec.Constraints.Environments, cee.Items)
+	ff := r.filterClusterEnvironments(sc.Spec.GetEnvironmentConstraints(), cee.Items)
 
 	errs := []error{}
 	for _, ce := range ff {
@@ -132,7 +127,7 @@ func (r *ServiceClassReconciler) removeFromEnvironments(ctx context.Context, sc 
 		return nil
 	}
 
-	ff, err := r.getRelatedClusterEnvironments(ctx, sc.Spec.Constraints.Environments)
+	ff, err := r.getRelatedClusterEnvironments(ctx, sc.Spec.GetEnvironmentConstraints())
 	if err != nil {
 		return err
 	}
