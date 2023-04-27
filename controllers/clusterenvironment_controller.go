@@ -65,7 +65,7 @@ type ClusterEnvironmentReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups="",namespace=system,resources=secrets,verbs=get;list;watch
+//+kubebuilder:rbac:groups="",namespace=system,resources=secrets,verbs=create;update;delete;get;list;watch
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,namespace=system,resources=rolebindings,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=primaza.io,namespace=system,resources=clusterenvironments,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=primaza.io,namespace=system,resources=clusterenvironments/status,verbs=get;update;patch

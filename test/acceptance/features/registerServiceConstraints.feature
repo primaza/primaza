@@ -1,11 +1,10 @@
 Feature: Register a cloud service in Primaza cluster with constraints but without healthchecks
 
-
     Scenario: Cloud Service Registration, no Healthcheck provided, ServiceCatalog exists and RegisteredService matching constraint
         Given Primaza Cluster "main" is running
-        And   Worker Cluster "worker" for "main" is running
+        And   Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And   Clusters "main" and "worker" can communicate
-        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
+        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
         And   On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
@@ -52,9 +51,9 @@ Feature: Register a cloud service in Primaza cluster with constraints but withou
 
     Scenario: Cloud Service Registration, no Healthcheck provided, ServiceCatalog exists and RegisteredService not matching constraint
         Given Primaza Cluster "main" is running
-        And   Worker Cluster "worker" for "main" is running
+        And   Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And   Clusters "main" and "worker" can communicate
-        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
+        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
         And   On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
@@ -101,9 +100,12 @@ Feature: Register a cloud service in Primaza cluster with constraints but withou
 
     Scenario: Cloud Service Registration, no Healthcheck, with include constraints and multiple ServiceCatalog exists
         Given Primaza Cluster "main" is running
-        And   Worker Cluster "worker" for "main" is running
+        And   Worker Cluster "worker" is running
+        And   On Worker Cluster "worker", a ServiceAccount for ClusterEnvironment "worker-dev" exists
+        And   On Worker Cluster "worker", a ServiceAccount for ClusterEnvironment "worker-stage" exists
         And   Clusters "main" and "worker" can communicate
-        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
+        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw-dev" for ClusterEnvironment "worker-dev" is published
+        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw-stage" for ClusterEnvironment "worker-stage" is published
         And   On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
@@ -113,7 +115,7 @@ Feature: Register a cloud service in Primaza cluster with constraints but withou
             namespace: primaza-system
         spec:
             environmentName: dev
-            clusterContextSecret: primaza-kw
+            clusterContextSecret: primaza-kw-dev
         ---
         apiVersion: primaza.io/v1alpha1
         kind: ClusterEnvironment
@@ -122,7 +124,7 @@ Feature: Register a cloud service in Primaza cluster with constraints but withou
             namespace: primaza-system
         spec:
             environmentName: stage
-            clusterContextSecret: primaza-kw
+            clusterContextSecret: primaza-kw-stage
         """
         When On Primaza Cluster "main", Resource is created
         """
@@ -160,9 +162,12 @@ Feature: Register a cloud service in Primaza cluster with constraints but withou
 
     Scenario: Cloud Service Registration, no Healthcheck, with exclude constraints and multiple ServiceCatalog exists
         Given Primaza Cluster "main" is running
-        And   Worker Cluster "worker" for "main" is running
+        And   Worker Cluster "worker" is running
+        And   On Worker Cluster "worker", a ServiceAccount for ClusterEnvironment "worker-dev" exists
+        And   On Worker Cluster "worker", a ServiceAccount for ClusterEnvironment "worker-stage" exists
         And   Clusters "main" and "worker" can communicate
-        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
+        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw-dev" for ClusterEnvironment "worker-dev" is published
+        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw-stage" for ClusterEnvironment "worker-stage" is published
         And   On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
@@ -172,7 +177,7 @@ Feature: Register a cloud service in Primaza cluster with constraints but withou
             namespace: primaza-system
         spec:
             environmentName: dev
-            clusterContextSecret: primaza-kw
+            clusterContextSecret: primaza-kw-dev
         ---
         apiVersion: primaza.io/v1alpha1
         kind: ClusterEnvironment
@@ -181,7 +186,7 @@ Feature: Register a cloud service in Primaza cluster with constraints but withou
             namespace: primaza-system
         spec:
             environmentName: stage
-            clusterContextSecret: primaza-kw
+            clusterContextSecret: primaza-kw-stage
         """
         When On Primaza Cluster "main", Resource is created
         """

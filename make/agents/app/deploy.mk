@@ -19,15 +19,20 @@ deploy-rbac:
 	cd config/agents/app/rbac && $(KUSTOMIZE) edit set namespace $(NAMESPACE)
 	$(KUSTOMIZE) build config/agents/app/rbac | kubectl apply -f -
 
+.PHONY: prepare-namespace
+prepare-namespace: ## Prepares the application namespace installing CRDs, RBAC, Webhook, and Certificates
+	cd config/agents/app/namespace && $(KUSTOMIZE) edit set namespace $(NAMESPACE)
+	$(KUSTOMIZE) build $(KUSTOMIZE_ARGS) config/agents/app/namespace | kubectl apply -f -
+
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/agents/app && \
+	cd config/agents/app/default && \
 		$(KUSTOMIZE) edit set image agentapp=${IMG} && \
 		$(KUSTOMIZE) edit set namespace $(NAMESPACE)
-	$(KUSTOMIZE) build $(KUSTOMIZE_ARGS) config/agents/app | kubectl apply -f -
+	$(KUSTOMIZE) build $(KUSTOMIZE_ARGS) config/agents/app/default | kubectl apply -f -
 	kubectl rollout status deploy/primaza-app-agent -n $(NAMESPACE) -w --timeout=120s
 
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	cd config/agents/app && $(KUSTOMIZE) edit set namespace $(NAMESPACE)
-	$(KUSTOMIZE) build $(KUSTOMIZE_ARGS) config/agents/app | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+	$(KUSTOMIZE) build $(KUSTOMIZE_ARGS) config/agents/app/default | kubectl delete --ignore-not-found=$(ignore-not-found) -f -

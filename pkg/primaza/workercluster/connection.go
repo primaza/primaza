@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
-	"github.com/primaza/primaza/pkg/primaza/constants"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -70,11 +69,11 @@ func TestConnection(ctx context.Context, cfg *rest.Config) ConnectionStatus {
 	}
 }
 
-func GetPrimazaKubeconfig(ctx context.Context, namespace string, cli client.Client) (*rest.Config, string, error) {
+func GetPrimazaKubeconfig(ctx context.Context, namespace string, cli client.Client, secretName string) (*rest.Config, string, error) {
 	// TODO(sadlerap): can we use the functionality in GetClusterRESTConfig
 	// from pkg/primaza/clustercontext to do de-duplicate this?
 	s := v1.Secret{}
-	k := client.ObjectKey{Namespace: namespace, Name: constants.PRIMAZA_CONTROLLER_REFERENCE}
+	k := client.ObjectKey{Namespace: namespace, Name: secretName}
 	if err := cli.Get(ctx, k, &s); err != nil {
 		return nil, "", err
 	}

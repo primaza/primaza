@@ -16,6 +16,7 @@ rules:
   resources:
   - registeredservices
   verbs:
+  - get
   - create
   - delete
   - patch
@@ -25,5 +26,14 @@ rules:
   resources:
   - registeredservices/status
   verbs:
+  - get
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - create
+  - delete
   - get
   - update

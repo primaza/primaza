@@ -35,6 +35,14 @@ rules:
   - update
   - patch
 - apiGroups:
+  - apps
+  resources:
+  - deployments/finalizers
+  verbs:
+  - update
+  resourceNames:
+  - primaza-app-agent
+- apiGroups:
   - ""
   resources:
   - secrets

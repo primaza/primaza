@@ -35,9 +35,9 @@ Feature: Register a cloud service in Primaza cluster without healthchecks nor co
 
     Scenario: Cloud Service Registration, no Healthcheck provided and ServiceCatalog exists
         Given Primaza Cluster "main" is running
-        And   Worker Cluster "worker" for "main" is running
+        And   Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And   Clusters "main" and "worker" can communicate
-        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
+        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
         And   On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
@@ -81,9 +81,9 @@ Feature: Register a cloud service in Primaza cluster without healthchecks nor co
 
     Scenario: Cloud Service Registration, no Healthcheck provided, ServiceCatalog exists, and Registered Service deleted
         Given Primaza Cluster "main" is running
-        And   Worker Cluster "worker" for "main" is running
+        And   Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And   Clusters "main" and "worker" can communicate
-        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
+        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
         And   On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
@@ -127,9 +127,9 @@ Feature: Register a cloud service in Primaza cluster without healthchecks nor co
 
     Scenario: Cloud Service Registration, no Healthcheck provided, ServiceCatalog exists, and Registered Service claimed
         Given Primaza Cluster "main" is running
-        And   Worker Cluster "worker" for "main" is running
+        And   Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And   Clusters "main" and "worker" can communicate
-        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
+        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
         And   On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
@@ -173,9 +173,9 @@ Feature: Register a cloud service in Primaza cluster without healthchecks nor co
 
     Scenario: Cloud Service Registration, no Healthcheck provided, ServiceCatalog exists, and Registered Service unclaimed
         Given Primaza Cluster "main" is running
-        And   Worker Cluster "worker" for "main" is running
+        And   Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And   Clusters "main" and "worker" can communicate
-        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
+        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
         And   On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
@@ -249,12 +249,14 @@ Feature: Register a cloud service in Primaza cluster without healthchecks nor co
         When On Primaza Cluster "main", RegisteredService "primaza-rsdb" is deleted
         Then On Primaza Cluster "main", there are no ServiceCatalogs
 
-
     Scenario: Cloud Service Registration, no Healthcheck, no constraints and multiple ServiceCatalog exists
         Given Primaza Cluster "main" is running
-        And   Worker Cluster "worker" for "main" is running
+        And   Worker Cluster "worker" is running
+        And   On Worker Cluster "worker", a ServiceAccount for ClusterEnvironment "worker-dev" exists
+        And   On Worker Cluster "worker", a ServiceAccount for ClusterEnvironment "worker-stage" exists
         And   Clusters "main" and "worker" can communicate
-        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" is published
+        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw-dev" for ClusterEnvironment "worker-dev" is published
+        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw-stage" for ClusterEnvironment "worker-stage" is published
         And   On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
@@ -264,7 +266,7 @@ Feature: Register a cloud service in Primaza cluster without healthchecks nor co
             namespace: primaza-system
         spec:
             environmentName: dev
-            clusterContextSecret: primaza-kw
+            clusterContextSecret: primaza-kw-dev
         ---
         apiVersion: primaza.io/v1alpha1
         kind: ClusterEnvironment
@@ -273,7 +275,7 @@ Feature: Register a cloud service in Primaza cluster without healthchecks nor co
             namespace: primaza-system
         spec:
             environmentName: stage
-            clusterContextSecret: primaza-kw
+            clusterContextSecret: primaza-kw-stage
         """
         When On Primaza Cluster "main", Resource is created
         """
@@ -304,5 +306,3 @@ Feature: Register a cloud service in Primaza cluster without healthchecks nor co
         Then On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Available"
         And On Primaza Cluster "main", ServiceCatalog "dev" will contain RegisteredService "primaza-rsdb"
         And On Primaza Cluster "main", ServiceCatalog "stage" will contain RegisteredService "primaza-rsdb"
-
-
