@@ -193,3 +193,21 @@ def ensure_secret_not_exist(context, cluster_name: str, secret_name: str, namesp
     except Exception:
         return
     raise Exception(f"not expecting secret '{secret_name}' to be found in namespace '{namespace}'")
+
+
+@step(u'On Worker Cluster "{cluster_name}", the status of ServiceClaim "{service_claim_name}" is "{status}"')
+def ensure_status_of_service_claim(context, cluster_name: str, service_claim_name: str, status: str):
+    cluster = context.cluster_provider.get_worker_cluster(cluster_name)
+    group = "primaza.io"
+    version = "v1alpha1"
+    plural = "serviceclaims"
+    namespace = "applications"
+    polling2.poll(
+        target=lambda: cluster.read_custom_resource_status(
+            group,
+            version,
+            plural,
+            service_claim_name,
+            namespace).get("status", {}).get("state", None) == status,
+        step=1,
+        timeout=60)

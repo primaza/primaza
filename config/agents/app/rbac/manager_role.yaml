@@ -18,6 +18,15 @@ rules:
 - apiGroups:
   - primaza.io
   resources:
+  - serviceclaims/status
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+- apiGroups:
+  - primaza.io
+  resources:
   - servicebindings/status
   verbs:
   - get

@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
+	sccontrollers "github.com/primaza/primaza/controllers"
 	controllers "github.com/primaza/primaza/controllers/agents/app"
 	//+kubebuilder:scaffold:imports
 )
@@ -106,9 +107,9 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&controllers.ServiceClaimReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+		ServiceClaimReconciler: sccontrollers.ServiceClaimReconciler{Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
+		}}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ServiceClaim")
 		os.Exit(1)
 	}

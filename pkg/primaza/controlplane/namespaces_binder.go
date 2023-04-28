@@ -47,7 +47,7 @@ type namespacesBinder struct {
 	wcli *kubernetes.Clientset
 	kind NamespaceType
 
-	pushAgent func(context.Context, *kubernetes.Clientset, string) error
+	pushAgent func(context.Context, *kubernetes.Clientset, string, string) error
 }
 
 func (b *namespacesBinder) BindNamespaces(ctx context.Context, ceName string, ceNamespace string, namespaces []string) error {
@@ -72,7 +72,7 @@ func (b *namespacesBinder) bindNamespace(ctx context.Context, ceName, ceNamespac
 		return err
 	}
 
-	if err := b.pushAgent(ctx, b.wcli, namespace); err != nil {
+	if err := b.pushAgent(ctx, b.wcli, namespace, ceName); err != nil {
 		return err
 	}
 

@@ -48,15 +48,15 @@ func DeleteServiceAgent(ctx context.Context, cli *kubernetes.Clientset, namespac
 	return nil
 }
 
-func PushServiceAgent(ctx context.Context, cli *kubernetes.Clientset, namespace string) error {
-	if err := createAgentSvcDeployment(ctx, cli, namespace); err != nil && !errors.IsAlreadyExists(err) {
+func PushServiceAgent(ctx context.Context, cli *kubernetes.Clientset, namespace string, ceName string) error {
+	if err := createAgentSvcDeployment(ctx, cli, namespace, ceName); err != nil && !errors.IsAlreadyExists(err) {
 		return err
 	}
 
 	return nil
 }
 
-func createAgentSvcDeployment(ctx context.Context, cli *kubernetes.Clientset, namespace string) error {
+func createAgentSvcDeployment(ctx context.Context, cli *kubernetes.Clientset, namespace string, ceName string) error {
 	s := runtime.NewScheme()
 	if err := appsv1.AddToScheme(s); err != nil {
 		return fmt.Errorf("decoder error: %w", err)
@@ -69,6 +69,7 @@ func createAgentSvcDeployment(ctx context.Context, cli *kubernetes.Clientset, na
 	}
 
 	dep := obj.(*appsv1.Deployment)
+	dep.ObjectMeta.Labels["primaza.io/cluster-environment"] = ceName
 	if _, err := cli.AppsV1().Deployments(namespace).Create(ctx, dep, metav1.CreateOptions{}); err != nil {
 		return fmt.Errorf("error creating deployment: %w", err)
 	}
