@@ -92,17 +92,12 @@ func (b *namespacesBinder) createRoleBindings(ctx context.Context, ceName, ceNam
 
 func (b *namespacesBinder) createRoleBinding(ctx context.Context, ceName, ceNamespace, namespace, role string) error {
 	n := bakeRoleBindingName(role, ceName, namespace)
+	sa := b.bakeServiceAccountName(ceName, namespace)
 	rb := &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      n,
 			Namespace: ceNamespace,
-			Labels: map[string]string{
-				"app":                 "primaza",
-				"tenant":              ceNamespace,
-				"cluster-environment": ceName,
-				"namespace-type":      string(b.kind),
-				"namespace":           namespace,
-			},
+			Labels:    bakeRoleBindingsLabels(ceName, ceNamespace, namespace, b.kind),
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: rbacv1.GroupName,
@@ -111,14 +106,9 @@ func (b *namespacesBinder) createRoleBinding(ctx context.Context, ceName, ceName
 		},
 		Subjects: []rbacv1.Subject{
 			{
-				APIGroup: rbacv1.GroupName,
-				Kind:     "User",
-				Name:     n,
-			},
-			{
 				APIGroup: "",
 				Kind:     "ServiceAccount",
-				Name:     n,
+				Name:     sa,
 			},
 		},
 	}
@@ -127,4 +117,8 @@ func (b *namespacesBinder) createRoleBinding(ctx context.Context, ceName, ceName
 	}
 
 	return nil
+}
+
+func (b *namespacesBinder) bakeServiceAccountName(ceName, namespace string) string {
+	return fmt.Sprintf("primaza-%s-%s-%s", b.kind.Short(), ceName, namespace)
 }

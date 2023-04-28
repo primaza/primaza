@@ -19,12 +19,9 @@ package controlplane
 import (
 	"context"
 	"errors"
-	"fmt"
-	"strings"
 
 	"github.com/primaza/primaza/pkg/slices"
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -102,13 +99,13 @@ func (r *namespacesReconciler) bindNamespaces(ctx context.Context) error {
 }
 
 func (r *namespacesReconciler) unbindOrphanNamespaces(ctx context.Context) error {
-	aerr := r.unbindOrphanNamespacesForType(ctx, r.appUnbinder, "application", r.env.ApplicationNamespaces)
-	serr := r.unbindOrphanNamespacesForType(ctx, r.svcUnbinder, "service", r.env.ServiceNamespaces)
+	aerr := r.unbindOrphanNamespacesForType(ctx, r.appUnbinder, ApplicationNamespaceType, r.env.ApplicationNamespaces)
+	serr := r.unbindOrphanNamespacesForType(ctx, r.svcUnbinder, ServiceNamespaceType, r.env.ServiceNamespaces)
 
 	return errors.Join(aerr, serr)
 }
 
-func (r *namespacesReconciler) unbindOrphanNamespacesForType(ctx context.Context, ub NamespacesUnbinder, namespaceType string, namespaces []string) error {
+func (r *namespacesReconciler) unbindOrphanNamespacesForType(ctx context.Context, ub NamespacesUnbinder, namespaceType NamespaceType, namespaces []string) error {
 	nn, err := r.getOrphanNamespaces(ctx, r.env.Name, namespaceType, namespaces)
 	if err != nil {
 		return err
@@ -119,7 +116,7 @@ func (r *namespacesReconciler) unbindOrphanNamespacesForType(ctx context.Context
 	return ub.UnbindNamespaces(ctx, r.env.Name, r.env.Namespace, nn)
 }
 
-func (r *namespacesReconciler) getOrphanNamespaces(ctx context.Context, ceName string, namespaceType string, requestedNamespaces []string) ([]string, error) {
+func (r *namespacesReconciler) getOrphanNamespaces(ctx context.Context, ceName string, namespaceType NamespaceType, requestedNamespaces []string) ([]string, error) {
 	ann, err := r.getAuthorizedNamespaces(ctx, r.env.Name, namespaceType)
 	if err != nil {
 		return nil, err
@@ -128,50 +125,23 @@ func (r *namespacesReconciler) getOrphanNamespaces(ctx context.Context, ceName s
 	return slices.SubtractStr(ann, requestedNamespaces), nil
 }
 
-func (r *namespacesReconciler) getAuthorizedNamespaces(ctx context.Context, ceName string, namespaceType string) ([]string, error) {
+func (r *namespacesReconciler) getAuthorizedNamespaces(ctx context.Context, ceName string, namespaceType NamespaceType) ([]string, error) {
 	l := log.FromContext(ctx)
 
 	rbb := &rbacv1.RoleBindingList{}
-	ls := r.getRoleBindingsLabelSelectorOrDie(ceName, namespaceType)
+	ls := getRoleBindingsLabelSelectorOrDie(ceName, namespaceType)
 	if err := r.pcli.List(ctx, rbb, &client.ListOptions{LabelSelector: ls, Namespace: r.env.Namespace}); err != nil {
 		return nil, err
 	}
 
 	nss := []string{}
 	for _, rb := range rbb.Items {
-		for _, s := range rb.Subjects {
-			if !r.isPrimazaWorkerUser(ctx, s) {
-				continue
-			}
-
-			ns, ok := rb.GetLabels()["namespace"]
-			if !ok {
-				l.Error(fmt.Errorf("can't find namespace label in Primaza's agent Role Binding"), "role binding", rb)
-			}
-			nss = append(nss, ns)
+		ns, ok := rb.GetLabels()["primaza.io/namespace"]
+		if !ok {
+			l.Info("can't find namespace label in Primaza's agent Role Binding", "role-binding", rb)
+			continue
 		}
+		nss = append(nss, ns)
 	}
 	return nss, nil
-}
-
-func (r *namespacesReconciler) isPrimazaWorkerUser(ctx context.Context, s rbacv1.Subject) bool {
-	return s.Kind == rbacv1.UserKind &&
-		s.APIGroup == rbacv1.GroupName &&
-		strings.HasPrefix(s.Name, "primaza-")
-}
-
-func (r *namespacesReconciler) getRoleBindingsLabelSelectorOrDie(ceName string, namespaceType string) labels.Selector {
-	newEqualRequirementOrDie := func(key, value string) *labels.Requirement {
-		lr, err := labels.NewRequirement(key, "=", []string{value})
-		if err != nil {
-			// not expecting to happen
-			panic(err)
-		}
-		return lr
-	}
-
-	return labels.NewSelector().
-		Add(*newEqualRequirementOrDie("app", "primaza")).
-		Add(*newEqualRequirementOrDie("cluster-environment", ceName)).
-		Add(*newEqualRequirementOrDie("namespace-type", namespaceType))
 }
