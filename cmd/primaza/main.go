@@ -37,7 +37,11 @@ import (
 	//+kubebuilder:scaffold:imports
 )
 
-const EnvWatchNamespace = "WATCH_NAMESPACE"
+const (
+	EnvWatchNamespace = "WATCH_NAMESPACE"
+	EnvAppAgentImage  = "AGENT_APP_IMAGE"
+	EnvSvcAgentImage  = "AGENT_SVC_IMAGE"
+)
 
 var (
 	scheme   = runtime.NewScheme()
@@ -68,17 +72,19 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	ns, err := getWatchNamespaceFromEnv()
+	cfg, err := getConfig()
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
+		os.Exit(1)
 	}
+	setupLog.Info("got configuration", "configuration", cfg)
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
 		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
-		Namespace:              ns,
+		Namespace:              cfg.WatchNamespace,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "859ca7e5.primaza.io",
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
@@ -99,8 +105,10 @@ func main() {
 	}
 
 	if err = (&controllers.ClusterEnvironmentReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:        mgr.GetClient(),
+		Scheme:        mgr.GetScheme(),
+		AppAgentImage: cfg.AppImage,
+		SvcAgentImage: cfg.SvcImage,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterEnvironment")
 		os.Exit(1)
@@ -161,10 +169,39 @@ func main() {
 	}
 }
 
-func getWatchNamespaceFromEnv() (string, error) {
-	ns := os.Getenv(EnvWatchNamespace)
+type config struct {
+	WatchNamespace string
+	AppImage       string
+	SvcImage       string
+}
+
+func getConfig() (*config, error) {
+	ns, err := getRequiredEnv(EnvWatchNamespace)
+	if err != nil {
+		return nil, err
+	}
+
+	ai, err := getRequiredEnv(EnvAppAgentImage)
+	if err != nil {
+		return nil, err
+	}
+
+	si, err := getRequiredEnv(EnvSvcAgentImage)
+	if err != nil {
+		return nil, err
+	}
+
+	return &config{
+		WatchNamespace: ns,
+		AppImage:       ai,
+		SvcImage:       si,
+	}, nil
+}
+
+func getRequiredEnv(env string) (string, error) {
+	ns := os.Getenv(env)
 	if ns == "" {
-		return "", fmt.Errorf("environment variable %s not found", EnvWatchNamespace)
+		return "", fmt.Errorf("environment variable %s not found", env)
 	}
 
 	return ns, nil
