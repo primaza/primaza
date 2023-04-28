@@ -165,3 +165,77 @@ Feature: Bind application to the secret pushed by agent app controller
                 kind: Deployment
         """
         And On Primaza Cluster "main", file "/bindings/newapp-binding/username" is unavailable in application pod running in namespace "applications"
+
+    Scenario: Application Agent watches ServiceBindings' resources and projection works for application created after ServiceBinding creation
+
+        Given Primaza Cluster "main" is running
+        And On Primaza Cluster "main", namespace "applications" exists
+        And On Primaza Cluster "main", Primaza Application Agent is deployed into namespace "applications"
+        And On Primaza Cluster "main", Resource is created
+        """
+        apiVersion: v1
+        kind: Secret
+        metadata:
+            name: demo
+            namespace: applications
+        stringData:
+            username: AzureDiamond
+        """
+        And On Primaza Cluster "main", Resource is created
+        """
+        apiVersion: primaza.io/v1alpha1
+        kind: ServiceBinding
+        metadata:
+            name: application-binding
+            namespace: applications
+        spec:
+            serviceEndpointDefinitionSecret: demo
+            application:
+                apiVersion: apps/v1
+                kind: Deployment
+                selector:
+                    matchLabels:
+                        app: myapp
+        """
+        And On Primaza Cluster "main", ServiceBinding "application-binding" on namespace "applications" state will eventually move to "Malformed"
+        When On Primaza Cluster "main", test application "applicationone" is running in namespace "applications"
+        Then On Primaza Cluster "main", ServiceBinding "application-binding" on namespace "applications" state will eventually move to "Ready"
+        And On Primaza Cluster "main", in demo application's pod running in namespace "applications" file "/bindings/application-binding/username" has content "AzureDiamond"
+
+    Scenario: Service binding status updated to malformed when application is deleted
+
+        Given Primaza Cluster "main" is running
+        And On Primaza Cluster "main", namespace "applications" exists
+        And On Primaza Cluster "main", Primaza Application Agent is deployed into namespace "applications"
+        And On Primaza Cluster "main", Resource is created
+        """
+        apiVersion: v1
+        kind: Secret
+        metadata:
+            name: demo
+            namespace: applications
+        stringData:
+            username: AzureDiamond
+        """
+        And On Primaza Cluster "main", Resource is created
+        """
+        apiVersion: primaza.io/v1alpha1
+        kind: ServiceBinding
+        metadata:
+            name: application-binding
+            namespace: applications
+        spec:
+            serviceEndpointDefinitionSecret: demo
+            application:
+                apiVersion: apps/v1
+                kind: Deployment
+                selector:
+                    matchLabels:
+                        app: myapp
+        """
+        And On Primaza Cluster "main", ServiceBinding "application-binding" on namespace "applications" state will eventually move to "Malformed"
+        And On Primaza Cluster "main", test application "applicationone" is running in namespace "applications"
+        And On Primaza Cluster "main", ServiceBinding "application-binding" on namespace "applications" state will eventually move to "Ready"
+        And On Primaza Cluster "main", in demo application's pod running in namespace "applications" file "/bindings/application-binding/username" has content "AzureDiamond"
+        When The resource deployments/applicationone:applications is deleted from the cluster "main"
+        Then On Primaza Cluster "main", ServiceBinding "application-binding" on namespace "applications" state will eventually move to "Malformed"
