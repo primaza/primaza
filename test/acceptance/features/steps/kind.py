@@ -180,12 +180,18 @@ class PrimazaKind(PrimazaCluster):
         assert err == 0, "error installing manifests and building agent svc  controller"
 
     def __deploy_agentapp(self, kubeconfig_path: str, img: str, namespace: str):
-        out, err = self.__build_install_base_cmd(kubeconfig_path, img).setenv("NAMESPACE", namespace).run("make agentapp deploy")
+        out, err = self.__build_install_base_cmd(kubeconfig_path, img) \
+            .setenv("IMG", img) \
+            .setenv("NAMESPACE", namespace) \
+            .run("make agentapp deploy")
         print(out)
         assert err == 0, f"error deploying Agent app's controller into cluster {self.cluster_name}"
 
     def __deploy_agentsvc(self, kubeconfig_path: str, img: str, namespace: str):
-        out, err = self.__build_install_base_cmd(kubeconfig_path, img).setenv("NAMESPACE", namespace).run("make agentsvc deploy")
+        out, err = self.__build_install_base_cmd(kubeconfig_path, img) \
+            .setenv("IMG", img) \
+            .setenv("NAMESPACE", namespace) \
+            .run("make agentsvc deploy")
         print(out)
         assert err == 0, f"error deploying Agent app's controller into cluster {self.cluster_name}"
 

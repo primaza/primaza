@@ -46,8 +46,4 @@ vars:
     version: v1
 patches:
 - path: ../../../default/webhookcainjection_patch.yaml
-images:
-- name: agentsvc
-  newName: agentsvc
-  newTag: latest
 namespace: services

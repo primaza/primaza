@@ -34,5 +34,5 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	cd config/agents/svc && $(KUSTOMIZE) edit set namespace $(NAMESPACE)
+	cd config/agents/svc/default && $(KUSTOMIZE) edit set namespace $(NAMESPACE)
 	$(KUSTOMIZE) build $(KUSTOMIZE_ARGS) config/agents/svc/default | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
