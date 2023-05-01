@@ -9,12 +9,15 @@ rules:
   resources:
   - servicebindings
   - serviceclaims
+  - servicecatalogs
   verbs:
   - get
   - list
   - watch
   - update
+  - patch
   - delete
+  - deletecollection
 - apiGroups:
   - primaza.io
   resources:
@@ -67,14 +70,3 @@ rules:
   - servicebindings/finalizers
   verbs:
   - update
-- apiGroups:
-  - primaza.io
-  resources:
-  - servicecatalogs
-  verbs:
-  - get
-  - list
-  - watch
-  - update
-  - patch
-  - delete
