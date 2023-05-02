@@ -99,7 +99,7 @@ func (r *RegisteredServiceReconciler) removeServiceFromCatalog(ctx context.Conte
 	return nil
 }
 
-func (r *RegisteredServiceReconciler) addServiceToCatalogs(ctx context.Context, rs primazaiov1alpha1.RegisteredService) error {
+func (r *RegisteredServiceReconciler) reconcileCatalogs(ctx context.Context, rs primazaiov1alpha1.RegisteredService) error {
 	log := log.FromContext(ctx)
 	catalogs, err := r.getServiceCatalogs(ctx, rs.Namespace)
 	if err != nil {
@@ -109,13 +109,22 @@ func (r *RegisteredServiceReconciler) addServiceToCatalogs(ctx context.Context, 
 
 	var errs []error
 	for _, sc := range catalogs.Items {
-		if rs.Spec.Constraints == nil || envtag.Match(sc.Name, rs.Spec.Constraints.Environments) {
+		if envtag.Match(sc.Name, rs.Spec.GetEnvironmentConstraints()) {
+			log.Info("Constraint matched or no constraints, reconciling catalog")
 			err = r.addServiceToCatalog(ctx, sc, rs)
 			if err != nil {
 				log.Error(err, "Error found adding RegisteredService to ServiceCatalog")
 				errs = append(errs, err)
 			}
 			log.Info("Added RegisteredService to ServiceCatalog", "RegisteredService", rs.Name, "ServiceCatalog", sc.Name)
+		} else {
+			log.Info("Constraint mismatched, reconciling catalog")
+			err = r.removeServiceFromCatalog(ctx, sc, rs.Namespace, rs.Name)
+			if err != nil {
+				log.Error(err, "Error found removing RegisteredService from ServiceCatalog")
+				errs = append(errs, err)
+			}
+
 		}
 	}
 
@@ -201,7 +210,7 @@ func (r *RegisteredServiceReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			return ctrl.Result{}, err
 		}
 
-		err = r.addServiceToCatalogs(ctx, rs)
+		err = r.reconcileCatalogs(ctx, rs)
 
 		if err != nil {
 			// Service Catalog update failed
@@ -210,7 +219,7 @@ func (r *RegisteredServiceReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		}
 
 	} else if rs.Status.State == primazaiov1alpha1.RegisteredServiceStateAvailable {
-		err = r.addServiceToCatalogs(ctx, rs)
+		err = r.reconcileCatalogs(ctx, rs)
 
 		if err != nil {
 			// Service Catalog update failed
