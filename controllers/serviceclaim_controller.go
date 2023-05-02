@@ -199,6 +199,7 @@ func (r *ServiceClaimReconciler) extractServiceEndpointDefinition(
 	secret *corev1.Secret) (int, error) {
 	l := log.FromContext(ctx)
 	count := 0
+
 	// loop over the ServiceEndpointDefinition array part of RegisteredService
 	for _, sed := range rs.Spec.ServiceEndpointDefinition {
 		// check if the value is non-empty
@@ -209,19 +210,16 @@ func (r *ServiceClaimReconciler) extractServiceEndpointDefinition(
 				secret.StringData[sed.Name] = sed.Value
 				count++
 			}
-		} else if sed.ValueFromSecret.Key != "" { // check value if the key is non-empty
+		} else if k := sed.ValueFromSecret.Key; k != "" { // check value if the key is non-empty
 			if slices.ItemContains(sedKeys, sed.Name) {
-				sec := &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      sed.ValueFromSecret.Name,
-						Namespace: req.NamespacedName.Namespace,
-					},
+				sec := &corev1.Secret{}
+				nn := types.NamespacedName{Namespace: req.Namespace, Name: sed.ValueFromSecret.Name}
+				if err := r.Get(ctx, nn, sec); err != nil {
+					l.Info("unable to retrieve Secret", "error", err, "secret", nn)
+					continue
 				}
-				if err := r.Get(ctx, req.NamespacedName, sec); err != nil {
-					l.Info("unable to retrieve Secret", "error", err)
-					return 0, client.IgnoreNotFound(err)
-				}
-				secret.StringData[sed.Name] = sec.StringData[sed.ValueFromSecret.Key]
+
+				secret.StringData[sed.Name] = string(sec.Data[k])
 				count++
 			}
 		}
