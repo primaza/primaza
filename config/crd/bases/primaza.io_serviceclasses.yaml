@@ -79,33 +79,57 @@ spec:
                   kind:
                     description: Kind of the underlying service resource
                     type: string
-                  serviceEndpointDefinitionMapping:
-                    description: ServiceEndpointDefinitionMapping defines how a key-value
+                  serviceEndpointDefinitionMappings:
+                    description: ServiceEndpointDefinitionMappings defines how a key-value
                       mapping projected into services may be constructed.
-                    items:
-                      properties:
-                        jsonPath:
-                          description: JsonPath defines where data lives in the service
-                            resource.  This query must resolve to a single value (e.g.
-                            not an array of values).
-                          type: string
-                        name:
-                          description: Name of the data referred to
-                          type: string
-                        secret:
-                          default: true
-                          description: Secret indicates whether or not the mapping
-                            data needs to be stored in a secret.
-                          type: boolean
-                      required:
-                      - jsonPath
-                      - name
-                      type: object
-                    type: array
+                    properties:
+                      resourceFields:
+                        items:
+                          properties:
+                            jsonPath:
+                              description: JsonPath defines where data lives in the
+                                service resource.  This query must resolve to a single
+                                value (e.g. not an array of values).
+                              type: string
+                            name:
+                              description: Name of the data referred to
+                              type: string
+                            secret:
+                              default: true
+                              description: Secret indicates whether or not the mapping
+                                data needs to be stored in a secret.
+                              type: boolean
+                          required:
+                          - jsonPath
+                          - name
+                          type: object
+                        type: array
+                      secretRefFields:
+                        items:
+                          properties:
+                            name:
+                              description: Name of the data referred to
+                              type: string
+                            secretKey:
+                              description: SecretKey defines a JsonPath used to extract
+                                from resource's specification the Key to be copied
+                                from the linked secret
+                              type: string
+                            secretName:
+                              description: SecretName defines a JsonPath used to extract
+                                the name of a linked secret from resource's specification
+                              type: string
+                          required:
+                          - name
+                          - secretKey
+                          - secretName
+                          type: object
+                        type: array
+                    type: object
                 required:
                 - apiVersion
                 - kind
-                - serviceEndpointDefinitionMapping
+                - serviceEndpointDefinitionMappings
                 type: object
               serviceClassIdentity:
                 description: ServiceClassIdentity defines a set of attributes that

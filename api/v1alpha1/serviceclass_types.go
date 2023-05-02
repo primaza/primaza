@@ -20,7 +20,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type ServiceClassMapping struct {
+type ServiceEndpointDefinitionMappings struct {
+	ResourceFields  []ServiceClassResourceFieldMapping  `json:"resourceFields,omitempty"`
+	SecretRefFields []ServiceClassSecretRefFieldMapping `json:"secretRefFields,omitempty"`
+}
+
+type ServiceClassResourceFieldMapping struct {
 	// Name of the data referred to
 	Name string `json:"name"`
 
@@ -34,6 +39,19 @@ type ServiceClassMapping struct {
 	Secret bool `json:"secret"`
 }
 
+type ServiceClassSecretRefFieldMapping struct {
+	// Name of the data referred to
+	Name string `json:"name"`
+
+	// SecretName defines a JsonPath used to extract the name
+	// of a linked secret from resource's specification
+	SecretName string `json:"secretName"`
+
+	// SecretKey defines a JsonPath used to extract from resource's specification
+	// the Key to be copied from the linked secret
+	SecretKey string `json:"secretKey"`
+}
+
 // ServiceClassResource defines
 type ServiceClassResource struct {
 	// APIVersion of the underlying service resource
@@ -42,9 +60,9 @@ type ServiceClassResource struct {
 	// Kind of the underlying service resource
 	Kind string `json:"kind"`
 
-	// ServiceEndpointDefinitionMapping defines how a key-value mapping projected
+	// ServiceEndpointDefinitionMappings defines how a key-value mapping projected
 	// into services may be constructed.
-	ServiceEndpointDefinitionMapping []ServiceClassMapping `json:"serviceEndpointDefinitionMapping"`
+	ServiceEndpointDefinitionMappings ServiceEndpointDefinitionMappings `json:"serviceEndpointDefinitionMappings"`
 }
 
 // ServiceClassSpec defines the desired state of ServiceClass
