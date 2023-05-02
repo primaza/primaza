@@ -197,12 +197,11 @@ Feature: Bind application to the secret pushed by agent app controller
                     matchLabels:
                         app: myapp
         """
-        And On Primaza Cluster "main", ServiceBinding "application-binding" on namespace "applications" state will eventually move to "Malformed"
         When On Primaza Cluster "main", test application "applicationone" is running in namespace "applications"
         Then On Primaza Cluster "main", ServiceBinding "application-binding" on namespace "applications" state will eventually move to "Ready"
         And On Primaza Cluster "main", in demo application's pod running in namespace "applications" file "/bindings/application-binding/username" has content "AzureDiamond"
 
-    Scenario: Service binding status updated to malformed when application is deleted
+    Scenario: Service binding status updated when application is deleted
 
         Given Primaza Cluster "main" is running
         And On Primaza Cluster "main", namespace "applications" exists
@@ -233,9 +232,9 @@ Feature: Bind application to the secret pushed by agent app controller
                     matchLabels:
                         app: myapp
         """
-        And On Primaza Cluster "main", ServiceBinding "application-binding" on namespace "applications" state will eventually move to "Malformed"
         And On Primaza Cluster "main", test application "applicationone" is running in namespace "applications"
         And On Primaza Cluster "main", ServiceBinding "application-binding" on namespace "applications" state will eventually move to "Ready"
         And On Primaza Cluster "main", in demo application's pod running in namespace "applications" file "/bindings/application-binding/username" has content "AzureDiamond"
         When The resource deployments/applicationone:applications is deleted from the cluster "main"
-        Then On Primaza Cluster "main", ServiceBinding "application-binding" on namespace "applications" state will eventually move to "Malformed"
+        Then jsonpath ".status.conditions[0].reason" on "servicebindings.primaza.io/application-binding:applications" in cluster main is "NoMatchingWorkloads"
+        And On Primaza Cluster "main", ServiceBinding "application-binding" on namespace "applications" state will eventually move to "Ready"

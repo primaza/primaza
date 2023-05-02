@@ -17,22 +17,28 @@ The status of a Service Binding is also defined in our [ServiceBinding CRD](../.
 The state of the service binding can be `Malformed` or `Ready`. The default value of service binding state is `Malformed`.
 
 The `conditions` list of the service binding contains the following properties:
-- `Type`: The service binding condition type is `Ready`
+- `Type`: The service binding condition type is `Bound` or `NotBound`.
+`Bound` means that the secret is projected into the application.
+`NotBound` denotes that the secret is not projected into the application.
+This can only occur if the secret is not found in the application namespace.
 - `Message`: This contains the error logs for the service binding resources. This value will be an empty string if successful
 - `Status`: Status of service binding can be `True` or `False`
-- `Reason`: The reason has values defined as `ErrorFetchApplications`, `ErrorFetchSecret`, `Successful` ands `Binding Failure`
+- `Reason`: The reason has values defined as `NoMatchingWorkloads`, `ErrorFetchSecret`, `Successful` and `Binding Failure`
 
 ## Use Cases
 
 ### Creation
 
-When a Service Binding is created, the secrets referenced by ServiceBinding resources will be projected into all  the  application compute resources (CronJobs, Deployments, ReplicaSets, DaemonSets etc…) that contain the labels matching the label selector or the specific workload if specified by name.
+When a Service Binding is created, the secret referenced by the Service Binding itself will be projected into all the matching applications.
+Matching applications are calculated as defined at in the section [Specification](#specification)
 
 ### Deletion
 
-If the Service Binding is deleted the secret projection from the workloads will be removed. In case the secrets referenced in the Service Binding resource is deleted, the projection is removed from the workloads and the service binding status is updated to `Malformed`.
+If the Service Binding is deleted the secret projection from the workloads will be removed.
+In case the secret referenced in the Service Binding resource is deleted, the projection is removed from the workloads and the Service Binding status is updated to `Malformed`.
 
 ### Update
 
-When a Service Binding is updated, agent app controller will update the workload resources with the secret details. If the secret is updated the projection in the workloads will be updated accordingly.
+When a Service Binding is updated, Primaza Application Agent will update the workload resources with the secret details.
+If the secret is updated the projection in the workloads will be updated accordingly.
 

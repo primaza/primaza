@@ -48,7 +48,7 @@ import (
 )
 
 const (
-	conditionGetAppsFailureReason   = "ErrorFetchApplications"
+	conditionGetAppsFailureReason   = "NoMatchingWorkloads"
 	conditionGetSecretFailureReason = "ErrorFetchSecret"
 	conditionBindingSuccessful      = "Successful"
 	conditionBindingFailure         = "Binding Failure"
@@ -117,11 +117,10 @@ func (r *ServiceBindingReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 	l.Info("ServiceBinding object retrieved", "ServiceBinding", serviceBinding)
 
-	secretName := serviceBinding.Spec.ServiceEndpointDefinitionSecret
-	applications, err := r.getApplication(ctx, req, serviceBinding, secretName)
+	applications, err := r.getApplication(ctx, serviceBinding)
 	if err != nil {
 		// error retrieving the application(s), so setting the service binding status to false and reconcile
-		if errUpdateStatus := r.setStatus(ctx, secretName, serviceBinding, metav1.ConditionFalse, conditionGetAppsFailureReason, primazaiov1alpha1.ServiceBindingStateMalformed, err.Error()); errUpdateStatus != nil {
+		if errUpdateStatus := r.setStatus(ctx, serviceBinding, metav1.ConditionFalse, conditionGetAppsFailureReason, primazaiov1alpha1.ServiceBindingStateReady, err.Error(), primazaiov1alpha1.ServiceBindingBoundCondition); errUpdateStatus != nil {
 			return ctrl.Result{}, errUpdateStatus
 		}
 		return ctrl.Result{}, err
@@ -189,12 +188,11 @@ func (r *ServiceBindingReconciler) finalizeServiceBinding(ctx context.Context, s
 }
 
 func (r *ServiceBindingReconciler) GetSecret(ctx context.Context, serviceBinding v1alpha1.ServiceBinding, applications []unstructured.Unstructured) (*v1.Secret, error) {
-	secretName := serviceBinding.Spec.ServiceEndpointDefinitionSecret
 	psSecret := &v1.Secret{}
 	secretLookupKey := client.ObjectKey{Name: serviceBinding.Spec.ServiceEndpointDefinitionSecret, Namespace: serviceBinding.Namespace}
 	if secErr := r.Get(ctx, secretLookupKey, psSecret); secErr != nil {
 		// error retrieving the application(s), so setting the service binding status to false and reconcile
-		err := r.setStatus(ctx, secretName, serviceBinding, metav1.ConditionFalse, conditionGetSecretFailureReason, primazaiov1alpha1.ServiceBindingStateMalformed, secErr.Error())
+		err := r.setStatus(ctx, serviceBinding, metav1.ConditionFalse, conditionGetSecretFailureReason, primazaiov1alpha1.ServiceBindingStateMalformed, secErr.Error(), primazaiov1alpha1.ServiceBindingNotBoundCondition)
 		if err != nil {
 			return nil, err
 		}
@@ -329,25 +327,25 @@ func (r *ServiceBindingReconciler) bindApplications(ctx context.Context,
 	l.Info("set the status of the service binding")
 	if len(el) != 0 {
 		cerr := errors.Join(el...)
-		err := r.setStatus(ctx, psSecret.Name, sb, metav1.ConditionFalse, conditionBindingFailure, primazaiov1alpha1.ServiceBindingStateMalformed, cerr.Error())
+		err := r.setStatus(ctx, sb, metav1.ConditionFalse, conditionBindingFailure, primazaiov1alpha1.ServiceBindingStateMalformed, cerr.Error(), primazaiov1alpha1.ServiceBindingNotBoundCondition)
 		if err != nil {
 			return err
 		}
 		return cerr
 	}
-	err := r.setStatus(ctx, psSecret.Name, sb, metav1.ConditionTrue, conditionBindingSuccessful, primazaiov1alpha1.ServiceBindingStateReady, "")
+	err := r.setStatus(ctx, sb, metav1.ConditionTrue, conditionBindingSuccessful, primazaiov1alpha1.ServiceBindingStateReady, "", primazaiov1alpha1.ServiceBindingBoundCondition)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *ServiceBindingReconciler) setStatus(ctx context.Context, secretName string,
-	sb primazaiov1alpha1.ServiceBinding, conditionStatus metav1.ConditionStatus, reason, state, message string) error {
+func (r *ServiceBindingReconciler) setStatus(ctx context.Context,
+	sb primazaiov1alpha1.ServiceBinding, conditionStatus metav1.ConditionStatus, reason, state, message, conditionType string) error {
 	l := log.FromContext(ctx)
 	c := metav1.Condition{
 		LastTransitionTime: metav1.NewTime(time.Now()),
-		Type:               primazaiov1alpha1.ServiceBindingConditionReady,
+		Type:               conditionType,
 		Status:             conditionStatus,
 		Reason:             reason,
 		Message:            message,
@@ -365,12 +363,12 @@ func (r *ServiceBindingReconciler) setStatus(ctx context.Context, secretName str
 	return nil
 }
 
-func (r *ServiceBindingReconciler) getApplication(ctx context.Context, req ctrl.Request,
-	sb primazaiov1alpha1.ServiceBinding, secretName string) ([]unstructured.Unstructured, error) {
+func (r *ServiceBindingReconciler) getApplication(ctx context.Context,
+	sb primazaiov1alpha1.ServiceBinding) ([]unstructured.Unstructured, error) {
 	var applications []unstructured.Unstructured
 	l := log.FromContext(ctx)
 	if sb.Spec.Application.Name != "" {
-		applicationLookupKey := client.ObjectKey{Name: sb.Spec.Application.Name, Namespace: req.NamespacedName.Namespace}
+		applicationLookupKey := client.ObjectKey{Name: sb.Spec.Application.Name, Namespace: sb.Namespace}
 
 		application := &unstructured.Unstructured{
 			Object: map[string]interface{}{
@@ -378,7 +376,7 @@ func (r *ServiceBindingReconciler) getApplication(ctx context.Context, req ctrl.
 				"apiVersion": sb.Spec.Application.APIVersion,
 				"metadata": map[string]interface{}{
 					"name":      sb.Spec.Application.Name,
-					"namespace": req.NamespacedName.Namespace,
+					"namespace": sb.Namespace,
 				},
 			},
 		}
@@ -403,7 +401,7 @@ func (r *ServiceBindingReconciler) getApplication(ctx context.Context, req ctrl.
 		l.Info("retrieving the application objects", "Application", applicationList)
 		opts := &client.ListOptions{
 			LabelSelector: labels.Set(sb.Spec.Application.Selector.MatchLabels).AsSelector(),
-			Namespace:     req.NamespacedName.Namespace,
+			Namespace:     sb.Namespace,
 		}
 
 		if err := r.List(ctx, applicationList, opts); err != nil {
@@ -699,18 +697,21 @@ func (r *ServiceBindingReconciler) RunInformer(ctx context.Context, resource sch
 			if applicationResource.GetName() == constants.ApplicationAgentDeploymentName {
 				return
 			}
-			var sb primazaiov1alpha1.ServiceBinding
-			if err := r.Get(ctx, types.NamespacedName{Name: serviceBinding.Name, Namespace: serviceBinding.Namespace}, &sb); err == nil {
-				// applications are deleted, so setting the service binding status to false and reconcile
-				if errUpdateStatus := r.setStatus(ctx,
-					sb.Spec.ServiceEndpointDefinitionSecret,
-					sb,
-					metav1.ConditionFalse,
-					conditionGetAppsFailureReason,
-					primazaiov1alpha1.ServiceBindingStateMalformed,
-					"application deleted"); errUpdateStatus != nil {
-					l.Error(errUpdateStatus, "error on updating status")
-					return
+			applications, _ := r.getApplication(ctx, serviceBinding)
+			if len(applications) == 0 {
+				var sb primazaiov1alpha1.ServiceBinding
+				if err := r.Get(ctx, types.NamespacedName{Name: serviceBinding.Name, Namespace: serviceBinding.Namespace}, &sb); err == nil {
+					// applications are deleted, so setting the service binding status to false and reconcile
+					if errUpdateStatus := r.setStatus(ctx,
+						sb,
+						metav1.ConditionFalse,
+						conditionGetAppsFailureReason,
+						primazaiov1alpha1.ServiceBindingStateReady,
+						"application was bound with the secret but the application got deleted",
+						primazaiov1alpha1.ServiceBindingBoundCondition); errUpdateStatus != nil {
+						l.Error(errUpdateStatus, "error on updating status")
+						return
+					}
 				}
 			}
 		},
