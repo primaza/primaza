@@ -5,7 +5,6 @@ metadata:
     control-plane: primaza-app-agent
     app.kubernetes.io/part-of: primaza
   name: primaza-app-agent
-  namespace: system
   finalizers:
     - agentapp.primaza.io/finalizer
 spec:

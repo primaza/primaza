@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/primaza/primaza/pkg/primaza/constants"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -69,7 +70,7 @@ func createAgentAppDeployment(ctx context.Context, cli *kubernetes.Clientset, na
 	}
 
 	dep := obj.(*appsv1.Deployment)
-	dep.ObjectMeta.Labels["primaza.io/cluster-environment"] = ceName
+	dep.ObjectMeta.Labels[constants.PrimazaClusterEnvironmentLabel] = ceName
 	if _, err := cli.AppsV1().Deployments(namespace).Create(ctx, dep, metav1.CreateOptions{}); err != nil {
 		return fmt.Errorf("error creating deployment: %w", err)
 	}

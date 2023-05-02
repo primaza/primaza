@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/primaza/primaza/pkg/primaza/constants"
 	"github.com/primaza/primaza/pkg/slices"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/client-go/kubernetes"
@@ -136,7 +137,7 @@ func (r *namespacesReconciler) getAuthorizedNamespaces(ctx context.Context, ceNa
 
 	nss := []string{}
 	for _, rb := range rbb.Items {
-		ns, ok := rb.GetLabels()["primaza.io/namespace"]
+		ns, ok := rb.GetLabels()[constants.PrimazaNamespaceLabel]
 		if !ok {
 			l.Info("can't find namespace label in Primaza's agent Role Binding", "role-binding", rb)
 			continue
