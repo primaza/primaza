@@ -104,5 +104,15 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
+          - name: AGENT_SVC_IMAGE
+            valueFrom:
+              configMapKeyRef:
+                name: primaza-manager-config
+                key: agentsvc-image
+          - name: AGENT_APP_IMAGE
+            valueFrom:
+              configMapKeyRef:
+                name: primaza-manager-config
+                key: agentapp-image
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10

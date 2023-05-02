@@ -36,6 +36,9 @@ type ClusterEnvironmentState struct {
 
 	ApplicationNamespaces []string
 	ServiceNamespaces     []string
+
+	AppAgentImage string
+	SvcAgentImage string
 }
 
 type NamespacesReconciler interface {
@@ -67,9 +70,9 @@ func NewNamespaceReconciler(e ClusterEnvironmentState) (NamespacesReconciler, er
 	return &namespacesReconciler{
 		pcli:        cli,
 		env:         e,
-		appBinder:   NewApplicationNamespacesBinder(cli, wcli),
+		appBinder:   NewApplicationNamespacesBinder(cli, wcli, e.AppAgentImage),
 		appUnbinder: NewApplicationNamespacesUnbinder(cli, wcli),
-		svcBinder:   NewServiceNamespacesBinder(cli, wcli),
+		svcBinder:   NewServiceNamespacesBinder(cli, wcli, e.SvcAgentImage),
 		svcUnbinder: NewServiceNamespacesUnbinder(cli, wcli),
 	}, nil
 }
