@@ -58,7 +58,8 @@ func (r *ServiceCatalogReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		reconcileLog.Error(err, "Failed to set owner reference on ServiceCatalog", "namespace", req.Namespace, "name", req.Name)
 		return ctrl.Result{}, err
 	}
-	return ctrl.Result{}, nil
+	err = r.Update(ctx, &serviceCatalog)
+	return ctrl.Result{}, err
 }
 
 func (r *ServiceCatalogReconciler) setOwnerReference(ctx context.Context, scat *v1alpha1.ServiceCatalog, namespace string) error {
@@ -75,25 +76,8 @@ func (r *ServiceCatalogReconciler) setOwnerReference(ctx context.Context, scat *
 		// on deleted requests
 		return client.IgnoreNotFound(err)
 	}
-	if len(deployment.OwnerReferences) == 0 {
-		if err := ctrl.SetControllerReference(&deployment, scat, r.Scheme); err != nil {
-			return err
-		}
-	} else {
-		var found bool
-		for _, owner := range deployment.OwnerReferences {
-			if owner.Kind == "ServiceCatalog" {
-				found = true
-				break
-			}
-		}
-		if !found {
-			if err := ctrl.SetControllerReference(&deployment, scat, r.Scheme); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+	err := ctrl.SetControllerReference(&deployment, scat, r.Scheme)
+	return err
 }
 
 // SetupWithManager sets up the controller with the Manager.
