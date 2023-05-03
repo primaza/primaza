@@ -21,6 +21,16 @@ Feature: Claim from an application namespace
         """
         And On Primaza Cluster "main", Resource is created
         """
+        apiVersion: v1
+        kind: Secret
+        metadata:
+            name: $scenario_id
+            namespace: primaza-system
+        stringData:
+            password: quedicelagente
+        """
+        And On Primaza Cluster "main", Resource is created
+        """
         apiVersion: primaza.io/v1alpha1
         kind: RegisteredService
         metadata:
@@ -43,7 +53,9 @@ Feature: Claim from an application namespace
             - name: user
               value: davp
             - name: password
-              value: quedicelagente
+              valueFromSecret:
+                name: $scenario_id
+                key: password
             - name: database
               value: davpdata
           sla: L3

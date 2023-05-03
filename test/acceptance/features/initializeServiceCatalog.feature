@@ -6,6 +6,16 @@ Feature: Initialize ServiceCatalog
         And  Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And  Clusters "main" and "worker" can communicate
         And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
+        And On Primaza Cluster "main", Resource is created
+        """
+        apiVersion: v1
+        kind: Secret
+        metadata:
+            name: $scenario_id
+            namespace: primaza-system
+        stringData:
+            password: quedicelagente
+        """
 
     Scenario: Empty Service Catalog
         When  On Primaza Cluster "main", Resource is created
@@ -22,7 +32,7 @@ Feature: Initialize ServiceCatalog
         Then On Primaza Cluster "main", ServiceCatalog "dev" is empty
 
     Scenario: Update Registered Service in Service Catalog
-        And   On Primaza Cluster "main", Resource is created
+        Given On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
         kind: RegisteredService
@@ -41,12 +51,14 @@ Feature: Initialize ServiceCatalog
             - name: user
               value: davp
             - name: password
-              value: quedicelagente
+              valueFromSecret:
+                name: $scenario_id
+                key: password
             - name: database
               value: davpdata
           sla: L3
         """
-        And  On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Available"
+        And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Available"
         When On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
@@ -61,7 +73,7 @@ Feature: Initialize ServiceCatalog
         Then On Primaza Cluster "main", ServiceCatalog "dev" will contain RegisteredService "primaza-rsdb"
 
     Scenario: Service catalog is not initialized with unmatched Registered Services
-        And   On Primaza Cluster "main", Resource is created
+        Given On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
         kind: RegisteredService
@@ -82,7 +94,9 @@ Feature: Initialize ServiceCatalog
             - name: user
               value: davp
             - name: password
-              value: quedicelagente
+              valueFromSecret:
+                name: $scenario_id
+                key: password
             - name: database
               value: davpdata
           constraints:

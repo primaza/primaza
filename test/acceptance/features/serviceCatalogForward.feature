@@ -1,11 +1,24 @@
 Feature: Reconcile Service Catalog in Application namespaces
-    Scenario: Service Catalog is pushed to new Cluster Environments' application namespaces
+
+    Background:
         Given Primaza Cluster "main" is running
         And Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And Clusters "main" and "worker" can communicate
         And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
         And On Worker Cluster "worker", application namespace "applications" for ClusterEnvironment "worker" exists
         And On Primaza Cluster "main", Resource is created
+        """
+        apiVersion: v1
+        kind: Secret
+        metadata:
+            name: $scenario_id
+            namespace: primaza-system
+        stringData:
+            password: quedicelagente
+        """
+
+    Scenario: Service Catalog is pushed to new Cluster Environments' application namespaces
+        Given On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
         kind: ClusterEnvironment
@@ -41,7 +54,9 @@ Feature: Reconcile Service Catalog in Application namespaces
             - name: user
               value: davp
             - name: password
-              value: quedicelagente
+              valueFromSecret:
+                name: $scenario_id
+                key: password
             - name: database
               value: davpdata
           sla: L3
@@ -62,12 +77,7 @@ Feature: Reconcile Service Catalog in Application namespaces
         Then On Worker Cluster "worker", ServiceCatalog "dev" exists in "applications"
 
     Scenario: Service Catalog is pushed to application namespaces of new Cluster Environments
-        Given Primaza Cluster "main" is running
-        And Worker Cluster "worker" for ClusterEnvironment "worker" is running
-        And Clusters "main" and "worker" can communicate
-        And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
-        And On Worker Cluster "worker", application namespace "applications" for ClusterEnvironment "worker" exists
-        And On Primaza Cluster "main", Resource is created
+        Given On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
         kind: RegisteredService
@@ -88,7 +98,9 @@ Feature: Reconcile Service Catalog in Application namespaces
             - name: user
               value: davp
             - name: password
-              value: quedicelagente
+              valueFromSecret:
+                name: $scenario_id
+                key: password
             - name: database
               value: davpdata
           sla: L3

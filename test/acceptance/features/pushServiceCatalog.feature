@@ -8,7 +8,7 @@ Feature: Push ServiceCatalog
       And On Worker Cluster "worker", application namespace "applications" for ClusterEnvironment "worker" exists
 
   Scenario: Initialize ServiceCatalog
-      And On Primaza Cluster "main", Resource is created
+      When On Primaza Cluster "main", Resource is created
       """
       apiVersion: primaza.io/v1alpha1
       kind: ClusterEnvironment
@@ -21,15 +21,25 @@ Feature: Push ServiceCatalog
           applicationNamespaces:
           - applications
       """
-      And On Primaza Cluster "main", ClusterEnvironment "worker" state will eventually move to "Online"
+      Then On Primaza Cluster "main", ClusterEnvironment "worker" state will eventually move to "Online"
       And On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "Online" has Status "True"
       And On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ApplicationNamespacePermissionsRequired" has Status "False"
       And On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ServiceNamespacePermissionsRequired" has Status "False"
-      Then On Worker Cluster "worker", ServiceCatalog "dev" exists in "applications"
-      And  On Primaza Cluster "main", ServiceCatalog "dev" exists
+      And On Worker Cluster "worker", ServiceCatalog "dev" exists in "applications"
+      And On Primaza Cluster "main", ServiceCatalog "dev" exists
 
   Scenario: Add Registered Service to Service Catalog
       When On Primaza Cluster "main", Resource is created
+      """
+      apiVersion: v1
+      kind: Secret
+      metadata:
+          name: $scenario_id
+          namespace: primaza-system
+      stringData:
+          password: quedicelagente
+      """
+      And On Primaza Cluster "main", Resource is created
       """
       apiVersion: primaza.io/v1alpha1
       kind: RegisteredService
@@ -50,7 +60,9 @@ Feature: Push ServiceCatalog
           - name: user
             value: davp
           - name: password
-            value: quedicelagente
+            valueFromSecret:
+              name: $scenario_id
+              key: password
           - name: database
             value: davpdata
         sla: L3
@@ -69,17 +81,17 @@ Feature: Push ServiceCatalog
           applicationNamespaces:
           - applications
       """
-      And On Primaza Cluster "main", ClusterEnvironment "worker" state will eventually move to "Online"
+      Then On Primaza Cluster "main", ClusterEnvironment "worker" state will eventually move to "Online"
       And On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "Online" has Status "True"
       And On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ApplicationNamespacePermissionsRequired" has Status "False"
       And On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ServiceNamespacePermissionsRequired" has Status "False"
-      And  On Primaza Cluster "main", ServiceCatalog "dev" exists
-      And  On Worker Cluster "worker", ServiceCatalog "dev" exists in "applications"
-      Then On Primaza Cluster "main", ServiceCatalog "dev" will contain RegisteredService "primaza-rsdb"
-      And  On Worker Cluster "worker", ServiceCatalog "dev" in application namespace "applications" will contain RegisteredService "primaza-rsdb"
+      And On Primaza Cluster "main", ServiceCatalog "dev" exists
+      And On Worker Cluster "worker", ServiceCatalog "dev" exists in "applications"
+      And On Primaza Cluster "main", ServiceCatalog "dev" will contain RegisteredService "primaza-rsdb"
+      And On Worker Cluster "worker", ServiceCatalog "dev" in application namespace "applications" will contain RegisteredService "primaza-rsdb"
 
   Scenario: Update Registered Service in Service Catalog
-      And On Primaza Cluster "main", Resource is created
+      Given On Primaza Cluster "main", Resource is created
       """
       apiVersion: primaza.io/v1alpha1
       kind: ClusterEnvironment

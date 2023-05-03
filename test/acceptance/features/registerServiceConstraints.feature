@@ -1,8 +1,20 @@
 Feature: Register a cloud service in Primaza cluster with constraints but without healthchecks
 
-    Scenario: Cloud Service Registration, no Healthcheck provided, ServiceCatalog exists and RegisteredService matching constraint
+    Background:
         Given Primaza Cluster "main" is running
-        And   Worker Cluster "worker" for ClusterEnvironment "worker" is running
+        And On Primaza Cluster "main", Resource is created
+        """
+        apiVersion: v1
+        kind: Secret
+        metadata:
+            name: $scenario_id
+            namespace: primaza-system
+        stringData:
+            password: quedicelagente
+        """
+
+    Scenario: Cloud Service Registration, no Healthcheck provided, ServiceCatalog exists and RegisteredService matching constraint
+        Given Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And   Clusters "main" and "worker" can communicate
         And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
         And   On Primaza Cluster "main", Resource is created
@@ -40,7 +52,9 @@ Feature: Register a cloud service in Primaza cluster with constraints but withou
             - name: user
               value: davp
             - name: password
-              value: quedicelagente
+              valueFromSecret:
+                name: $scenario_id
+                key: password
             - name: database
               value: davpdata
           sla: L3
@@ -50,8 +64,7 @@ Feature: Register a cloud service in Primaza cluster with constraints but withou
 
 
     Scenario: Cloud Service Registration, no Healthcheck provided, ServiceCatalog exists and RegisteredService not matching constraint
-        Given Primaza Cluster "main" is running
-        And   Worker Cluster "worker" for ClusterEnvironment "worker" is running
+        Given Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And   Clusters "main" and "worker" can communicate
         And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
         And   On Primaza Cluster "main", Resource is created
@@ -89,7 +102,9 @@ Feature: Register a cloud service in Primaza cluster with constraints but withou
             - name: user
               value: davp
             - name: password
-              value: quedicelagente
+              valueFromSecret:
+                name: $scenario_id
+                key: password
             - name: database
               value: davpdata
           sla: L3
@@ -99,8 +114,7 @@ Feature: Register a cloud service in Primaza cluster with constraints but withou
 
 
     Scenario: Cloud Service Registration, no Healthcheck, with include constraints and multiple ServiceCatalog exists
-        Given Primaza Cluster "main" is running
-        And   Worker Cluster "worker" is running
+        Given Worker Cluster "worker" is running
         And   On Worker Cluster "worker", a ServiceAccount for ClusterEnvironment "worker-dev" exists
         And   On Worker Cluster "worker", a ServiceAccount for ClusterEnvironment "worker-stage" exists
         And   Clusters "main" and "worker" can communicate
@@ -150,7 +164,9 @@ Feature: Register a cloud service in Primaza cluster with constraints but withou
             - name: user
               value: davp
             - name: password
-              value: quedicelagente
+              valueFromSecret:
+                name: $scenario_id
+                key: password
             - name: database
               value: davpdata
           sla: L3
@@ -161,8 +177,7 @@ Feature: Register a cloud service in Primaza cluster with constraints but withou
 
 
     Scenario: Cloud Service Registration, no Healthcheck, with exclude constraints and multiple ServiceCatalog exists
-        Given Primaza Cluster "main" is running
-        And   Worker Cluster "worker" is running
+        Given Worker Cluster "worker" is running
         And   On Worker Cluster "worker", a ServiceAccount for ClusterEnvironment "worker-dev" exists
         And   On Worker Cluster "worker", a ServiceAccount for ClusterEnvironment "worker-stage" exists
         And   Clusters "main" and "worker" can communicate
@@ -212,7 +227,9 @@ Feature: Register a cloud service in Primaza cluster with constraints but withou
             - name: user
               value: davp
             - name: password
-              value: quedicelagente
+              valueFromSecret:
+                name: $scenario_id
+                key: password
             - name: database
               value: davpdata
           sla: L3

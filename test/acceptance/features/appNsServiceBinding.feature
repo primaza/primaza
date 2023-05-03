@@ -6,6 +6,16 @@ Feature: Application Namespaces initialization: Service Bindings
         And   Clusters "main" and "worker" can communicate
         And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
         And   On Worker Cluster "worker", application namespace "applications" for ClusterEnvironment "worker" exists
+        And On Primaza Cluster "main", Resource is created
+        """
+        apiVersion: v1
+        kind: Secret
+        metadata:
+            name: $scenario_id
+            namespace: primaza-system
+        stringData:
+            password: quedicelagente
+        """
 
     Scenario: Service Bindings are pushed to new Cluster Environments' application namespaces
         Given On Primaza Cluster "main", Resource is created
@@ -44,11 +54,13 @@ Feature: Application Namespaces initialization: Service Bindings
             - name: user
               value: davp
             - name: password
-              value: quedicelagente
+              valueFromSecret:
+                name: $scenario_id
+                key: password
             - name: database
               value: davpdata
           sla: L3
-          """
+        """
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Available"
         And On Primaza Cluster "main", Resource is created
         """
@@ -129,11 +141,13 @@ Feature: Application Namespaces initialization: Service Bindings
             - name: user
               value: davp
             - name: password
-              value: quedicelagente
+              valueFromSecret:
+                name: $scenario_id
+                key: password
             - name: database
               value: davpdata
           sla: L3
-          """
+        """
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Available"
         When On Primaza Cluster "main", Resource is created
         """
@@ -207,11 +221,13 @@ Feature: Application Namespaces initialization: Service Bindings
             - name: user
               value: davp
             - name: password
-              value: quedicelagente
+              valueFromSecret:
+                name: $scenario_id
+                key: password
             - name: database
               value: davpdata
           sla: L3
-         """
+        """
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Available"
         When On Primaza Cluster "main", Resource is created
         """
@@ -286,11 +302,13 @@ Feature: Application Namespaces initialization: Service Bindings
           - name: user
             value: davp
           - name: password
-            value: quedicelagente
+            valueFromSecret:
+              name: $scenario_id
+              key: password
           - name: database
             value: davpdata
           sla: L3
-          """
+        """
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Available"
         When On Primaza Cluster "main", Resource is created
         """
