@@ -45,6 +45,10 @@ type ServiceClaimSpec struct {
 	ApplicationClusterContext *ServiceClaimApplicationClusterContext `json:"applicationClusterContext,omitempty"`
 }
 
+const (
+	ServiceClaimConditionReady = "Ready"
+)
+
 // ServiceClaimStatus defines the observed state of ServiceClaim
 type ServiceClaimStatus struct {
 	//+kubebuilder:validation:Enum=Pending;Resolved;Invalid

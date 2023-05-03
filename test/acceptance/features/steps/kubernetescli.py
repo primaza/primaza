@@ -488,12 +488,12 @@ def assert_generation(context, count):
     return context.latest_application_generation - context.original_application_generation == int(count)
 
 
-@step(u"Condition {condition}={value} for {resource}/{name} resource is met")
-@step(u"Condition {condition}={value} for {resource}/{name} resource is met in less then {timeout} seconds")
-def condition_is_met_for_resource(context, condition, value, resource, name, timeout=600):
+@step(u"Condition {condition}={value} for {resource}/{name}:{namespace} resource is met")
+@step(u"Condition {condition}={value} for {resource}/{name}:{namespace} resource is met in less then {timeout} seconds")
+def condition_is_met_for_resource(context, condition, value, resource, name, namespace, timeout=600):
     kubernetes = Kubernetes()
     kubernetes.check_for_condition(
-        resource, name, context.namespace.name, condition, value, timeout=timeout)
+        resource, name, namespace, condition, value, timeout=timeout)
 
 
 @step(u'On Worker Cluster "{cluster}", Resource is created')
@@ -669,7 +669,10 @@ def operator_manifest_installed(context, resource, cluster, namespace):
 @step(u'jsonpath "{expr}" on "{resource_type}/{name}:{namespace}" in cluster {cluster} is "{text}"')
 def jq_is(context, expr, resource_type, name, namespace, cluster, text):
     name = substitute_scenario_id(context, name)
-    text = json.loads(substitute_scenario_id(context, text))
+    try:
+        text = json.loads(substitute_scenario_id(context, text))
+    except json.decoder.JSONDecodeError:
+        text = substitute_scenario_id(context, text)
     kubeconfig = context.cluster_provider.get_cluster(cluster).get_admin_kubeconfig()
     with tempfile.NamedTemporaryFile() as tf:
         tf.write(kubeconfig.encode("utf-8"))

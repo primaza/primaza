@@ -20,9 +20,12 @@ import (
 	"context"
 	"os"
 	"strings"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	meta "k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -138,6 +141,15 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "admission webhook \"vserviceclaim.kb.io\" denied the request") {
+			c := metav1.Condition{
+				LastTransitionTime: metav1.NewTime(time.Now()),
+				Type:               primazaiov1alpha1.ServiceClaimConditionReady,
+				Status:             metav1.ConditionFalse,
+				Reason:             constants.ValidationErrorReason,
+				Message:            err.Error(),
+			}
+			meta.SetStatusCondition(&sclaim.Status.Conditions, c)
+
 			sclaimCopy.Status.State = primazaiov1alpha1.ServiceClaimStateInvalid
 		} else {
 			sclaimCopy.Status.State = primazaiov1alpha1.ServiceClaimStatePending

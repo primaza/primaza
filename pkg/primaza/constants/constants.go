@@ -26,4 +26,7 @@ const (
 	// cluster, and `namespace`, the namespace to write registered services to
 	ApplicationAgentKubeconfigSecretName = "primaza-app-kubeconfig" // #nosec G101
 	ServiceAgentKubeconfigSecretName     = "primaza-svc-kubeconfig" // #nosec G101
+	// Reasons for status condition
+	NoMatchingServiceFoundReason = "NoMatchingServiceFound"
+	ValidationErrorReason        = "ValidationError"
 )

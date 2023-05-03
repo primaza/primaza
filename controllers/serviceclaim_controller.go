@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -36,6 +37,7 @@ import (
 	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
 	"github.com/primaza/primaza/pkg/envtag"
 	"github.com/primaza/primaza/pkg/primaza/clustercontext"
+	"github.com/primaza/primaza/pkg/primaza/constants"
 	"github.com/primaza/primaza/pkg/primaza/controlplane"
 	"github.com/primaza/primaza/pkg/slices"
 )
@@ -301,6 +303,15 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 	}
 
 	if !registeredServiceFound {
+		c := metav1.Condition{
+			LastTransitionTime: metav1.NewTime(time.Now()),
+			Type:               primazaiov1alpha1.ServiceClaimConditionReady,
+			Status:             metav1.ConditionFalse,
+			Reason:             constants.NoMatchingServiceFoundReason,
+			Message:            "SCI is not matched",
+		}
+		meta.SetStatusCondition(&sclaim.Status.Conditions, c)
+
 		sclaim.Status.State = "Pending"
 		if err := r.Status().Update(ctx, &sclaim); err != nil {
 			l.Error(err, "unable to update the ServiceClaim", "ServiceClaim", sclaim)
@@ -313,6 +324,15 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 	// if the number of SED keys is more than the number of secret data entries
 	// that indicates one or more keys are missing
 	if len(sclaim.Spec.ServiceEndpointDefinitionKeys) > count {
+		c := metav1.Condition{
+			LastTransitionTime: metav1.NewTime(time.Now()),
+			Type:               primazaiov1alpha1.ServiceClaimConditionReady,
+			Status:             metav1.ConditionFalse,
+			Reason:             constants.NoMatchingServiceFoundReason,
+			Message:            "key not available in the list of SEDs",
+		}
+		meta.SetStatusCondition(&sclaim.Status.Conditions, c)
+
 		sclaim.Status.State = "Pending"
 		if err := r.Status().Update(ctx, &sclaim); err != nil {
 			l.Error(err, "unable to update the ServiceClaim", "ServiceClaim", sclaim)
