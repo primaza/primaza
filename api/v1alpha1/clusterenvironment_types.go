@@ -65,6 +65,9 @@ const (
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="Environment",type="string",JSONPath=".spec.environmentName",description="the environment associated to the ClusterEnvironment instance"
+//+kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state",description="the state of the ClusterEnvironment"
+//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // ClusterEnvironment is the Schema for the clusterenvironments API
 type ClusterEnvironment struct {
