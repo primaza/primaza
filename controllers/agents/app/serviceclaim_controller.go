@@ -94,7 +94,7 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	// examine DeletionTimestamp to determine if object is under deletion
-	if sclaim.DeletionTimestamp.IsZero() {
+	if sclaim.DeletionTimestamp.IsZero() && deployment.DeletionTimestamp.IsZero() {
 		// The object is not being deleted, so if it does not have our finalizer,
 		// then lets add the finalizer and update the object. This is equivalent
 		// registering our finalizer.
