@@ -65,6 +65,8 @@ const (
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state",description="the state of the ServiceClaim"
+//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // ServiceClaim is the Schema for the serviceclaims API
 type ServiceClaim struct {

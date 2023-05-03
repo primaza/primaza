@@ -89,6 +89,8 @@ type RegisteredServiceStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state",description="the state of the RegisteredService"
+//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // RegisteredService is the Schema for the registeredservices API.
 type RegisteredService struct {
