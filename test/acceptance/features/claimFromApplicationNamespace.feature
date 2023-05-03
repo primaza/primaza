@@ -145,10 +145,7 @@ Feature: Claim from an application namespace
                 a: b
                 c: d
         """
-        And On Worker Cluster "worker", the status of ServiceClaim "sc-test" is "Resolved"
-        And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
-        And On Primaza Cluster "main", ServiceCatalog "stage" will not contain RegisteredService "primaza-rsdb"
-        And jsonpath ".spec.serviceClassIdentity[0]" on "serviceclaims.primaza.io/sc-test:primaza-system" in cluster main is "{"name":"type","value":"mysql"}"
+        And On Worker Cluster "worker", the status of ServiceClaim "sc-test" is "Invalid"
 
     Scenario: Delete claim with label selector from an application namespace
         Given On Worker Cluster "worker", Resource is created

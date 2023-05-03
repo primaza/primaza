@@ -65,7 +65,7 @@ const ServiceClaimFinalizer = "serviceclaims.primaza.io/finalizer"
 func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	l := log.FromContext(ctx)
 
-	l.Info("starting reconciliation")
+	l.Info("starting  service claim reconciliation")
 	defer l.Info("reconciliation ended")
 
 	var sclaim primazaiov1alpha1.ServiceClaim
@@ -245,7 +245,6 @@ func (r *ServiceClaimReconciler) getEnvironmentFromClusterEnvironment(
 	objectKey := types.NamespacedName{Name: clusterEnvironmentName, Namespace: req.NamespacedName.Namespace}
 	if err := r.Get(ctx, objectKey, ce); err != nil {
 		l.Info("unable to retrieve ClusterEnvironment", "error", err)
-		fmt.Println(req.NamespacedName.Namespace, clusterEnvironmentName)
 		return nil, client.IgnoreNotFound(err)
 	}
 
@@ -362,7 +361,6 @@ func (r *ServiceClaimReconciler) pushToClusterEnvironments(
 	secret *corev1.Secret,
 ) error {
 	l := log.FromContext(ctx)
-
 	errs := []error{}
 	if sclaim.Spec.ApplicationClusterContext != nil {
 		var err error

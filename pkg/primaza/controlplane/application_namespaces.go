@@ -86,19 +86,26 @@ func pushServiceBindingToNamespace(
 		},
 	}
 
-	if err := cli.Create(ctx, &sb, &client.CreateOptions{}); err != nil {
-		if !apierrors.IsAlreadyExists(err) {
-			return err
+	op, err := controllerutil.CreateOrUpdate(ctx, cli, &sb, func() error {
+		sb.Spec = primazaiov1alpha1.ServiceBindingSpec{
+			ServiceEndpointDefinitionSecret: sc.Name,
+			Application:                     sc.Spec.Application,
 		}
+		return nil
+	})
+
+	if err != nil {
+		l.Error(err, "Failed to create or update service binding")
+		return err
+	} else {
+		l.Info("Wrote service binding", "binding", sb.Name, "namespace", sb.Namespace, "operation", op)
 	}
 
 	if err := cli.Get(ctx, types.NamespacedName{Namespace: namespace, Name: sc.Name}, &sb); err != nil {
 		return err
 	}
 
-	s := *secret
-	s.Namespace = namespace
-	s.OwnerReferences = []metav1.OwnerReference{
+	secret.OwnerReferences = []metav1.OwnerReference{
 		{
 			APIVersion: "primaza.io/v1alpha1",
 			Kind:       "ServiceBinding",
@@ -106,13 +113,19 @@ func pushServiceBindingToNamespace(
 			UID:        sb.UID,
 		},
 	}
+	secret.Namespace = namespace
+	data := secret.StringData
+	l.Info("creating or updating secret for service claim", "secret", secret, "service claim", sc)
+	op, err = controllerutil.CreateOrUpdate(ctx, cli, secret, func() error {
+		secret.StringData = data
+		return nil
+	})
 
-	l.Info("creating secret for service claim", "secret", s, "service claim", sc)
-	if err := cli.Create(ctx, &s, &client.CreateOptions{}); err != nil {
-		l.Error(err, "error creating secret for service claim", "secret", s, "service claim", sc)
-		if !apierrors.IsAlreadyExists(err) {
-			return err
-		}
+	if err != nil {
+		l.Error(err, "error creating or updating secret for service claim", "secret", secret, "service claim", sc)
+		return err
+	} else {
+		l.Info("Wrote secret", "secret", secret.Name, "namespace", secret.Namespace, "operation", op)
 	}
 
 	return nil

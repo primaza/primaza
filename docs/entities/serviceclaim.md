@@ -31,11 +31,12 @@ application label selector and application name are mutually exclusive.
 ## Status
 
 The Status of the ServiceClaim is also defined under the [ServiceClaim
-CRD](../../config/crd/bases/primaza.io_serviceclaims.yaml). It contains a
-mandatory property to track the state. The state could be either `Pending` or
-`Resolved`. If the state is `Resolved`, there should be Secret and Service
-Binding resources created. And there is another mandatory field,
-`registeredService` that points to the Registered Service.
+CRD](../../config/crd/bases/primaza.io_serviceclaims.yaml).
+It contains a mandatory property to track the state.
+The state could be either `Pending` or `Resolved` or `Invalid`.
+If the state is `Resolved`, there should be Secret and ServiceBinding resources created. And there is another mandatory field,`registeredService` that points to the RegisteredService.
+The spec of a ServiceClaim is not meant to be updated.
+If a user updates the spec of a ServiceClaim then the status of ServiceClaim is updated as `Invalid` when Primaza Application Agent attempts to update the ServiceClaim on Primaza Control Plane.
 
 There is an optional `claimID` field with a unique ID for the claim.
 
