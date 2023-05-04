@@ -64,10 +64,11 @@ const (
 // ClusterEnvironmentReconciler reconciles a ClusterEnvironment object
 type ClusterEnvironmentReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
-
-	AppAgentImage string
-	SvcAgentImage string
+	Scheme           *runtime.Scheme
+	AppAgentImage    string
+	SvcAgentImage    string
+	AppAgentManifest string
+	SvcAgentManifest string
 }
 
 //+kubebuilder:rbac:groups="",namespace=system,resources=secrets,verbs=create;update;delete;get;list;watch
@@ -431,6 +432,8 @@ func (r *ClusterEnvironmentReconciler) reconcileNamespaces(
 		ServiceNamespaces:     sns,
 		AppAgentImage:         r.AppAgentImage,
 		SvcAgentImage:         r.SvcAgentImage,
+		AppAgentManifest:      r.AppAgentManifest,
+		SvcAgentManifest:      r.SvcAgentManifest,
 	}
 
 	nr, err := controlplane.NewNamespaceReconciler(s)
@@ -567,6 +570,8 @@ func (r *ClusterEnvironmentReconciler) finalizeClusterEnvironmentInNamespaces(ct
 		ServiceNamespaces:     []string{},
 		AppAgentImage:         r.AppAgentImage,
 		SvcAgentImage:         r.SvcAgentImage,
+		AppAgentManifest:      r.AppAgentManifest,
+		SvcAgentManifest:      r.SvcAgentManifest,
 	}
 
 	nr, err := controlplane.NewNamespaceReconciler(s)

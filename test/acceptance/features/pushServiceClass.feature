@@ -49,7 +49,6 @@ Feature: Create or Update Service Class
         And On Worker Cluster "worker", Resource "ServiceClass" with name "demo-service-sc" exists in namespace "services"
         And jsonpath ".spec.serviceClassIdentity" on "serviceclasses.primaza.io/demo-service-sc:services" in cluster worker is "[{"name":"type", "value":"backend"}, {"name":"provider", "value":"stable.example.com"}, {"name":"version", "value":"v1"}]"
 
-
     Scenario: On Service Class update, Primaza control plane forwards it into all matching services namespace
         When On Primaza Cluster "main", Resource is updated
         """
@@ -77,4 +76,4 @@ Feature: Create or Update Service Class
                 - name: version
                   value: v1
         """
-        Then jsonpath ".spec.serviceClassIdentity" on "serviceclasses.primaza.io/demo-service-sc:services" in cluster worker is "[{"name":"type", "value":"backend-update"}, {"name":"provider", "value":"stable.example.com"}, {"name":"version","value":"v1"}]" 
+        Then jsonpath ".spec.serviceClassIdentity" on "serviceclasses.primaza.io/demo-service-sc:services" in cluster worker is "[{"name":"type", "value":"backend-update"}, {"name":"provider", "value":"stable.example.com"}, {"name":"version","value":"v1"}]"

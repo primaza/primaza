@@ -1,12 +1,16 @@
 ##@ Development
 
-.PHONY: agents-templates
-agents-templates: kustomize yq ## Copy agents' templates for Primaza's Control Plane deployment mechanism
-	@$(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/agents/app/default/ | $(YQ) eval 'select(.kind == "Deployment" and .apiVersion == "apps/v1")' > pkg/primaza/workercluster/templates/agentapp.yaml
-	@$(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/agents/svc/default/ | $(YQ) eval 'select(.kind == "Deployment" and .apiVersion == "apps/v1")' > pkg/primaza/workercluster/templates/agentsvc.yaml
+.PHONY: agents-configmap
+agents-configmap: kustomize yq ## Copy agents' templates for Primaza's Control Plane deployment mechanism
+	@$(YQ) eval --inplace \
+		'.data.agentapp-manifest = load_str("'<($(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/agents/app/default/ | $(YQ) eval 'select(.kind == "Deployment" and .apiVersion == "apps/v1")' )'")' \
+		config/manager/configmap.yaml
+	@$(YQ) eval --inplace \
+		'.data.agentsvc-manifest = load_str("'<($(KUSTOMIZE)  build --load-restrictor LoadRestrictionsNone config/agents/svc/default/ | $(YQ) eval 'select(.kind == "Deployment" and .apiVersion == "apps/v1")' )'")' \
+		config/manager/configmap.yaml
 
 .PHONY: manifests
-manifests: agents-templates controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
+manifests: agents-configmap controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
 .PHONY: generate

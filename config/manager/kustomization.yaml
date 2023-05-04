@@ -5,7 +5,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 # use the following command to overwrite agent image names:\
 #
-# kustomize edit add configmap primaza-manager-config \
+# kustomize edit add configmap manager-config \
 #   --behavior merge --disableNameSuffixHash \
 #   --from-literal agentapp-image=ghcr.io/primaza/primaza-agentapp:latest \
 #   --from-literal agentsvc-image=ghcr.io/primaza/primaza-agentsvc:latest
