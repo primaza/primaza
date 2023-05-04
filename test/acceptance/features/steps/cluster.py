@@ -168,7 +168,7 @@ class Cluster(object):
         """
         sa_name = f"primaza-{tenant}-{cluster_environment}"
         sa_ns = "kube-system"
-        sec_name = f"tkn-pmz-{tenant}-{cluster_environment}"
+        sec_name = f"primaza-tkn-{tenant}-{cluster_environment}"
 
         return self.create_identity(sa_ns, sa_name, sec_name, timeout)
 
@@ -244,7 +244,7 @@ class Cluster(object):
         corev1 = client.CoreV1Api(api_client)
 
         secret = client.V1Secret(
-            metadata=client.V1ObjectMeta(name=f"kubeconfig-primaza-{agent_type}"),
+            metadata=client.V1ObjectMeta(name=f"primaza-{agent_type}-kubeconfig"),
             string_data={
                 "kubeconfig": kubeconfig,
                 "namespace": tenant,
@@ -274,7 +274,7 @@ class Cluster(object):
                     api_groups=[""],
                     resources=["secrets"],
                     verbs=["update", "patch"],
-                    resource_names=[f"kubeconfig-primaza-{nstype}"]),
+                    resource_names=[f"primaza-{nstype}-kubeconfig"]),
                 client.V1PolicyRule(
                     api_groups=["apps"],
                     resources=["deployments"],
@@ -337,7 +337,7 @@ class Cluster(object):
         return yaml.safe_dump(kubeconfig)
 
     def get_primaza_sa_kubeconfig(self, tenant: str, cluster_environment: str) -> Dict:
-        sec_name = f"tkn-pmz-{tenant}-{cluster_environment}"
+        sec_name = f"primaza-tkn-{tenant}-{cluster_environment}"
         tkn = self.get_secret_token("kube-system", sec_name)
         user = f"primaza-{tenant}-{cluster_environment}"
 
