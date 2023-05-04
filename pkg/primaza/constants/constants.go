@@ -24,6 +24,6 @@ const (
 	// agents needs to write back registered services up to primaza.  It contains
 	// two keys: `kubeconfig`, a serialized kubeconfig for the upstream kubeconfig
 	// cluster, and `namespace`, the namespace to write registered services to
-	ApplicationAgentKubeconfigSecretName = "kubeconfig-primaza-app" // #nosec G101
-	ServiceAgentKubeconfigSecretName     = "kubeconfig-primaza-svc" // #nosec G101
+	ApplicationAgentKubeconfigSecretName = "primaza-app-kubeconfig" // #nosec G101
+	ServiceAgentKubeconfigSecretName     = "primaza-svc-kubeconfig" // #nosec G101
 )
