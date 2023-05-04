@@ -18,6 +18,7 @@ package workercluster
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 
 	"github.com/primaza/primaza/pkg/primaza/constants"
@@ -28,6 +29,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes"
 )
+
+//go:embed templates/agentsvc.yaml
+var agentSvcDeployment string
 
 func DeleteServiceAgent(ctx context.Context, cli *kubernetes.Clientset, namespace string) error {
 	s := runtime.NewScheme()
@@ -70,6 +74,7 @@ func createAgentSvcDeployment(ctx context.Context, cli *kubernetes.Clientset, na
 	}
 
 	dep := obj.(*appsv1.Deployment)
+	dep.ObjectMeta.Namespace = namespace
 	dep.Spec.Template.Spec.Containers[0].Image = image
 	dep.ObjectMeta.Labels[constants.PrimazaClusterEnvironmentLabel] = ceName
 	if _, err := cli.AppsV1().Deployments(namespace).Create(ctx, dep, metav1.CreateOptions{}); err != nil {
@@ -77,75 +82,3 @@ func createAgentSvcDeployment(ctx context.Context, cli *kubernetes.Clientset, na
 	}
 	return nil
 }
-
-const agentSvcDeployment string = `
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  labels:
-    app.kubernetes.io/part-of: primaza
-    control-plane: primaza-svc-agent
-  name: primaza-svc-agent
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      control-plane: primaza-svc-agent
-  template:
-    metadata:
-      annotations:
-        kubectl.kubernetes.io/default-container: manager
-      labels:
-        control-plane: primaza-svc-agent
-    spec:
-      containers:
-      - args:
-        - --leader-elect
-        command:
-        - /manager
-        env:
-        - name: WATCH_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        image: agentsvc:latest
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 8081
-          initialDelaySeconds: 15
-          periodSeconds: 20
-        name: manager
-        readinessProbe:
-          httpGet:
-            path: /readyz
-            port: 8081
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        resources:
-          limits:
-            cpu: 500m
-            memory: 128Mi
-          requests:
-            cpu: 10m
-            memory: 64Mi
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - ALL
-        volumeMounts:
-        - mountPath: /tmp/k8s-webhook-server/serving-certs
-          name: cert
-          readOnly: true
-      securityContext:
-        runAsNonRoot: true
-      serviceAccountName: primaza-svc-agent
-      terminationGracePeriodSeconds: 10
-      volumes:
-      - name: cert
-        secret:
-          defaultMode: 420
-          secretName: webhook-server-cert
-`

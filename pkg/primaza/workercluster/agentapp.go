@@ -18,6 +18,7 @@ package workercluster
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 
 	"github.com/primaza/primaza/pkg/primaza/constants"
@@ -28,6 +29,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes"
 )
+
+//go:embed templates/agentapp.yaml
+var agentAppDeployment string
 
 func DeleteApplicationAgent(ctx context.Context, cli *kubernetes.Clientset, namespace string) error {
 	s := runtime.NewScheme()
@@ -70,6 +74,7 @@ func createAgentAppDeployment(ctx context.Context, cli *kubernetes.Clientset, na
 	}
 
 	dep := obj.(*appsv1.Deployment)
+	dep.ObjectMeta.Namespace = namespace
 	dep.Spec.Template.Spec.Containers[0].Image = image
 	dep.ObjectMeta.Labels[constants.PrimazaClusterEnvironmentLabel] = ceName
 	if _, err := cli.AppsV1().Deployments(namespace).Create(ctx, dep, metav1.CreateOptions{}); err != nil {
@@ -78,66 +83,3 @@ func createAgentAppDeployment(ctx context.Context, cli *kubernetes.Clientset, na
 
 	return nil
 }
-
-const agentAppDeployment string = `
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: primaza-app-agent
-  labels:
-    app.kubernetes.io/part-of: primaza
-    control-plane: primaza-app-agent
-spec:
-  selector:
-    matchLabels:
-      control-plane: primaza-app-agent
-  replicas: 1
-  template:
-    metadata:
-      annotations:
-        kubectl.kubernetes.io/default-container: manager
-      labels:
-        control-plane: primaza-app-agent
-    spec:
-      securityContext:
-        runAsNonRoot: true
-      containers:
-      - command:
-        - /manager
-        args:
-        - --leader-elect
-        image: agentapp:latest
-        imagePullPolicy: IfNotPresent
-        name: manager
-        env:
-          - name: WATCH_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - "ALL"
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 8081
-          initialDelaySeconds: 15
-          periodSeconds: 20
-        readinessProbe:
-          httpGet:
-            path: /readyz
-            port: 8081
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        resources:
-          limits:
-            cpu: 500m
-            memory: 128Mi
-          requests:
-            cpu: 10m
-            memory: 64Mi
-      serviceAccountName: primaza-app-agent
-      terminationGracePeriodSeconds: 10
-`

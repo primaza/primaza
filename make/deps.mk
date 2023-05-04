@@ -9,11 +9,13 @@ $(LOCALBIN):
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
+YQ ?= $(LOCALBIN)/yq
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v4.5.7
 CONTROLLER_TOOLS_VERSION ?= v0.11.3
 CERTMANAGER_VERSION ?= v1.11.1
+YQ_VERSION ?= v4
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 .PHONY: kustomize
@@ -47,6 +49,11 @@ else
 OPM = $(shell which opm)
 endif
 endif
+
+.PHONY: yq
+yq: $(YQ) ## Download envtest-setup locally if necessary.
+$(YQ): $(LOCALBIN)
+	test -s $(YQ) || GOBIN=$(LOCALBIN) $(GO) install github.com/mikefarah/yq/v4@$(YQ_VERSION)
 
 .PHONY: deploy-cert-manager
 deploy-cert-manager:
