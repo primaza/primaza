@@ -19,18 +19,28 @@ package controllers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path"
 	"strings"
 	"time"
 
+	"github.com/primaza/primaza/api/v1alpha1"
 	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
+	"github.com/primaza/primaza/pkg/primaza/constants"
+	"go.uber.org/atomic"
 	v1 "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/dynamic/dynamicinformer"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -48,6 +58,18 @@ const (
 type ServiceBindingReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	dynamic.Interface
+	informers map[string]informer
+}
+
+type informer struct {
+	informer   cache.SharedIndexInformer
+	ctx        context.Context
+	cancelFunc context.CancelFunc
+}
+
+func (i *informer) run() {
+	i.informer.Run(i.ctx.Done())
 }
 
 // ServiceBindingRoot points to the environment variable in the container
@@ -58,6 +80,15 @@ const (
 	ServiceBindingRoot      = "SERVICE_BINDING_ROOT"
 	ServiceBindingFinalizer = "servicebindings.primaza.io/finalizer"
 )
+
+func NewServiceBindingReconciler(mgr ctrl.Manager) *ServiceBindingReconciler {
+	return &ServiceBindingReconciler{
+		Client:    mgr.GetClient(),
+		Scheme:    mgr.GetScheme(),
+		Interface: dynamic.NewForConfigOrDie(mgr.GetConfig()),
+		informers: make(map[string]informer, 0),
+	}
+}
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -87,20 +118,23 @@ func (r *ServiceBindingReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	l.Info("ServiceBinding object retrieved", "ServiceBinding", serviceBinding)
 
 	secretName := serviceBinding.Spec.ServiceEndpointDefinitionSecret
-
+	applications, err := r.getApplication(ctx, req, serviceBinding, secretName)
+	if err != nil {
+		// error retrieving the application(s), so setting the service binding status to false and reconcile
+		if errUpdateStatus := r.setStatus(ctx, secretName, serviceBinding, metav1.ConditionFalse, conditionGetAppsFailureReason, primazaiov1alpha1.ServiceBindingStateMalformed, err.Error()); errUpdateStatus != nil {
+			return ctrl.Result{}, errUpdateStatus
+		}
+		return ctrl.Result{}, err
+	}
 	l.Info("Check If service binding is deleted")
 	if serviceBinding.HasDeletionTimestamp() {
 		if controllerutil.ContainsFinalizer(&serviceBinding, ServiceBindingFinalizer) {
-			applications, err := r.getApplication(ctx, req, serviceBinding, secretName)
-			if err != nil {
-				// error retrieving the application(s), so setting the service binding status to false and reconcile
-				err := r.setStatus(ctx, secretName, serviceBinding, metav1.ConditionFalse, conditionGetAppsFailureReason, primazaiov1alpha1.ServiceBindingStateMalformed, err.Error())
+
+			if err = r.finalizeServiceBinding(ctx, serviceBinding, applications); err != nil {
+				l.Error(err, "Error on unbinding applications on Service Binding Deletion")
 				return ctrl.Result{}, err
 			}
-			err = r.unbindApplications(ctx, req, serviceBinding, applications...)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
+
 			// Remove finalizer from service binding
 			if finalizerBool := controllerutil.RemoveFinalizer(&serviceBinding, ServiceBindingFinalizer); !finalizerBool {
 				l.Error(errors.New("Finalizer not removed for service binding"), "Finalizer not removed for service binding")
@@ -113,30 +147,6 @@ func (r *ServiceBindingReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, nil
 	}
 
-	applications, err := r.getApplication(ctx, req, serviceBinding, secretName)
-	if err != nil {
-		// error retrieving the application(s), so setting the service binding status to false and reconcile
-		if errUpdateStatus := r.setStatus(ctx, secretName, serviceBinding, metav1.ConditionFalse, conditionGetAppsFailureReason, primazaiov1alpha1.ServiceBindingStateMalformed, err.Error()); errUpdateStatus != nil {
-			return ctrl.Result{}, errUpdateStatus
-		}
-		return ctrl.Result{}, err
-	}
-
-	psSecret := &v1.Secret{}
-	secretLookupKey := client.ObjectKey{Name: serviceBinding.Spec.ServiceEndpointDefinitionSecret, Namespace: req.NamespacedName.Namespace}
-	if secErr := r.Get(ctx, secretLookupKey, psSecret); secErr != nil {
-		// error retrieving the application(s), so setting the service binding status to false and reconcile
-		err := r.setStatus(ctx, secretName, serviceBinding, metav1.ConditionFalse, conditionGetSecretFailureReason, primazaiov1alpha1.ServiceBindingStateMalformed, secErr.Error())
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		err = r.unbindApplications(ctx, req, serviceBinding, applications...)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{}, secErr
-	}
-
 	l.Info("Add Finalizer if needed")
 	// add finalizer if needed
 	if !controllerutil.ContainsFinalizer(&serviceBinding, ServiceBindingFinalizer) {
@@ -146,11 +156,65 @@ func (r *ServiceBindingReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 	}
 
+	if err := r.SetWatchersForResources(ctx, serviceBinding); err != nil {
+		l.Error(err, "Failed to set watchers on ServiceBinding resources ", "namespace", req.Namespace, "name", req.Name)
+		return ctrl.Result{}, err
+	}
+
+	var psSecret *v1.Secret
+	if psSecret, err = r.GetSecret(ctx, serviceBinding, applications); err != nil {
+		return ctrl.Result{}, err
+	}
+	if err = r.PrepareBinding(ctx, serviceBinding, applications, psSecret); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if err := ctrl.SetControllerReference(&serviceBinding, psSecret, r.Scheme); err != nil {
+		return ctrl.Result{}, err
+	}
+	return ctrl.Result{}, r.Update(ctx, psSecret)
+}
+
+func (r *ServiceBindingReconciler) finalizeServiceBinding(ctx context.Context, serviceBinding v1alpha1.ServiceBinding, applications []unstructured.Unstructured) error {
+	// need to stop the informers if the service class is deleted
+	if i, ok := r.informers[serviceBinding.Name]; ok {
+		i.cancelFunc()
+		delete(r.informers, serviceBinding.Name)
+	}
+	err := r.unbindApplications(ctx, serviceBinding, applications...)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *ServiceBindingReconciler) GetSecret(ctx context.Context, serviceBinding v1alpha1.ServiceBinding, applications []unstructured.Unstructured) (*v1.Secret, error) {
+	secretName := serviceBinding.Spec.ServiceEndpointDefinitionSecret
+	psSecret := &v1.Secret{}
+	secretLookupKey := client.ObjectKey{Name: serviceBinding.Spec.ServiceEndpointDefinitionSecret, Namespace: serviceBinding.Namespace}
+	if secErr := r.Get(ctx, secretLookupKey, psSecret); secErr != nil {
+		// error retrieving the application(s), so setting the service binding status to false and reconcile
+		err := r.setStatus(ctx, secretName, serviceBinding, metav1.ConditionFalse, conditionGetSecretFailureReason, primazaiov1alpha1.ServiceBindingStateMalformed, secErr.Error())
+		if err != nil {
+			return nil, err
+		}
+		err = r.unbindApplications(ctx, serviceBinding, applications...)
+		if err != nil {
+			return nil, err
+		}
+		return nil, secErr
+	}
+	return psSecret, nil
+}
+
+func (r *ServiceBindingReconciler) PrepareBinding(ctx context.Context, serviceBinding v1alpha1.ServiceBinding, applications []unstructured.Unstructured, psSecret *v1.Secret) error {
+	l := log.FromContext(ctx)
+
 	volumeName := serviceBinding.Name
 	mountPathDir := serviceBinding.Name
 	sp := &v1.SecretProjection{
 		LocalObjectReference: v1.LocalObjectReference{
-			Name: secretName,
+			Name: serviceBinding.Spec.ServiceEndpointDefinitionSecret,
 		}}
 
 	volumeProjection := &v1.Volume{
@@ -165,21 +229,14 @@ func (r *ServiceBindingReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	unstructuredVolume, err := runtime.DefaultUnstructuredConverter.ToUnstructured(volumeProjection)
 	if err != nil {
 		l.Error(err, "unable to convert volumeProjection to an unstructured object")
-		return ctrl.Result{}, err
+		return err
 	}
 
-	if err := ctrl.SetControllerReference(&serviceBinding, psSecret, r.Scheme); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	err = r.bindApplications(ctx, req, serviceBinding, psSecret, mountPathDir, volumeName, unstructuredVolume, applications...)
+	err = r.bindApplications(ctx, serviceBinding, psSecret, mountPathDir, volumeName, unstructuredVolume, applications...)
 	if err != nil {
-		return ctrl.Result{}, err
+		return err
 	}
-	if err := r.Update(ctx, psSecret); err != nil {
-		return ctrl.Result{}, err
-	}
-	return ctrl.Result{}, r.Update(ctx, psSecret)
+	return nil
 }
 
 func (r *ServiceBindingReconciler) prepareContainerWithMounts(ctx context.Context,
@@ -257,7 +314,7 @@ func (r *ServiceBindingReconciler) prepareContainerWithMounts(ctx context.Contex
 	return nil
 }
 
-func (r *ServiceBindingReconciler) bindApplications(ctx context.Context, req ctrl.Request,
+func (r *ServiceBindingReconciler) bindApplications(ctx context.Context,
 	sb primazaiov1alpha1.ServiceBinding, psSecret *v1.Secret, mountPathDir, volumeName string, unstructuredVolume map[string]interface{}, applications ...unstructured.Unstructured) error {
 
 	l := log.FromContext(ctx)
@@ -360,7 +417,7 @@ func (r *ServiceBindingReconciler) getApplication(ctx context.Context, req ctrl.
 		// Requeue with a time interval is required as the applications is not available to reconcile
 		// In future, probably watching for applications os specific types (Deployment, CronJob etc.) based
 		// on label can be introduced or a webhook can detect application change and trigger reconciliation
-		return applications, nil
+		return nil, fmt.Errorf("applications not found")
 	}
 	return applications, nil
 }
@@ -428,14 +485,6 @@ func (r *ServiceBindingReconciler) updateContainerInfo(ctx context.Context, cont
 	}
 	return nil
 
-}
-
-// SetupWithManager sets up the controller with the Manager.
-func (r *ServiceBindingReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&primazaiov1alpha1.ServiceBinding{}).
-		Owns(&v1.Secret{}).
-		Complete(r)
 }
 
 func (r *ServiceBindingReconciler) removeVolumeMountFromContainer(ctx context.Context, sb primazaiov1alpha1.ServiceBinding, containers []interface{}, volumeName, mountPathDir, secretName string) error {
@@ -537,7 +586,7 @@ func (r *ServiceBindingReconciler) removeVolumeMount(ctx context.Context, sb pri
 	return nil
 }
 
-func (r *ServiceBindingReconciler) unbindApplications(ctx context.Context, req ctrl.Request,
+func (r *ServiceBindingReconciler) unbindApplications(ctx context.Context,
 	serviceBinding primazaiov1alpha1.ServiceBinding, applications ...unstructured.Unstructured) error {
 	var el []error
 	volumeName := serviceBinding.Name
@@ -554,4 +603,143 @@ func (r *ServiceBindingReconciler) unbindApplications(ctx context.Context, req c
 		return cerr
 	}
 	return nil
+}
+
+func (r *ServiceBindingReconciler) SetWatchersForResources(ctx context.Context, serviceBinding v1alpha1.ServiceBinding) error {
+	reconcileLog := log.FromContext(ctx)
+	typemeta := metav1.TypeMeta{
+		Kind:       serviceBinding.Spec.Application.Kind,
+		APIVersion: serviceBinding.Spec.Application.APIVersion,
+	}
+	gvk := typemeta.GroupVersionKind()
+	mapping, err := r.Client.RESTMapper().RESTMapping(gvk.GroupKind(), gvk.Version)
+	if err != nil {
+		reconcileLog.Error(err, "error on creating mapping")
+		return err
+	}
+	reconcileLog.Info("resource to be watched", "resource", mapping.Resource)
+	if err = r.RunInformer(ctx, mapping.Resource, serviceBinding); err != nil {
+		reconcileLog.Error(err, "error running informer")
+		return err
+	}
+	return nil
+}
+
+func (r *ServiceBindingReconciler) RunInformer(ctx context.Context, resource schema.GroupVersionResource, serviceBinding v1alpha1.ServiceBinding) error {
+	l := log.FromContext(ctx)
+
+	// check if informer already exists
+	if _, ok := r.informers[serviceBinding.GetName()]; ok {
+		l.Info("Informer already exists")
+		return nil
+	}
+	clusterConfig, err := rest.InClusterConfig()
+	if err != nil {
+		l.Info("failed creating cluster config")
+		panic(err)
+	}
+	clusterClient, err := dynamic.NewForConfig(clusterConfig)
+	if err != nil {
+		l.Info("failed creating cluster config")
+		panic(err)
+	}
+	factory := dynamicinformer.NewFilteredDynamicSharedInformerFactory(clusterClient, time.Minute, serviceBinding.Namespace, nil)
+	i := factory.ForResource(resource).Informer()
+
+	var synced atomic.Bool
+	synced.Store(false)
+	if _, err := i.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			if !synced.Load() {
+				return
+			}
+			var psSecret *v1.Secret
+			var applicationResourceList []unstructured.Unstructured
+			applicationResource := obj.(*unstructured.Unstructured)
+			if applicationResource.GetName() == constants.ApplicationAgentDeploymentName {
+				return
+			}
+			applicationResourceList = append(applicationResourceList, *applicationResource)
+			l.Info(fmt.Sprintf("application resource %v", applicationResourceList))
+			if psSecret, err = r.GetSecret(ctx, serviceBinding, applicationResourceList); err != nil {
+				l.Error(err, "Informer AddEventHandler: Error retrieving secret")
+				return
+			}
+			if err := r.PrepareBinding(ctx, serviceBinding, applicationResourceList, psSecret); err != nil {
+				l.Error(err, "Informer AddEventHandler: Error preparing binding")
+				return
+			}
+		},
+		UpdateFunc: func(past, future interface{}) {
+			if !synced.Load() {
+				return
+			}
+			var applicationResourceList []unstructured.Unstructured
+			applicationResource := future.(*unstructured.Unstructured)
+			if applicationResource.GetName() == constants.ApplicationAgentDeploymentName {
+				return
+			}
+			applicationResourceList = append(applicationResourceList, *applicationResource)
+			l.Info(fmt.Sprintf("application resource %v", applicationResourceList))
+			var psSecret *v1.Secret
+			if psSecret, err = r.GetSecret(ctx, serviceBinding, applicationResourceList); err != nil {
+				l.Error(err, "Informer AddEventHandler: Error retrieving secret")
+				return
+			}
+			if err := r.PrepareBinding(ctx, serviceBinding, applicationResourceList, psSecret); err != nil {
+				l.Error(err, "Informer AddEventHandler: Error preparing binding")
+				return
+			}
+		},
+		DeleteFunc: func(obj interface{}) {
+			if !synced.Load() {
+				return
+			}
+			applicationResource := obj.(*unstructured.Unstructured)
+			if applicationResource.GetName() == constants.ApplicationAgentDeploymentName {
+				return
+			}
+			var sb primazaiov1alpha1.ServiceBinding
+			if err := r.Get(ctx, types.NamespacedName{Name: serviceBinding.Name, Namespace: serviceBinding.Namespace}, &sb); err == nil {
+				// applications are deleted, so setting the service binding status to false and reconcile
+				if errUpdateStatus := r.setStatus(ctx,
+					sb.Spec.ServiceEndpointDefinitionSecret,
+					sb,
+					metav1.ConditionFalse,
+					conditionGetAppsFailureReason,
+					primazaiov1alpha1.ServiceBindingStateMalformed,
+					"application deleted"); errUpdateStatus != nil {
+					l.Error(errUpdateStatus, "error on updating status")
+					return
+				}
+			}
+		},
+	}); err != nil {
+		return err
+	}
+
+	l.Info("run informer", "GroupVersionResource", resource)
+	c, fc := context.WithCancel(ctx)
+
+	li := informer{informer: i, ctx: c, cancelFunc: fc}
+	r.informers[serviceBinding.GetName()] = li
+	go li.run()
+
+	if !cache.WaitForCacheSync(ctx.Done(), i.HasSynced) {
+		fc()
+		delete(r.informers, serviceBinding.GetName())
+		return fmt.Errorf("could not sync cache")
+	}
+
+	synced.Store(true)
+
+	return nil
+}
+
+// SetupWithManager sets up the controller with the Manager.
+func (r *ServiceBindingReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&primazaiov1alpha1.ServiceBinding{}).
+		Owns(&v1.Secret{}).
+		Complete(r)
 }
