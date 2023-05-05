@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"go.uber.org/atomic"
@@ -30,6 +31,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/rest"
@@ -99,7 +101,22 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, err
 	}
 
-	if err = r.setOwnerReference(ctx, &serviceClass, req.Namespace); err != nil {
+	// get the controller's deployment
+	controller := appsv1.Deployment{}
+	controllerRef := types.NamespacedName{Namespace: serviceClass.Namespace, Name: constants.ServiceAgentDeploymentName}
+	if err = r.Get(ctx, controllerRef, &controller); err != nil {
+		reconcileLog.Error(err, "Failed to retrieve controller reference")
+		if apierrors.IsNotFound(err) {
+			// FIXME(sadlerap): the deployment's been deleted, and the pod
+			// we're running in is likely going to be deleted soon as well.  Do
+			// we have a cleaner way of triggering our own shutdown?
+			reconcileLog.Error(err, "can not find agent's deployment", "agent", constants.ServiceAgentDeploymentName)
+			os.Exit(1)
+		}
+		return ctrl.Result{}, err
+	}
+
+	if err = r.setOwnerReference(ctx, &serviceClass, &controller); err != nil {
 		reconcileLog.Error(err, "Failed to set owner reference on ServiceClass", "namespace", req.Namespace, "name", req.Name)
 		return ctrl.Result{}, err
 	}
@@ -117,67 +134,34 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 	// then, write all the registered services up to the primaza cluster
 	errs := []error{}
-	if serviceClass.DeletionTimestamp.IsZero() {
-		handler := func(remote_client client.Client, rs v1alpha1.RegisteredService, secret *v1.Secret) []error {
-			spec := rs.Spec
-			op, err := controllerutil.CreateOrUpdate(ctx, remote_client, &rs, func() error {
-				rs.Spec = spec
-				return nil
-			})
-			if err != nil {
-				reconcileLog.Error(err, "Failed to create registered service", "service", rs.Name, "namespace", rs.Namespace)
-			} else {
-				reconcileLog.Info("Wrote registered service", "service", rs.Name, "namespace", rs.Namespace, "operation", op)
-			}
-			errs := []error{err}
-			if secret != nil {
-				data := secret.StringData
-				_, err := controllerutil.CreateOrUpdate(ctx, remote_client, secret, func() error {
-					secret.StringData = data
-					return controllerutil.SetOwnerReference(&rs, secret, remote_client.Scheme())
-				})
-				errs = append(errs, err)
-			}
-			return errs
-		}
-
+	if serviceClass.DeletionTimestamp.IsZero() && controller.DeletionTimestamp.IsZero() {
 		// add a finalizer since we have deletion logic
 		if controllerutil.AddFinalizer(&serviceClass, finalizer) {
 			if err = r.Update(ctx, &serviceClass, &client.UpdateOptions{}); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
-		err = r.HandleRegisteredServices(ctx, &serviceClass, *services, handler)
+
+		err = r.HandleRegisteredServices(ctx, &serviceClass, *services, updateRegisteredService)
 		if err != nil {
 			reconcileLog.Error(err, "Failed to write registered services")
 			// fallthrough: we still want to write the service class status field
 			errs = append(errs, err)
 		}
 	} else if controllerutil.ContainsFinalizer(&serviceClass, finalizer) {
-		handler := func(remote_client client.Client, rs v1alpha1.RegisteredService, secret *v1.Secret) []error {
-			if err := remote_client.Delete(ctx, &rs); err != nil {
-				if apierrors.IsNotFound(err) {
-					// we tried to delete an object that doesn't exist, so
-					return nil
-				}
-				reconcileLog.Error(err, "Failed to delete registered service", "namespace", rs.Namespace)
-				return []error{err}
-			}
-
-			return nil
-		}
-
 		// need to stop the informers if the service class is deleted
 		if i, ok := r.informers[serviceClass.Name]; ok {
 			i.cancelFunc()
 			delete(r.informers, serviceClass.Name)
 		}
 
-		err = r.HandleRegisteredServices(ctx, &serviceClass, *services, handler)
+		// act on the registered service
+		err = r.HandleRegisteredServices(ctx, &serviceClass, *services, deleteRegisteredService)
 		if err != nil {
 			reconcileLog.Error(err, "Failed to delete registered services")
-			return ctrl.Result{}, err
+			errs = append(errs, err)
 		}
+
 		// remove the finalizer so we don't requeue
 		if controllerutil.RemoveFinalizer(&serviceClass, finalizer) {
 			if err = r.Update(ctx, &serviceClass, &client.UpdateOptions{}); err != nil {
@@ -188,6 +172,7 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		// nothing to do
 		return ctrl.Result{}, nil
 	}
+
 	// finally, write the status of the service class
 	err = r.Client.Status().Update(ctx, &serviceClass)
 	if err != nil {
@@ -195,6 +180,46 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		errs = append(errs, err)
 	}
 	return ctrl.Result{}, errors.Join(errs...)
+}
+
+func updateRegisteredService(ctx context.Context, remote_client client.Client, rs v1alpha1.RegisteredService, secret *v1.Secret) []error {
+	spec := rs.Spec
+	reconcileLog := log.FromContext(ctx).WithValues("namespace", rs.Namespace, "name", rs.Name)
+	op, err := controllerutil.CreateOrUpdate(ctx, remote_client, &rs, func() error {
+		rs.Spec = spec
+		return nil
+	})
+	if err != nil {
+		reconcileLog.Error(err, "Failed to create registered service", "service", rs.Name, "namespace", rs.Namespace)
+	} else {
+		reconcileLog.Info("Wrote registered service", "service", rs.Name, "namespace", rs.Namespace, "operation", op)
+	}
+	errs := []error{err}
+	if secret != nil {
+		data := secret.StringData
+		_, err := controllerutil.CreateOrUpdate(ctx, remote_client, secret, func() error {
+			secret.StringData = data
+			return controllerutil.SetOwnerReference(&rs, secret, remote_client.Scheme())
+		})
+		errs = append(errs, err)
+	}
+	return errs
+}
+
+func deleteRegisteredService(ctx context.Context, remote_client client.Client, rs v1alpha1.RegisteredService, secret *v1.Secret) []error {
+	reconcileLog := log.FromContext(ctx).WithValues("namespace", rs.Namespace, "name", rs.Name)
+	if err := remote_client.Delete(ctx, &rs); err != nil {
+		if apierrors.IsNotFound(err) {
+			// we tried to delete an object that doesn't exist, so
+			return nil
+		}
+		reconcileLog.Error(err, "Failed to delete registered service", "namespace", rs.Namespace)
+		return []error{err}
+	}
+
+	// we don't need to delete the secret, since the secret had the registered
+	// service set as an owner
+	return nil
 }
 
 func (r *ServiceClassReconciler) GetResources(ctx context.Context, serviceClass *v1alpha1.ServiceClass) (*unstructured.UnstructuredList, error) {
@@ -219,7 +244,7 @@ func (r *ServiceClassReconciler) GetResources(ctx context.Context, serviceClass 
 	return services, nil
 }
 
-type HandleFunc func(client.Client, v1alpha1.RegisteredService, *v1.Secret) []error
+type HandleFunc func(context.Context, client.Client, v1alpha1.RegisteredService, *v1.Secret) []error
 
 func (r *ServiceClassReconciler) HandleRegisteredServices(ctx context.Context, serviceClass *v1alpha1.ServiceClass, services unstructured.UnstructuredList, handleFunc HandleFunc) error {
 	l := log.FromContext(ctx)
@@ -274,7 +299,7 @@ func (r *ServiceClassReconciler) HandleRegisteredServices(ctx context.Context, s
 		}
 
 		// modify the registered service
-		if errs := handleFunc(remote_client, rs, secret); errs != nil {
+		if errs := handleFunc(ctx, remote_client, rs, secret); errs != nil {
 			errorList = append(errorList, errs...)
 		}
 	}
@@ -383,21 +408,9 @@ func ServiceEndpointDefinitionMapping(cli client.Client, obj unstructured.Unstru
 	return mappings, nil
 }
 
-func (r *ServiceClassReconciler) setOwnerReference(ctx context.Context, scclass *v1alpha1.ServiceClass, namespace string) error {
+func (r *ServiceClassReconciler) setOwnerReference(ctx context.Context, scclass *v1alpha1.ServiceClass, owner metav1.Object) error {
 	reconcileLog := log.FromContext(ctx)
-	objKey := client.ObjectKey{
-		Name:      constants.ServiceAgentDeploymentName,
-		Namespace: namespace,
-	}
-	var agentsvcdeployment appsv1.Deployment
-	if err := r.Get(ctx, objKey, &agentsvcdeployment); err != nil {
-		reconcileLog.Error(err, "unable to retrieve agent svc deployment")
-		// we'll ignore not-found errors, since they can't be fixed by an immediate
-		// requeue (we'll need to wait for a new notification), and we can get them
-		// on deleted requests
-		return client.IgnoreNotFound(err)
-	}
-	if err := ctrl.SetControllerReference(&agentsvcdeployment, scclass, r.Client.Scheme()); err != nil {
+	if err := ctrl.SetControllerReference(owner, scclass, r.Client.Scheme()); err != nil {
 		return err
 	}
 	reconcileLog.Info("updating service class with owner reference", "service class", scclass.Spec)
