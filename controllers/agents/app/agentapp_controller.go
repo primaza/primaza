@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 // Agent Application Reconciler reconciles a Agent Application object
@@ -103,40 +104,29 @@ func (r *AgentApplicationReconciler) removePrimazaResources(ctx context.Context,
 }
 
 func (r *AgentApplicationReconciler) removeServiceCatalog(ctx context.Context, req ctrl.Request) error {
-	// first, get the service catalog
-	servicecatalogList := v1alpha1.ServiceCatalogList{}
-	if err := r.List(ctx, &servicecatalogList, &client.ListOptions{Namespace: req.Namespace}); err != nil {
-		return client.IgnoreNotFound(err)
-	}
-	var errorList []error
-	for index := range servicecatalogList.Items {
-		scat := servicecatalogList.Items[index]
-		if err := r.Delete(ctx, &scat, &client.DeleteOptions{}); err != nil {
-			errorList = append(errorList, err)
-		}
-	}
-	return errors.Join(errorList...)
+	return client.IgnoreNotFound(
+		r.DeleteAllOf(ctx,
+			&v1alpha1.ServiceCatalog{},
+			client.InNamespace(req.Namespace)))
 }
 
 func (r *AgentApplicationReconciler) removeServiceBinding(ctx context.Context, req ctrl.Request) error {
-	// first, get the service Binding
-	servicebindingList := v1alpha1.ServiceBindingList{}
-	if err := r.List(ctx, &servicebindingList, &client.ListOptions{Namespace: req.Namespace}); err != nil {
-		return client.IgnoreNotFound(err)
-	}
-	var errorList []error
-	for index := range servicebindingList.Items {
-		svb := servicebindingList.Items[index]
-		if err := r.Delete(ctx, &svb, &client.DeleteOptions{}); err != nil {
-			errorList = append(errorList, err)
-		}
-	}
-	return errors.Join(errorList...)
+	return client.IgnoreNotFound(
+		r.DeleteAllOf(ctx,
+			&v1alpha1.ServiceBinding{},
+			client.InNamespace(req.Namespace)))
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *AgentApplicationReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	filter := func(c client.Object) bool {
+		// we're only interested in watching the application agent, so filter
+		// out every deployment in our namespace besides our own deployment
+		return c.GetName() == constants.ApplicationAgentDeploymentName
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
+		WithEventFilter(predicate.NewPredicateFuncs(filter)).
 		For(&appsv1.Deployment{}).
 		Complete(r)
 }

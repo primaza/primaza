@@ -18,7 +18,6 @@ package svc
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -31,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 // Agent Service Reconciler reconciles a Agent Service object
@@ -72,7 +72,7 @@ func (r *AgentServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 	// TODO: We need to ensure that we do not reconcile service classes once the agent service deployment
 	// is marked for deletion.
-	if agentsvcdeployment.DeletionTimestamp != nil {
+	if !agentsvcdeployment.DeletionTimestamp.IsZero() {
 		if err := r.removeServiceClasses(ctx, req); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -104,24 +104,22 @@ func (r *AgentServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 }
 
 func (r *AgentServiceReconciler) removeServiceClasses(ctx context.Context, req ctrl.Request) error {
-	// first, get the service class
-	serviceclassesList := v1alpha1.ServiceClassList{}
-	if err := r.List(ctx, &serviceclassesList, &client.ListOptions{Namespace: req.Namespace}); err != nil {
-		return client.IgnoreNotFound(err)
-	}
-	var errorList []error
-	for _, scclass := range serviceclassesList.Items {
-		serviceclass := scclass
-		if err := r.Delete(ctx, &serviceclass, &client.DeleteOptions{}); err != nil {
-			errorList = append(errorList, err)
-		}
-	}
-	return errors.Join(errorList...)
+	return client.IgnoreNotFound(
+		r.DeleteAllOf(ctx,
+			&v1alpha1.ServiceClass{},
+			client.InNamespace(req.Namespace)))
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *AgentServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	filter := func(c client.Object) bool {
+		// we're only interested in watching the service agent, so filter
+		// out every deployment in our namespace besides our own deployment
+		return c.GetName() == constants.ServiceAgentDeploymentName
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
+		WithEventFilter(predicate.NewPredicateFuncs(filter)).
 		For(&appsv1.Deployment{}).
 		Complete(r)
 }
