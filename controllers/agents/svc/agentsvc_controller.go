@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/primaza/primaza/api/v1alpha1"
@@ -59,10 +60,13 @@ func (r *AgentServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// it should never happen that this controller does not find itself
+			// FIXME: the deployment's been deleted, and the pod
+			// we're running in is likely going to be deleted soon as well.  Do
+			// we have a cleaner way of triggering our own shutdown?
 			l.Error(err,
 				"service agent deployment not found, that should be a bug",
 				"expected deployment name", constants.ServiceAgentDeploymentName)
-			panic(err)
+			os.Exit(1)
 		}
 		return ctrl.Result{}, err
 	}
