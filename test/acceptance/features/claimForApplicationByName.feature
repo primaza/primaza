@@ -1,7 +1,6 @@
 Feature: Claim for an Application by Name
 
-    Scenario: Application exists with Claim for an Application by Name
-
+    Background:
         Given Primaza Cluster "main" is running
         And Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And Clusters "main" and "worker" can communicate
@@ -20,6 +19,16 @@ Feature: Claim for an Application by Name
             clusterContextSecret: primaza-kw
             applicationNamespaces:
             - applications
+        """
+        And On Primaza Cluster "main", Resource is created
+        """
+        apiVersion: v1
+        kind: Secret
+        metadata:
+            name: $scenario_id
+            namespace: primaza-system
+        stringData:
+            password: quedicelagente
         """
         And On Primaza Cluster "main", Resource is created
         """
@@ -45,13 +54,18 @@ Feature: Claim for an Application by Name
             - name: user
               value: davp
             - name: password
-              value: quedicelagente
+              valueFromSecret:
+                name: $scenario_id
+                key: password
             - name: database
               value: davpdata
           sla: L3
           """
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Available"
-        And On Worker Cluster "worker", Resource is created
+
+    Scenario: Application exists with Claim for an Application by Name
+
+        Given On Worker Cluster "worker", Resource is created
         """
         apiVersion: apps/v1
         kind: Deployment
@@ -106,55 +120,6 @@ Feature: Claim for an Application by Name
 
     Scenario: Application does not exist with Claim for an Application by Name
 
-        Given Primaza Cluster "main" is running
-        And Worker Cluster "worker" for ClusterEnvironment "worker" is running
-        And Clusters "main" and "worker" can communicate
-        And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
-        And On Worker Cluster "worker", application namespace "applications" for ClusterEnvironment "worker" exists
-        And On Primaza Cluster "main", Resource is created
- 
-        """
-        apiVersion: primaza.io/v1alpha1
-        kind: ClusterEnvironment
-        metadata:
-            name: primaza-main
-            namespace: primaza-system
-        spec:
-            environmentName: stage
-            clusterContextSecret: primaza-kw
-            applicationNamespaces:
-            - applications
-        """
-        And On Primaza Cluster "main", Resource is created
-        """
-        apiVersion: primaza.io/v1alpha1
-        kind: RegisteredService
-        metadata:
-          name: primaza-rsdb
-          namespace: primaza-system
-        spec:
-          constraints:
-            environments:
-            - stage
-          serviceClassIdentity:
-            - name: type
-              value: psqlserver
-            - name: provider
-              value: aws
-          serviceEndpointDefinition:
-            - name: host
-              value: mydavphost.io
-            - name: port
-              value: "5432"
-            - name: user
-              value: davp
-            - name: password
-              value: quedicelagente
-            - name: database
-              value: davpdata
-          sla: L3
-          """
-        And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Available"
         When On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1

@@ -1,8 +1,29 @@
 Feature: Register a cloud service in Primaza cluster without healthchecks nor constraints
 
+    Background:
+        Given Primaza Cluster "main" is running
+        And On Primaza Cluster "main", Resource is created
+        """
+        apiVersion: v1
+        kind: Secret
+        metadata:
+            name: $scenario_id
+            namespace: primaza-system
+        stringData:
+            password: quedicelagente
+        """
 
     Scenario: Cloud Service Registration, no Healthcheck provided and no ServiceCatalog exists
-        Given Primaza Cluster "main" is running
+        When On Primaza Cluster "main", Resource is created
+        """
+        apiVersion: v1
+        kind: Secret
+        metadata:
+            name: $scenario_id
+            namespace: primaza-system
+        stringData:
+            password: quedicelagente
+        """
         When On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
@@ -24,7 +45,9 @@ Feature: Register a cloud service in Primaza cluster without healthchecks nor co
             - name: user
               value: davp
             - name: password
-              value: quedicelagente
+              valueFromSecret:
+                name: $scenario_id
+                key: password
             - name: database
               value: davpdata
           sla: L3
@@ -34,8 +57,7 @@ Feature: Register a cloud service in Primaza cluster without healthchecks nor co
 
 
     Scenario: Cloud Service Registration, no Healthcheck provided and ServiceCatalog exists
-        Given Primaza Cluster "main" is running
-        And   Worker Cluster "worker" for ClusterEnvironment "worker" is running
+        Given Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And   Clusters "main" and "worker" can communicate
         And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
         And   On Primaza Cluster "main", Resource is created
@@ -70,7 +92,9 @@ Feature: Register a cloud service in Primaza cluster without healthchecks nor co
             - name: user
               value: davp
             - name: password
-              value: quedicelagente
+              valueFromSecret:
+                name: $scenario_id
+                key: password
             - name: database
               value: davpdata
           sla: L3
@@ -80,8 +104,7 @@ Feature: Register a cloud service in Primaza cluster without healthchecks nor co
 
 
     Scenario: Cloud Service Registration, no Healthcheck provided, ServiceCatalog exists, and Registered Service deleted
-        Given Primaza Cluster "main" is running
-        And   Worker Cluster "worker" for ClusterEnvironment "worker" is running
+        Given Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And   Clusters "main" and "worker" can communicate
         And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
         And   On Primaza Cluster "main", Resource is created
@@ -116,7 +139,9 @@ Feature: Register a cloud service in Primaza cluster without healthchecks nor co
             - name: user
               value: davp
             - name: password
-              value: quedicelagente
+              valueFromSecret:
+                name: $scenario_id
+                key: password
             - name: database
               value: davpdata
           sla: L3
@@ -126,8 +151,7 @@ Feature: Register a cloud service in Primaza cluster without healthchecks nor co
 
 
     Scenario: Cloud Service Registration, no Healthcheck provided, ServiceCatalog exists, and Registered Service claimed
-        Given Primaza Cluster "main" is running
-        And   Worker Cluster "worker" for ClusterEnvironment "worker" is running
+        Given Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And   Clusters "main" and "worker" can communicate
         And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
         And   On Primaza Cluster "main", Resource is created
@@ -162,7 +186,9 @@ Feature: Register a cloud service in Primaza cluster without healthchecks nor co
             - name: user
               value: davp
             - name: password
-              value: quedicelagente
+              valueFromSecret:
+                name: $scenario_id
+                key: password
             - name: database
               value: davpdata
           sla: L3
@@ -172,8 +198,7 @@ Feature: Register a cloud service in Primaza cluster without healthchecks nor co
 
 
     Scenario: Cloud Service Registration, no Healthcheck provided, ServiceCatalog exists, and Registered Service unclaimed
-        Given Primaza Cluster "main" is running
-        And   Worker Cluster "worker" for ClusterEnvironment "worker" is running
+        Given Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And   Clusters "main" and "worker" can communicate
         And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
         And   On Primaza Cluster "main", Resource is created
@@ -208,7 +233,9 @@ Feature: Register a cloud service in Primaza cluster without healthchecks nor co
             - name: user
               value: davp
             - name: password
-              value: quedicelagente
+              valueFromSecret:
+                name: $scenario_id
+                key: password
             - name: database
               value: davpdata
           sla: L3
@@ -219,8 +246,7 @@ Feature: Register a cloud service in Primaza cluster without healthchecks nor co
 
 
     Scenario: Cloud Service Registration, no Healthcheck provided, ServiceCatalog does not exists, and Registered Service deleted
-        Given Primaza Cluster "main" is running
-        And   On Primaza Cluster "main", Resource is created
+        Given On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
         kind: RegisteredService
@@ -241,7 +267,9 @@ Feature: Register a cloud service in Primaza cluster without healthchecks nor co
             - name: user
               value: davp
             - name: password
-              value: quedicelagente
+              valueFromSecret:
+                name: $scenario_id
+                key: password
             - name: database
               value: davpdata
           sla: L3
@@ -250,8 +278,7 @@ Feature: Register a cloud service in Primaza cluster without healthchecks nor co
         Then On Primaza Cluster "main", there are no ServiceCatalogs
 
     Scenario: Cloud Service Registration, no Healthcheck, no constraints and multiple ServiceCatalog exists
-        Given Primaza Cluster "main" is running
-        And   Worker Cluster "worker" is running
+        Given Worker Cluster "worker" is running
         And   On Worker Cluster "worker", a ServiceAccount for ClusterEnvironment "worker-dev" exists
         And   On Worker Cluster "worker", a ServiceAccount for ClusterEnvironment "worker-stage" exists
         And   Clusters "main" and "worker" can communicate
@@ -298,7 +325,9 @@ Feature: Register a cloud service in Primaza cluster without healthchecks nor co
             - name: user
               value: davp
             - name: password
-              value: quedicelagente
+              valueFromSecret:
+                name: $scenario_id
+                key: password
             - name: database
               value: davpdata
           sla: L3
