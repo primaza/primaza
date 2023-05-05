@@ -146,6 +146,7 @@ Feature: Claim from an application namespace
                 c: d
         """
         And On Worker Cluster "worker", the status of ServiceClaim "sc-test" is "Invalid"
+        And jsonpath ".status.conditions[0].reason" on "serviceclaims.primaza.io/sc-test:applications" in cluster worker is "ValidationError"
 
     Scenario: Delete claim with label selector from an application namespace
         Given On Worker Cluster "worker", Resource is created
