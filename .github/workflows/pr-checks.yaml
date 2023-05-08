@@ -8,6 +8,10 @@ on: # yamllint disable-line rule:truthy
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 env:
   GO111MODULE: "on"
   MINIKUBE_WANTUPDATENOTIFICATION: false

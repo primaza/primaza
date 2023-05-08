@@ -4,6 +4,10 @@ on:  # yamllint disable-line rule:truthy
   push:
     branches: ['main']
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
