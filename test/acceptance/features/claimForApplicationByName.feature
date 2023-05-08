@@ -7,7 +7,7 @@ Feature: Claim for an Application by Name
         And On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
         And On Worker Cluster "worker", application namespace "applications" for ClusterEnvironment "worker" exists
         And On Primaza Cluster "main", Resource is created
- 
+
         """
         apiVersion: primaza.io/v1alpha1
         kind: ClusterEnvironment
@@ -146,4 +146,4 @@ Feature: Claim for an Application by Name
             name: stage-app
         """
         Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
-        And On Worker Cluster "worker", ServiceBinding "sc-test" on namespace "applications" state will eventually move to "Malformed"
+        And jsonpath ".status.conditions[0].reason" on "servicebindings.primaza.io/sc-test:applications" in cluster worker is "NoMatchingWorkloads"

@@ -42,6 +42,14 @@ More specifically, an application agent requires the following resources to exis
 * A Service Account for the agent
 * A RoleBinding that binds the ServiceAccount to the Role
 
+When a Service Binding is created in an application namespace, the Application Agent looks for resources mentioned in its specification.
+
+Primaza Application Agent runs a dynamic informer for `Application` Resources mentioned in the Service Binding's specification.
+The informer monitors changes to the `Application` matching the Service Binding specifications and updates the Service Binding's status accordingly.
+
+* If the `Application` Resource mentioned in Service Binding specification is updated or created, the secret referenced by Service Binding resource will be projected into all the matching applications.
+* If the `Application` Resource is deleted and no matching workloads are found in the namespace, then the Service Binding status condition `Reason` is updated to `NoMatchingWorkloads`.
+
 
 ## Binding a Service
 

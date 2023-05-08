@@ -53,10 +53,13 @@ type Environment struct {
 
 // These are valid conditions of ServiceBinding.
 const (
-	// ServiceBindingReady means the ServiceBinding has projected the secret
-	//  and the Workload is ready to start. It does not indicate the condition
-	// of either the Service or the Workload resources referenced.
-	ServiceBindingConditionReady = "Ready"
+	// ServiceBindingBoundCondition means the ServiceBinding has successfully
+	// projected the secret into the Workload.
+	ServiceBindingBoundCondition = "Bound"
+	// ServiceBindingNotBoundCondition means the ServiceBinding has not
+	// projected the secret into the Workload.
+	// As an example, this will occur when the secret to be bound is not found
+	ServiceBindingNotBoundCondition = "NotBound"
 )
 
 // ServiceBindingStatus defines the observed state of ServiceBinding.
