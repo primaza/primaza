@@ -277,6 +277,7 @@ Feature: Register a cloud service in Primaza cluster without healthchecks nor co
         When On Primaza Cluster "main", RegisteredService "primaza-rsdb" is deleted
         Then On Primaza Cluster "main", there are no ServiceCatalogs
 
+
     Scenario: Cloud Service Registration, no Healthcheck, no constraints and multiple ServiceCatalog exists
         Given Worker Cluster "worker" is running
         And   On Worker Cluster "worker", a ServiceAccount for ClusterEnvironment "worker-dev" exists

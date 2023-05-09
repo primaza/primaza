@@ -63,6 +63,85 @@ Feature: Register a cloud service in Primaza cluster with constraints but withou
         And On Primaza Cluster "main", ServiceCatalog "dev" will contain RegisteredService "primaza-rsdb"
 
 
+    Scenario: Cloud Service Registration, no Healthcheck provided, ServiceCatalog exists and RegisteredService constraint changes
+        Given Worker Cluster "worker" for ClusterEnvironment "worker" is running
+        And   Clusters "main" and "worker" can communicate
+        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
+        And   On Primaza Cluster "main", Resource is created
+        """
+        apiVersion: primaza.io/v1alpha1
+        kind: ClusterEnvironment
+        metadata:
+            name: worker
+            namespace: primaza-system
+        spec:
+            environmentName: dev
+            clusterContextSecret: primaza-kw
+        ---
+        apiVersion: primaza.io/v1alpha1
+        kind: RegisteredService
+        metadata:
+          name: primaza-rsdb
+          namespace: primaza-system
+        spec:
+          constraints:
+            environments:
+              - dev
+          serviceClassIdentity:
+            - name: type
+              value: psqlserver
+            - name: provider
+              value: aws
+          serviceEndpointDefinition:
+            - name: host
+              value: mydavphost.io
+            - name: port
+              value: "5432"
+            - name: user
+              value: davp
+            - name: password
+              valueFromSecret:
+                name: $scenario_id
+                key: password
+            - name: database
+              value: davpdata
+          sla: L3
+        """
+        When On Primaza Cluster "main", Resource is updated
+        """
+        apiVersion: primaza.io/v1alpha1
+        kind: RegisteredService
+        metadata:
+          name: primaza-rsdb
+          namespace: primaza-system
+        spec:
+          constraints:
+            environments:
+              - stage
+          serviceClassIdentity:
+            - name: type
+              value: psqlserver
+            - name: provider
+              value: aws
+          serviceEndpointDefinition:
+            - name: host
+              value: mydavphost.io
+            - name: port
+              value: "5432"
+            - name: user
+              value: davp
+            - name: password
+              valueFromSecret:
+                name: $scenario_id
+                key: password
+            - name: database
+              value: davpdata
+          sla: L3
+        """
+        Then On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Available"
+        And On Primaza Cluster "main", ServiceCatalog "dev" will not contain RegisteredService "primaza-rsdb"
+
+
     Scenario: Cloud Service Registration, no Healthcheck provided, ServiceCatalog exists and RegisteredService not matching constraint
         Given Worker Cluster "worker" for ClusterEnvironment "worker" is running
         And   Clusters "main" and "worker" can communicate

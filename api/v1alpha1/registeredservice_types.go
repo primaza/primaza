@@ -80,6 +80,14 @@ type RegisteredServiceSpec struct {
 	ServiceEndpointDefinition []ServiceEndpointDefinitionItem `json:"serviceEndpointDefinition"`
 }
 
+func (s RegisteredServiceSpec) GetEnvironmentConstraints() []string {
+	if s.Constraints != nil {
+		return s.Constraints.Environments
+	}
+
+	return nil
+}
+
 // RegisteredServiceStatus defines the observed state of RegisteredService.
 type RegisteredServiceStatus struct {
 	// State describes the current state of the service.
