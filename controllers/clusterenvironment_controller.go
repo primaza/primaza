@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -54,9 +55,10 @@ const (
 	applicationNamespaceType namespaceType = "Application"
 	serviceNamespaceType     namespaceType = "Service"
 
-	PermissionsGrantedReason    = "PermissionsGranted"
-	ClientCreationErrorReason   = "ClientCreationError"
-	PermissionsNotGrantedReason = "PermissionsNotGranted"
+	PermissionsGrantedReason     = "PermissionsGranted"
+	ClientCreationErrorReason    = "ClientCreationError"
+	PermissionsNotGrantedReason  = "PermissionsNotGranted"
+	ErrorDuringHealthCheckReason = "ErrorDuringHealthCheck"
 )
 
 // ClusterEnvironmentReconciler reconciles a ClusterEnvironment object
@@ -174,6 +176,49 @@ func (r *ClusterEnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *ClusterEnvironmentReconciler) MonitorHealth(ctx context.Context, ns string, hci int) {
+	l := log.FromContext(ctx)
+	for {
+		ceList := &primazaiov1alpha1.ClusterEnvironmentList{}
+		if err := r.List(ctx, ceList, &client.ListOptions{Namespace: ns}); err != nil {
+			l.Error(err, "Cannot get list of ClusterEnvironment")
+		}
+
+		l.Info("ClusterEnvironment list spec", "ceList", ceList)
+		for i := range ceList.Items {
+			ce := &(ceList.Items[i])
+			// get cluster config
+			cfg, err := clustercontext.GetClusterRESTConfig(ctx, r.Client, ce.Namespace, ce.Spec.ClusterContextSecret)
+			if err != nil {
+				if errors.Is(err, clustercontext.ErrSecretNotFound) {
+					c := workercluster.ConnectionStatus{
+						State:   primazaiov1alpha1.ClusterEnvironmentStateOffline,
+						Reason:  ErrorDuringHealthCheckReason,
+						Message: fmt.Sprintf("error creating the client: %s", err),
+					}
+					r.updateClusterEnvironmentStatus(ctx, ce, c)
+					if err := r.Client.Status().Update(ctx, ce); err != nil {
+						l.Error(err, "error updating cluster environment status", "status", ce.Status)
+					}
+				}
+			}
+
+			// test connection
+			if err := r.testConnection(ctx, cfg, ce); err != nil {
+				l.Error(err, "Connection test failed")
+			}
+
+			// test permissions
+			_, _, err = r.testNamespacesPermissions(ctx, cfg, ce)
+			if err != nil {
+				l.Error(err, "Permission test failed")
+			}
+
+		}
+		time.Sleep(time.Duration(hci) * time.Second)
+	}
 }
 
 func (r *ClusterEnvironmentReconciler) testConnection(ctx context.Context, cfg *rest.Config, ce *primazaiov1alpha1.ClusterEnvironment) error {

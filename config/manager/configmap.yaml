@@ -5,3 +5,4 @@ metadata:
 data:
   agentsvc-image: agentsvc:latest
   agentapp-image: agentapp:latest
+  health-check-interval: 10
