@@ -17,7 +17,6 @@ limitations under the License.
 package constants
 
 const (
-	PrimazaNamespace               = "primaza-system"
 	ServiceAgentDeploymentName     = "primaza-svc-agent"
 	ApplicationAgentDeploymentName = "primaza-app-agent"
 	// This is the name of the secret that contains the information the service
