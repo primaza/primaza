@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: primaza-manager-config
+  name: manager-config
 data:
   agentsvc-image: agentsvc:latest
   agentapp-image: agentapp:latest

@@ -12,6 +12,6 @@ kind: Kustomization
 configMapGenerator:
 - behavior: merge
   literals: []
-  name: primaza-manager-config
+  name: manager-config
   options:
     disableNameSuffixHash: true
