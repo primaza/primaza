@@ -15,8 +15,7 @@ before_all(context), after_all(context)
 
 from behave import fixture, use_fixture
 from steps.kind import KindProvider
-from steps.util import scenario_id
-import os
+from steps.util import scenario_id, get_env
 
 
 def is_development(context):
@@ -41,5 +40,10 @@ def before_scenario(context, _scenario):
 
 
 def before_all(context):
-    assert os.getenv("HOME") is not None, "Need $HOME set to run tests"
-    assert os.getenv("USER") is not None, "Need $USER set to run tests"
+    get_env("HOME")
+    get_env("USER")
+
+    for env in ["PRIMAZA_CONTROLLER_IMAGE_REF", "PRIMAZA_AGENTSVC_IMAGE_REF", "PRIMAZA_AGENTAPP_IMAGE_REF"]:
+        # assert they exist
+        value = get_env(env)
+        print(f"{env} = {value}")

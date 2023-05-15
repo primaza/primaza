@@ -5,6 +5,7 @@ from steps.clusterprovider import ClusterProvider
 from steps.clusterprovisioner import ClusterProvisioner
 from steps.primazacluster import PrimazaCluster
 from steps.workercluster import WorkerCluster
+from steps.util import get_env
 
 
 class KindProvider(ClusterProvider):
@@ -91,11 +92,15 @@ server: https:\\/\\/$(docker container inspect {self.cluster_name}-control-plane
 
 
 class PrimazaKind(PrimazaCluster):
+    __controller_image: str = get_env("PRIMAZA_CONTROLLER_IMAGE_REF")
+    __agentapp_image: str = get_env("PRIMAZA_AGENTAPP_IMAGE_REF")
+    __agentsvc_image: str = get_env("PRIMAZA_AGENTSVC_IMAGE_REF")
+
     def __init__(self, cluster_name: str, version: str = None):
         super().__init__(KindClusterProvisioner(cluster_name, version), cluster_name)
 
     def install_primaza(self):
-        img = "primaza-controller:latest"
+        img = self.__controller_image
 
         kubeconfig = self.cluster_provisioner.kubeconfig()
         with tempfile.NamedTemporaryFile(prefix=f"kubeconfig-{self.cluster_name}-") as t:
@@ -103,15 +108,9 @@ class PrimazaKind(PrimazaCluster):
             self.__build_load_and_deploy_primaza(t.name, img)
 
     def __build_load_and_deploy_primaza(self, kubeconfig_path: str, img: str):
-        self.__install_build_image(kubeconfig_path, img)
         self.__install_dependencies(kubeconfig_path)
         self.__load_image(img)
         self.__deploy_primaza(kubeconfig_path, img)
-
-    def __install_build_image(self, kubeconfig_path: str, img: str):
-        out, err = self.__build_install_base_cmd(kubeconfig_path, img).run("make primaza docker-build")
-        print(out)
-        assert err == 0, "error installing manifests and building primaza controller"
 
     def __install_dependencies(self, kubeconfig_path: str):
         out, err = Command() \
@@ -149,11 +148,11 @@ class PrimazaKind(PrimazaCluster):
         """
         Deploys the Service Agent into a cluster's namespace
         """
-        image = "agentsvc:latest"
+        image = self.__agentsvc_image
         kubeconfig = self.cluster_provisioner.kubeconfig()
         with tempfile.NamedTemporaryFile(prefix=f"kubeconfig-{self.cluster_name}-") as t:
             t.write(kubeconfig.encode("utf-8"))
-            self.__install_crd_and_build_svc_image(t.name, image)
+            self.__install_agentsvc_crd(t.name, image)
             self.__load_image(image)
             self.__deploy_agentsvc(t.name, image, namespace)
 
@@ -161,21 +160,21 @@ class PrimazaKind(PrimazaCluster):
         """
         Deploys Application Agent into a cluster's namespace
         """
-        image = "agentapp:latest"
+        image = self.__agentapp_image
         kubeconfig = self.cluster_provisioner.kubeconfig()
         with tempfile.NamedTemporaryFile(prefix=f"kubeconfig-{self.cluster_name}-") as t:
             t.write(kubeconfig.encode("utf-8"))
-            self.__install_crd_and_build_app_image(t.name, image)
+            self.__install_agentapp_crd(t.name, image)
             self.__load_image(image)
             self.__deploy_agentapp(t.name, image, namespace)
 
-    def __install_crd_and_build_app_image(self, kubeconfig_path: str, image: str):
-        out, err = self.__build_install_base_cmd(kubeconfig_path, image).run("make agentapp install docker-build")
+    def __install_agentapp_crd(self, kubeconfig_path: str, image: str):
+        out, err = self.__build_install_base_cmd(kubeconfig_path, image).run("make agentapp install")
         print(out)
         assert err == 0, "error installing manifests and building agent app  controller"
 
-    def __install_crd_and_build_svc_image(self, kubeconfig_path: str, image: str):
-        out, err = self.__build_install_base_cmd(kubeconfig_path, image).run("make agentsvc install docker-build")
+    def __install_agentsvc_crd(self, kubeconfig_path: str, image: str):
+        out, err = self.__build_install_base_cmd(kubeconfig_path, image).run("make agentsvc install")
         print(out)
         assert err == 0, "error installing manifests and building agent svc  controller"
 
@@ -199,6 +198,8 @@ class PrimazaKind(PrimazaCluster):
 class WorkerKind(WorkerCluster):
     __agentapp_loaded: bool = False
     __agentsvc_loaded: bool = False
+    __agentapp_image: str = get_env("PRIMAZA_AGENTAPP_IMAGE_REF")
+    __agentsvc_image: str = get_env("PRIMAZA_AGENTSVC_IMAGE_REF")
 
     def __init__(self, cluster_name, version=None):
         super().__init__(KindClusterProvisioner(cluster_name, version), cluster_name)
@@ -215,7 +216,7 @@ class WorkerKind(WorkerCluster):
         if self.__agentapp_loaded:
             return
 
-        self.__load_agentapp_image()
+        self.__load_image(self.__agentapp_image)
 
         self.__agentapp_loaded = True
 
@@ -223,22 +224,12 @@ class WorkerKind(WorkerCluster):
         if self.__agentsvc_loaded:
             return
 
-        self.__load_agentsvc_image()
+        self.__load_image(self.__agentsvc_image)
 
         self.__agentsvc_loaded = True
 
-    def __load_agentapp_image(self):
-        cmd = f'make agentapp docker-build && kind load docker-image --name {self.cluster_name} $IMG'
-        output, exit_code = Command().setenv("IMG", "agentapp:latest").run(cmd)
-
-    def __load_agentsvc_image(self):
-        image = "agentsvc:latest"
-        cmd = 'make agentsvc docker-build'
-        output, exit_code = Command().setenv("IMG", "agentsvc:latest").run(cmd)
-        self.__load_image(image)
-
     def __load_image(self, image: str):
-        cmd = f' kind load docker-image --name {self.cluster_name} $IMG'
+        cmd = f'kind load docker-image --name {self.cluster_name} $IMG'
         output, exit_code = Command().setenv("IMG", image).run(cmd)
         print(output)
         if exit_code != 0:
@@ -254,15 +245,17 @@ class WorkerKind(WorkerCluster):
         print(out)
         assert err == 0, f"error deploying Agent app's controller into cluster {self.cluster_name}"
 
-    def __install_crd_and_build_app_image(self, kubeconfig_path: str, image: str):
-        out, err = self.__build_install_base_cmd(kubeconfig_path, image).run("make agentapp install docker-build")
+    def __install_agentapp_crd(self, kubeconfig_path: str):
+        out, err = self.__build_install_base_cmd(kubeconfig_path, self.__agentapp_image) \
+            .run("make agentapp install")
         print(out)
-        assert err == 0, "error installing manifests and building agent app  controller"
+        assert err == 0, "error installing manifests and building agent app controller"
 
-    def __install_crd_and_build_svc_image(self, kubeconfig_path: str, image: str):
-        out, err = self.__build_install_base_cmd(kubeconfig_path, image).run("make agentsvc install docker-build")
+    def __install_agentsvc_crd(self, kubeconfig_path: str):
+        out, err = self.__build_install_base_cmd(kubeconfig_path, self.__agentsvc_image) \
+            .run("make agentsvc install")
         print(out)
-        assert err == 0, "error installing manifests and building agent app  controller"
+        assert err == 0, "error installing manifests and building agent svc controller"
 
     def __build_install_base_cmd(self, kubeconfig_path: str, image: str) -> Command:
         return Command() \
@@ -275,11 +268,11 @@ class WorkerKind(WorkerCluster):
         """
         Deploys the Service Agent into a cluster's namespace
         """
-        image = "agentsvc:latest"
+        image = self.__agentsvc_image
         kubeconfig = self.cluster_provisioner.kubeconfig()
         with tempfile.NamedTemporaryFile(prefix=f"kubeconfig-{self.cluster_name}-") as t:
             t.write(kubeconfig.encode("utf-8"))
-            self.__install_crd_and_build_svc_image(t.name, image)
+            self.__install_agentsvc_crd(t.name)
             self.__load_image(image)
             self.__deploy_agentsvc(t.name, image, namespace)
 
@@ -287,10 +280,10 @@ class WorkerKind(WorkerCluster):
         """
         Deploys Application Agent into a cluster's namespace
         """
-        image = "agentapp:latest"
+        image = self.__agentapp_image
         kubeconfig = self.cluster_provisioner.kubeconfig()
         with tempfile.NamedTemporaryFile(prefix=f"kubeconfig-{self.cluster_name}-") as t:
             t.write(kubeconfig.encode("utf-8"))
-            self.__install_crd_and_build_app_image(t.name, image)
+            self.__install_agentapp_crd(t.name)
             self.__load_image(image)
             self.__deploy_agentapp(t.name, image, namespace)

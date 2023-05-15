@@ -11,6 +11,53 @@ else
 TEST_ACCEPTANCE_TAGS_ARG ?= --tags="~@disabled"
 endif
 
+ACCEPTANCE_TEST_TARGETS := test-acceptance test-acceptance-dr test-acceptance-x test-acceptance-wip test-acceptance-wip-x
+
+$(ACCEPTANCE_TEST_TARGETS): ensure-agentsvc-image ensure-agentapp-image ensure-controller-image
+
+ifeq ($(origin PRIMAZA_CONTROLLER_IMAGE_REF), undefined)
+export PRIMAZA_CONTROLLER_IMAGE_REF = primaza-controller:latest
+endif
+ifeq ($(origin PRIMAZA_AGENTAPP_IMAGE_REF), undefined)
+export PRIMAZA_AGENTAPP_IMAGE_REF = agentapp:latest
+endif
+ifeq ($(origin PRIMAZA_AGENTSVC_IMAGE_REF), undefined)
+export PRIMAZA_AGENTSVC_IMAGE_REF ?= agentsvc:latest
+endif
+
+.PHONY: ensure-controller-image
+ensure-controller-image:
+ifeq ($(origin PRIMAZA_CONTROLLER_IMAGE_REF), file)
+	$(MAKE) primaza docker-build IMG=$(PRIMAZA_CONTROLLER_IMAGE_REF)
+else
+ifneq ($(origin PULL_IMAGES), undefined)
+	docker pull $(PRIMAZA_CONTROLLER_IMAGE_REF)
+endif
+endif
+	@echo "using $(PRIMAZA_CONTROLLER_IMAGE_REF) as primaza controller"
+
+.PHONY: ensure-agentapp-image
+ensure-agentapp-image:
+ifeq ($(origin PRIMAZA_AGENTAPP_IMAGE_REF), file)
+	$(MAKE) agentapp docker-build IMG=$(PRIMAZA_AGENTAPP_IMAGE_REF)
+else
+ifneq ($(origin PULL_IMAGES), undefined)
+	docker pull $(PRIMAZA_AGENTAPP_IMAGE_REF)
+endif
+endif
+	@echo "using $(PRIMAZA_AGENTAPP_IMAGE_REF) as application agent"
+
+.PHONY: ensure-agentsvc-image
+ensure-agentsvc-image:
+ifeq ($(origin PRIMAZA_AGENTSVC_IMAGE_REF), file)
+	$(MAKE) agentsvc docker-build IMG=$(PRIMAZA_AGENTSVC_IMAGE_REF)
+else
+ifneq ($(origin PULL_IMAGES), undefined)
+	docker pull $(PRIMAZA_AGENTSVC_IMAGE_REF)
+endif
+endif
+	@echo "using $(PRIMAZA_AGENTSVC_IMAGE_REF) as service agent"
+
 .PHONY: setup-venv
 setup-venv: ## Setup virtual environment
 	python3 -m venv $(PYTHON_VENV_DIR)
