@@ -42,7 +42,7 @@
 
 ## Implementation
 
-[Primaza's architecture](./docs/architecture/agents.md) is composed by the following elements:
+[Primaza's architecture](./architecture/agents.md) is composed by the following elements:
 - Primaza control plane: manages environments, services and claims
 - Application agents: binds applications to services
 - Service agents: discover services
@@ -51,12 +51,12 @@
 Primaza defines the following entities and controllers to provide the above described features.
 
 Entities:
-* [Cluster Environment](./docs/book/src/entities/clusterenvironment.md): represents an development environment on a kubernetes Cluster.
-* [Registered Service](./docs/book/src/entities/registeredservice.md): represents running instance of a software service.
-* [Service Binding](./docs/book/src/entities/servicebinding.md): projects secrets referenced by ServiceBinding resources to application compute resources.
-* [Service Class](./docs/book/src/entities/serviceclass.md): defines how a registered service can be automatically generated from a service
-* [Service Claim](./docs/book/src/entities/serviceclaim.md): represents a claim for Registered Service.
-* [Service Catalog](./docs/book/src/entities/servicecatalog.md): represents group of Registered Services.
+* [Cluster Environment](./entities/clusterenvironment.md): represents an development environment on a kubernetes Cluster.
+* [Registered Service](./entities/registeredservice.md): represents running instance of a software service.
+* [Service Binding](./entities/servicebinding.md): projects secrets referenced by ServiceBinding resources to application compute resources.
+* [Service Class](./entities/serviceclass.md): defines how a registered service can be automatically generated from a service
+* [Service Claim](./entities/serviceclaim.md): represents a claim for Registered Service.
+* [Service Catalog](./entities/servicecatalog.md): represents group of Registered Services.
 
 Controllers:
 * Discovery Controller
