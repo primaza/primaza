@@ -114,5 +114,10 @@ spec:
               configMapKeyRef:
                 name: primaza-manager-config
                 key: agentapp-image
+          - name: HEALTH_CHECK_INTERVAL
+            valueFrom:
+              configMapKeyRef:
+                name: primaza-manager-config
+                key: health-check-interval
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10

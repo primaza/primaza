@@ -143,7 +143,8 @@ class PrimazaKind(PrimazaCluster):
             .setenv("KUBECONFIG", kubeconfig_path) \
             .setenv("GOCACHE", os.getenv("GOCACHE", "/tmp/gocache")) \
             .setenv("GOPATH", os.getenv("GOPATH", "/tmp/go")) \
-            .setenv("IMG", img)
+            .setenv("IMG", img) \
+            .setenv("HEALTH_CHECK_INTERVAL", os.getenv("HEALTH_CHECK_INTERVAL", "5"))
 
     def deploy_agentsvc(self, namespace: str):
         """

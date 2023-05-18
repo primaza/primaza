@@ -17,14 +17,17 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -38,9 +41,12 @@ import (
 )
 
 const (
-	EnvWatchNamespace = "WATCH_NAMESPACE"
-	EnvAppAgentImage  = "AGENT_APP_IMAGE"
-	EnvSvcAgentImage  = "AGENT_SVC_IMAGE"
+	EnvWatchNamespace              = "WATCH_NAMESPACE"
+	EnvAppAgentImage               = "AGENT_APP_IMAGE"
+	EnvSvcAgentImage               = "AGENT_SVC_IMAGE"
+	EnvHealthCheckInterval         = "HEALTH_CHECK_INTERVAL"
+	DefaultHealthCheckInterval int = 600
+	MinimumHealtCheckInterval  int = 10
 )
 
 var (
@@ -72,7 +78,7 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	cfg, err := getConfig()
+	cfg, err := getConfig(setupLog)
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
@@ -103,16 +109,17 @@ func main() {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
-
-	if err = (&controllers.ClusterEnvironmentReconciler{
+	cer := &controllers.ClusterEnvironmentReconciler{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
 		AppAgentImage: cfg.AppImage,
 		SvcAgentImage: cfg.SvcImage,
-	}).SetupWithManager(mgr); err != nil {
+	}
+	if err = (cer).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterEnvironment")
 		os.Exit(1)
 	}
+
 	if err = (&controllers.ServiceClaimReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
@@ -162,6 +169,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := mgr.Add(&clusterEnvironmentHealthcheck{
+		cer: cer,
+		ns:  cfg.WatchNamespace,
+		hci: cfg.HealthCheckInterval,
+	}); err != nil {
+		setupLog.Error(err, "unable to set up ClusterEnvironments healthchecks")
+		os.Exit(1)
+	}
+
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
@@ -169,13 +185,40 @@ func main() {
 	}
 }
 
-type config struct {
-	WatchNamespace string
-	AppImage       string
-	SvcImage       string
+func getHealthCheckIntervalFromEnv(log logr.Logger) int {
+	ehci := os.Getenv(EnvHealthCheckInterval)
+	hci, err := strconv.Atoi(ehci)
+	if err != nil {
+		log.Info("HealthCheckInterval not set or not a integer value: using default value", "interval", hci, "error", err.Error(), "default", DefaultHealthCheckInterval)
+		return DefaultHealthCheckInterval
+	}
+	if hci <= MinimumHealtCheckInterval {
+		log.Info("provided HealthCheckInterval lower than minimum: using minimum value", "interval", hci, "minimum", MinimumHealtCheckInterval, "default", DefaultHealthCheckInterval)
+		return MinimumHealtCheckInterval
+	}
+
+	return hci
 }
 
-func getConfig() (*config, error) {
+type clusterEnvironmentHealthcheck struct {
+	cer *controllers.ClusterEnvironmentReconciler
+	ns  string
+	hci int
+}
+
+func (h *clusterEnvironmentHealthcheck) Start(ctx context.Context) error {
+	go h.cer.MonitorHealth(ctx, h.ns, h.hci)
+	return nil
+}
+
+type config struct {
+	WatchNamespace      string
+	AppImage            string
+	SvcImage            string
+	HealthCheckInterval int
+}
+
+func getConfig(log logr.Logger) (*config, error) {
 	ns, err := getRequiredEnv(EnvWatchNamespace)
 	if err != nil {
 		return nil, err
@@ -191,10 +234,13 @@ func getConfig() (*config, error) {
 		return nil, err
 	}
 
+	hci := getHealthCheckIntervalFromEnv(log)
+
 	return &config{
-		WatchNamespace: ns,
-		AppImage:       ai,
-		SvcImage:       si,
+		WatchNamespace:      ns,
+		AppImage:            ai,
+		SvcImage:            si,
+		HealthCheckInterval: hci,
 	}, nil
 }
 

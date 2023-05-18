@@ -1,3 +1,4 @@
+import time
 import polling2
 import yaml
 from behave import given, step
@@ -55,7 +56,7 @@ def ensure_primaza_cluster_running(context, cluster_name: str, version: str = No
     cluster.start()
 
 
-@given('On Primaza Cluster "{primaza_cluster_name}", Worker "{worker_cluster_name}"\'s ClusterContext secret "{secret_name}" for ClusterEnvironment "{ce_name}" is published')  # noqa: E501
+@step('On Primaza Cluster "{primaza_cluster_name}", Worker "{worker_cluster_name}"\'s ClusterContext secret "{secret_name}" for ClusterEnvironment "{ce_name}" is published')  # noqa: E501
 def ensure_primaza_cluster_has_worker_clustercontext(
         context, primaza_cluster_name: str, worker_cluster_name: str, secret_name: str, ce_name: str, tenant: str = "primaza-system"):
     primaza_cluster = context.cluster_provider.get_primaza_cluster(primaza_cluster_name)
@@ -133,3 +134,9 @@ def ensure_application_namespace_exists(
         context, cluster_name: str, namespace: str, cluster_environment: str, tenant: str = "primaza-system"):
     primaza = context.cluster_provider.get_primaza_cluster(cluster_name)  # type: PrimazaCluster
     primaza.create_application_namespace(namespace, tenant, cluster_environment)
+
+
+@step(u'On Primaza Cluster "{cluster_name}", sleep for {time_interval:d} minutes')
+def ensure_to_sleep_for_certain_time_interval(context, cluster_name: str, time_interval: int):
+    context.cluster_provider.get_primaza_cluster(cluster_name)
+    time.sleep(time_interval*60)
