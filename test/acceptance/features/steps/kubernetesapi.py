@@ -70,6 +70,27 @@ def on_primaza_cluster_check_status_condition(context, cluster_name: str, ce_nam
     assert False, f"Cluster Environment does not have a condition with type {ctype}: {ce_conditions}"
 
 
+@step(u'On Primaza Cluster "{cluster_name}", ClusterEnvironment "{ce_name}" status condition with Type "{ctype}" has Reason "{creason}"')
+def on_primaza_cluster_check_status_condition_reason(context, cluster_name: str, ce_name: str, ctype: str, creason: str):
+    api_client = context.cluster_provider.get_primaza_cluster(cluster_name).get_api_client()
+    cobj = client.CustomObjectsApi(api_client)
+
+    try:
+        polling2.poll(
+            target=lambda: cobj.get_namespaced_custom_object_status(
+                group="primaza.io",
+                version="v1alpha1",
+                namespace="primaza-system",
+                plural="clusterenvironments",
+                name=ce_name),
+            check_success=lambda x: len([i for i in x.get("status", {}).get("conditions", {}) if i.get("type")
+                                        and i["type"] == ctype and i.get("reason") and i["reason"] == creason]) == 1,
+            step=1,
+            timeout=60)
+    except polling2.TimeoutException:
+        pass
+
+
 @then(u'On Primaza Cluster "{cluster_name}", ClusterEnvironment "{ce_name}" in namespace "{namespace}" state remains not present')
 def on_primaza_cluster_check_state_not_change(context, cluster_name, ce_name,  namespace="primaza-system", timeout=60):
     api_client = context.cluster_provider.get_primaza_cluster(cluster_name).get_api_client()
