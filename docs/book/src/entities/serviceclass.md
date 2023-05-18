@@ -8,11 +8,13 @@ The Primaza environment will push these resources to worker environments, where 
 
 ## Specification
 
+The definition of ServiceClasses can be obtained directly from our [ServiceClass CRD](https://github.com/primaza/primaza/blob/main/config/crd/bases/primaza.io_serviceclasses.yaml).
+
 Within a Service Class, there are two required properties:
 - `resource` defines the APIVersion and Kind of the resource to be transformed into a service mapping.
   It also contains a service endpoint definition mapping, which defines how binding information for a particular service may be obtained.
   This mapping contains the name of the key and information on how to obtain the value associated with the key.
-  This information can be a jsonpath, with a `secret` flag to determine if this key should be put in the secret associated with the generated registered services.
+  This information can be a JSONPath, with a `secret` flag to determine if this key should be put in the secret associated with the generated registered services.
   Alternatively, it can contain a reference to a secret within the namespace.
   In this case, the results of this lookup will always be stored in the generated secret.
 - `serviceClassIdentity` defines a set of attributes that are sufficient to identify a Service Class.

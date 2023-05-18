@@ -42,11 +42,12 @@
 
 ## Implementation
 
-[Primaza's architecture](./architecture/agents.md) is composed by the following elements:
-- Primaza control plane: manages environments, services and claims
+[Primaza's architecture](./architecture/architecture.md) is composed by the following elements:
+- Primaza's Control Plane: manages environments, services and claims
 - Application agents: binds applications to services
 - Service agents: discover services
 
+![image](../imgs/architecture-agents-simplified.png)
 
 Primaza defines the following entities and controllers to provide the above described features.
 
@@ -57,9 +58,3 @@ Entities:
 * [Service Class](./entities/serviceclass.md): defines how a registered service can be automatically generated from a service
 * [Service Claim](./entities/serviceclaim.md): represents a claim for Registered Service.
 * [Service Catalog](./entities/servicecatalog.md): represents group of Registered Services.
-
-Controllers:
-* Discovery Controller
-* Claiming Controller
-* Binding Controller
-
