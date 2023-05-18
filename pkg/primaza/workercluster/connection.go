@@ -75,7 +75,7 @@ func GetPrimazaKubeconfig(ctx context.Context) (*rest.Config, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	//TODO: use the namespace from kubeconfig eventually rather than fetching it seperately from file
+	//TODO: use the namespace from kubeconfig eventually rather than fetching it separately from file
 	nm, err := os.ReadFile("/etc/primaza/namespace")
 
 	if err != nil {

@@ -75,4 +75,4 @@ spec:
       - name: primaza-secret-volume
         secret:
           defaultMode: 420
-          secretName: primaza-secret
+          secretName: primaza-svc-kubeconfig
