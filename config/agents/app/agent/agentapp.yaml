@@ -29,6 +29,10 @@ spec:
         image: agentapp:latest
         imagePullPolicy: IfNotPresent
         name: manager
+        volumeMounts:
+          - name: primaza-secret-volume
+            mountPath: /etc/primaza
+            readOnly: true
         env:
           - name: WATCH_NAMESPACE
             valueFrom:
@@ -60,3 +64,8 @@ spec:
             memory: 64Mi
       serviceAccountName: primaza-app-agent
       terminationGracePeriodSeconds: 10
+      volumes:
+      - name: primaza-secret-volume
+        secret:
+          defaultMode: 420
+          secretName: primaza-secret

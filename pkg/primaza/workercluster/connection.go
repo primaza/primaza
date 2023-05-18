@@ -19,14 +19,13 @@ package workercluster
 import (
 	"context"
 	"fmt"
+	"os"
 
 	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type ConnectionStatusReason string
@@ -69,27 +68,23 @@ func TestConnection(ctx context.Context, cfg *rest.Config) ConnectionStatus {
 	}
 }
 
-func GetPrimazaKubeconfig(ctx context.Context, namespace string, cli client.Client, secretName string) (*rest.Config, string, error) {
-	// TODO(sadlerap): can we use the functionality in GetClusterRESTConfig
-	// from pkg/primaza/clustercontext to do de-duplicate this?
-	s := v1.Secret{}
-	k := client.ObjectKey{Namespace: namespace, Name: secretName}
-	if err := cli.Get(ctx, k, &s); err != nil {
-		return nil, "", err
-	}
-	if _, found := s.Data["kubeconfig"]; !found {
-		return nil, "", fmt.Errorf("Field \"kubeconfig\" field in secret %s:%s does not exist", s.Name, s.Namespace)
-	}
+func GetPrimazaKubeconfig(ctx context.Context) (*rest.Config, string, error) {
 
-	if _, found := s.Data["namespace"]; !found {
-		return nil, "", fmt.Errorf("Field \"namespace\" field in secret %s:%s does not exist", s.Name, s.Namespace)
-	}
+	config, err := clientcmd.BuildConfigFromFlags("", "/etc/primaza/kubeconfig")
 
-	restConfig, err := clientcmd.RESTConfigFromKubeConfig(s.Data["kubeconfig"])
 	if err != nil {
 		return nil, "", err
 	}
-	return restConfig, string(s.Data["namespace"]), nil
+	//TODO: use the namespace from kubeconfig eventually rather than fetching it seperately from file
+	nm, err := os.ReadFile("/etc/primaza/namespace")
+
+	if err != nil {
+		return nil, "", err
+	}
+
+	ns := string(nm)
+
+	return config, ns, nil
 }
 
 func (c ConnectionStatus) Condition() metav1.Condition {
