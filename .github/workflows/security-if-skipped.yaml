@@ -1,0 +1,33 @@
+# please refer to https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/troubleshooting-required-status-checks
+name: Security checks
+
+permissions:
+  contents: read
+  security-events: write
+
+on: # yamllint disable-line rule:truthy
+  pull_request:
+    paths:
+      - "docs/**"
+      - "*.md"
+      - "DCO"
+      - "LICENSE"
+      - "OWNERS"
+      - "PROJECT"
+
+jobs:
+  gosec:
+    name: Gosec
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Skip Gosec
+        run: 'echo "No Gosec test required"'
+
+  trivy:
+    name: Trivy
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Skip Trivy
+        run: 'echo "No Trivy test required"'
