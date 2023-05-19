@@ -34,23 +34,25 @@ type NamespacesBinder interface {
 	BindNamespaces(ctx context.Context, ceName string, ceNamespace string, namespaces []string) error
 }
 
-func NewApplicationNamespacesBinder(primazaClient client.Client, workerClient *kubernetes.Clientset, agentImage string) NamespacesBinder {
+func NewApplicationNamespacesBinder(primazaClient client.Client, workerClient *kubernetes.Clientset, agentManifest string, agentImage string) NamespacesBinder {
 	return &namespacesBinder{
-		pcli:       primazaClient,
-		wcli:       workerClient,
-		kind:       ApplicationNamespaceType,
-		agentImage: agentImage,
-		pushAgent:  workercluster.PushApplicationAgent,
+		pcli:          primazaClient,
+		wcli:          workerClient,
+		kind:          ApplicationNamespaceType,
+		agentManifest: agentManifest,
+		agentImage:    agentImage,
+		pushAgent:     workercluster.PushApplicationAgent,
 	}
 }
 
-func NewServiceNamespacesBinder(primazaClient client.Client, workerClient *kubernetes.Clientset, agentImage string) NamespacesBinder {
+func NewServiceNamespacesBinder(primazaClient client.Client, workerClient *kubernetes.Clientset, agentManifest string, agentImage string) NamespacesBinder {
 	return &namespacesBinder{
-		pcli:       primazaClient,
-		wcli:       workerClient,
-		kind:       ServiceNamespaceType,
-		agentImage: agentImage,
-		pushAgent:  workercluster.PushServiceAgent,
+		pcli:          primazaClient,
+		wcli:          workerClient,
+		kind:          ServiceNamespaceType,
+		agentManifest: agentManifest,
+		agentImage:    agentImage,
+		pushAgent:     workercluster.PushServiceAgent,
 	}
 }
 
@@ -59,8 +61,9 @@ type namespacesBinder struct {
 	wcli *kubernetes.Clientset
 	kind NamespaceType
 
-	agentImage string
-	pushAgent  func(context.Context, *kubernetes.Clientset, string, string, string) error
+	agentManifest string
+	agentImage    string
+	pushAgent     func(context.Context, *kubernetes.Clientset, string, string, string, string) error
 }
 
 func (b *namespacesBinder) BindNamespaces(ctx context.Context, ceName string, ceNamespace string, namespaces []string) error {
@@ -85,7 +88,7 @@ func (b *namespacesBinder) bindNamespace(ctx context.Context, ceName, ceNamespac
 		return err
 	}
 
-	if err := b.pushAgent(ctx, b.wcli, namespace, ceName, b.agentImage); err != nil {
+	if err := b.pushAgent(ctx, b.wcli, namespace, ceName, b.agentManifest, b.agentImage); err != nil {
 		return err
 	}
 

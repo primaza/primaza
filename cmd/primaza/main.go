@@ -47,6 +47,8 @@ const (
 	EnvHealthCheckInterval         = "HEALTH_CHECK_INTERVAL"
 	DefaultHealthCheckInterval int = 600
 	MinimumHealtCheckInterval  int = 10
+	EnvAppAgentManifest            = "AGENT_APP_MANIFEST"
+	EnvSvcAgentManifest            = "AGENT_SVC_MANIFEST"
 )
 
 var (
@@ -110,10 +112,12 @@ func main() {
 		os.Exit(1)
 	}
 	cer := &controllers.ClusterEnvironmentReconciler{
-		Client:        mgr.GetClient(),
-		Scheme:        mgr.GetScheme(),
-		AppAgentImage: cfg.AppImage,
-		SvcAgentImage: cfg.SvcImage,
+		Client:           mgr.GetClient(),
+		Scheme:           mgr.GetScheme(),
+		AppAgentImage:    cfg.AppImage,
+		SvcAgentImage:    cfg.SvcImage,
+		AppAgentManifest: cfg.EnvAppAgentManifest,
+		SvcAgentManifest: cfg.EnvSvcAgentManifest,
 	}
 	if err = (cer).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterEnvironment")
@@ -216,6 +220,8 @@ type config struct {
 	AppImage            string
 	SvcImage            string
 	HealthCheckInterval int
+	EnvAppAgentManifest string
+	EnvSvcAgentManifest string
 }
 
 func getConfig(log logr.Logger) (*config, error) {
@@ -236,11 +242,23 @@ func getConfig(log logr.Logger) (*config, error) {
 
 	hci := getHealthCheckIntervalFromEnv(log)
 
+	as, err := getRequiredEnv(EnvAppAgentManifest)
+	if err != nil {
+		return nil, err
+	}
+
+	ss, err := getRequiredEnv(EnvSvcAgentManifest)
+	if err != nil {
+		return nil, err
+	}
+
 	return &config{
 		WatchNamespace:      ns,
 		AppImage:            ai,
 		SvcImage:            si,
 		HealthCheckInterval: hci,
+		EnvAppAgentManifest: as,
+		EnvSvcAgentManifest: ss,
 	}, nil
 }
 

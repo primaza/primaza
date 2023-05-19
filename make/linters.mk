@@ -22,7 +22,7 @@ GO_LINT_OUTPUT ?= colored-line-number
 GO_LINT_CMD = GOFLAGS="$(GOFLAGS)" GOGC=30 GOCACHE=$(GOCACHE) $(GOLANGCI_LINT) run --concurrency=$(GO_LINT_CONCURRENCY) --out-format=$(GO_LINT_OUTPUT)
 
 .PHONY: lint-go
-lint-go: $(GOLANGCI_LINT) agents-templates fmt vet ## Checks Go code
+lint-go: $(GOLANGCI_LINT) fmt vet ## Checks Go code
 	$(GO_LINT_CMD)
 
 $(GOLANGCI_LINT):
@@ -42,7 +42,7 @@ lint-conflicts: ## Check for presence of conflict notes in source file
 
 .PHONY: shellcheck
 shellcheck: $(SHELLCHECK) ## Download shellcheck locally if necessary.
-$(SHELLCHECK): $(OUTPUT_DIR) 
+$(SHELLCHECK): $(OUTPUT_DIR)
 ifeq (,$(wildcard $(SHELLCHECK)))
 ifeq (,$(shell which shellcheck 2>/dev/null))
 	@{ \
