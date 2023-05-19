@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Skip Code Quality
-        run: 'echo "No code quality checks required'
+        run: 'echo "No code quality checks required"'
 
   unit:
     name: Unit Tests
