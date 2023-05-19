@@ -37,7 +37,7 @@ spec:
         control-plane: controller-manager
     spec:
       # TODO(user): Uncomment the following code to configure the nodeAffinity expression
-      # according to the platforms which are supported by your solution. 
+      # according to the platforms which are supported by your solution.
       # It is considered best practice to support multiple architectures. You can
       # build your manager image using the makefile target docker-buildx.
       # affinity:
@@ -119,5 +119,15 @@ spec:
               configMapKeyRef:
                 name: primaza-manager-config
                 key: health-check-interval
+          - name: AGENT_APP_MANIFEST
+            valueFrom:
+              configMapKeyRef:
+                name: primaza-manager-config
+                key: agentapp-manifest
+          - name: AGENT_SVC_MANIFEST
+            valueFrom:
+              configMapKeyRef:
+                name: primaza-manager-config
+                key: agentsvc-manifest
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
