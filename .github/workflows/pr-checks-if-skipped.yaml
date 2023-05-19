@@ -1,0 +1,37 @@
+# please refer to https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/troubleshooting-required-status-checks
+name: PR checks
+
+on: # yamllint disable-line rule:truthy
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+      - "*.md"
+      - "DCO"
+      - "LICENSE"
+      - "OWNERS"
+      - "PROJECT"
+
+jobs:
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Skip Code Quality
+        run: 'echo "No code quality checks required'
+
+  unit:
+    name: Unit Tests
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Skip Unit Tests
+        run: 'echo "No unit tests required"'
+
+  wait-acceptance:
+    name: Wait for Acceptance Tests
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: Skip Wait for  Acceptance Tests
+      run: 'echo "No acceptance tests required"'
