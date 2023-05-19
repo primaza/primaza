@@ -5,7 +5,14 @@ permissions:
   security-events: write
 
 on: # yamllint disable-line rule:truthy
-  pull_request: {}
+  pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - "DCO"
+      - "LICENSE"
+      - "OWNERS"
+      - "PROJECT"
   push:
     branches: [main]
   schedule:
