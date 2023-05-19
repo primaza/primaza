@@ -5,6 +5,7 @@ permissions:
   security-events: write
 
 on: # yamllint disable-line rule:truthy
+  merge_group: {}
   pull_request:
     paths-ignore:
       - "docs/**"

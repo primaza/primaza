@@ -1,6 +1,7 @@
 name: PR checks
 
 on: # yamllint disable-line rule:truthy
+  merge_group: {}
   pull_request:
     branches:
       - main
@@ -11,9 +12,6 @@ on: # yamllint disable-line rule:truthy
       - "LICENSE"
       - "OWNERS"
       - "PROJECT"
-  push:
-    branches:
-      - main
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
