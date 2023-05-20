@@ -16,7 +16,6 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	cd config/manager && $(KUSTOMIZE) edit set health-check-interval ${HEALTH_CHECK_INTERVAL}
 	cd config/default && $(KUSTOMIZE) edit set namespace $(NAMESPACE)
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 	kubectl rollout status -n $(NAMESPACE) deploy/primaza-controller-manager -w --timeout=120s

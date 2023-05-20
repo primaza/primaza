@@ -193,11 +193,19 @@ func getHealthCheckIntervalFromEnv(log logr.Logger) int {
 	ehci := os.Getenv(EnvHealthCheckInterval)
 	hci, err := strconv.Atoi(ehci)
 	if err != nil {
-		log.Info("HealthCheckInterval not set or not a integer value: using default value", "interval", hci, "error", err.Error(), "default", DefaultHealthCheckInterval)
+		log.Info(
+			"HealthCheckInterval not set or not a integer value: using default value",
+			"interval", hci,
+			"error", err.Error(),
+			"default", DefaultHealthCheckInterval)
 		return DefaultHealthCheckInterval
 	}
-	if hci <= MinimumHealtCheckInterval {
-		log.Info("provided HealthCheckInterval lower than minimum: using minimum value", "interval", hci, "minimum", MinimumHealtCheckInterval, "default", DefaultHealthCheckInterval)
+	if hci < MinimumHealtCheckInterval {
+		log.Info(
+			"provided HealthCheckInterval lower than minimum: using minimum value",
+			"interval", hci,
+			"minimum", MinimumHealtCheckInterval,
+			"default", DefaultHealthCheckInterval)
 		return MinimumHealtCheckInterval
 	}
 

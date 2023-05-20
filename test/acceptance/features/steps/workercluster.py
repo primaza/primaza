@@ -1,5 +1,5 @@
 import polling2
-from behave import given, step
+from behave import given, step, when
 from kubernetes.client.rest import ApiException
 from steps.cluster import Cluster
 from steps.util import substitute_scenario_id
@@ -29,6 +29,12 @@ def ensure_worker_cluster_running_with_primaza(
     worker_cluster.start()
 
     worker_cluster.create_primaza_user(tenant=tenant, cluster_environment=ce_name, timeout=timeout)
+
+
+@when('Primaza Cluster "{cluster_name}" is deleted')
+@when('Worker Cluster "{cluster_name}" is deleted')
+def delete_cluster(context, cluster_name: str):
+    context.cluster_provider.delete_cluster(cluster_name)
 
 
 @given('On Worker Cluster "{cluster_name}", a ServiceAccount for ClusterEnvironment "{cluster_environment}" exists')

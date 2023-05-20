@@ -351,6 +351,14 @@ spec:
         else:
             return None
 
+    def patch_json(self, resource_type: str, resource_name: str, patch: str, namespace: str = None):
+        ns_args = "" if namespace is None else f"--namespace {namespace}"
+        cmd = f"""kubectl patch {resource_type} {resource_name} {ns_args} --patch-file=/dev/stdin <<-EOF
+{patch}
+EOF"""
+        (output, exit_code) = self.cmd.run(cmd)
+        assert exit_code == 0, f"Applying patch failed with exit code {exit_code}:\n{output}"
+
     def apply_yaml_file(self, yaml, namespace=None, validate=False):
         if namespace is not None:
             ns_arg = f"-n {namespace}"
@@ -518,6 +526,18 @@ def on_cluster_apply_yaml(context, cluster):
         tf.flush()
 
         Kubernetes(kubeconfig=tf.name).apply(resource)
+
+
+@step(u'On Worker Cluster "{cluster}", "{resource_type}" named "{resource_name}" in "{namespace}" is patched')
+@step(u'On Primaza Cluster "{cluster}", "{resource_type}" named "{resource_name}" in "{namespace}" is patched')
+def on_cluster_patch_resource(context, cluster: str, resource_type: str, resource_name: str, namespace: str = None):
+    patch = substitute_scenario_id(context, context.text)
+    with tempfile.NamedTemporaryFile() as tf:
+        kubeconfig = context.cluster_provider.get_cluster(cluster).get_admin_kubeconfig()
+        tf.write(kubeconfig.encode("utf-8"))
+        tf.flush()
+
+        Kubernetes(kubeconfig=tf.name).patch_json(resource_type, resource_name, patch, namespace)
 
 
 @step(u'On Worker Cluster "{cluster}", Resource is not getting created')

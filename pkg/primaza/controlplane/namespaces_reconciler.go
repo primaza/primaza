@@ -38,8 +38,8 @@ type ClusterEnvironmentState struct {
 	ServiceNamespaces     []string
 	AppAgentImage         string
 	SvcAgentImage         string
-	AppAgentManifest     string
-	SvcAgentManifest     string
+	AppAgentManifest      string
+	SvcAgentManifest      string
 }
 
 type NamespacesReconciler interface {

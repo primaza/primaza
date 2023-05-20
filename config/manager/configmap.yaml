@@ -5,7 +5,7 @@ metadata:
 data:
   agentsvc-image: agentsvc:latest
   agentapp-image: agentapp:latest
-  health-check-interval: 10
+  health-check-interval: 600
   agentapp-manifest: |
     apiVersion: apps/v1
     kind: Deployment
