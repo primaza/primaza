@@ -37,7 +37,10 @@ import (
 	//+kubebuilder:scaffold:imports
 )
 
-const EnvWatchNamespace = "WATCH_NAMESPACE"
+const (
+	EnvWatchNamespace          = "WATCH_NAMESPACE"
+	EnvSynchronizationStrategy = "SYNCHRONIZATION_STRATEGY"
+)
 
 var (
 	scheme   = runtime.NewScheme()
@@ -71,6 +74,13 @@ func main() {
 	ns, err := getWatchNamespaceFromEnv()
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
+		os.Exit(1)
+	}
+
+	s, err := getSynchronizationStrategyFromEnv()
+	if err != nil {
+		setupLog.Error(err, "unable to start manager")
+		os.Exit(1)
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -98,7 +108,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	serviceClassController := svc.NewServiceClassReconciler(mgr)
+	serviceClassController := svc.NewServiceClassReconciler(mgr, *s)
 	if err = serviceClassController.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ServiceClass")
 		os.Exit(1)
@@ -129,6 +139,17 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+func getSynchronizationStrategyFromEnv() (*primazaiov1alpha1.SynchronizationStrategy, error) {
+	s, ok := os.LookupEnv(EnvSynchronizationStrategy)
+	if !ok {
+		return nil, fmt.Errorf(
+			"synchronization strategy environment variable is not defined: %s",
+			EnvSynchronizationStrategy)
+	}
+
+	return primazaiov1alpha1.ParseSynchronizationStrategy(s)
 }
 
 func getWatchNamespaceFromEnv() (string, error) {

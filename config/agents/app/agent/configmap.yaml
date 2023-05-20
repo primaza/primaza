@@ -1,0 +1,6 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: primaza-agentapp-config
+data:
+  synchronization-strategy: Push

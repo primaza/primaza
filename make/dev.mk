@@ -6,7 +6,13 @@ agents-configmap: kustomize yq ## Copy agents' templates for Primaza's Control P
 		'.data.agentapp-manifest = load_str("'<($(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/agents/app/default/ | $(YQ) eval 'select(.kind == "Deployment" and .apiVersion == "apps/v1")' )'")' \
 		config/manager/configmap.yaml
 	@$(YQ) eval --inplace \
+		'.data.agentapp-config-manifest = load_str("'<($(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/agents/app/default/ | $(YQ) eval 'select(.kind == "ConfigMap" and .apiVersion == "v1" and .metadata.name == "primaza-agentapp-config")' )'")' \
+		config/manager/configmap.yaml
+	@$(YQ) eval --inplace \
 		'.data.agentsvc-manifest = load_str("'<($(KUSTOMIZE)  build --load-restrictor LoadRestrictionsNone config/agents/svc/default/ | $(YQ) eval 'select(.kind == "Deployment" and .apiVersion == "apps/v1")' )'")' \
+		config/manager/configmap.yaml
+	@$(YQ) eval --inplace \
+		'.data.agentsvc-config-manifest = load_str("'<($(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/agents/svc/default/ | $(YQ) eval 'select(.kind == "ConfigMap" and .apiVersion == "v1" and .metadata.name == "primaza-agentsvc-config")' )'")' \
 		config/manager/configmap.yaml
 
 .PHONY: manifests

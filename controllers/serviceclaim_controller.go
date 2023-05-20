@@ -51,6 +51,14 @@ type ServiceClaimReconciler struct {
 
 const ServiceClaimFinalizer = "serviceclaims.primaza.io/finalizer"
 
+func NewServiceClaimReconciler(mgr ctrl.Manager) *ServiceClaimReconciler {
+	return &ServiceClaimReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+		Mapper: mgr.GetRESTMapper(),
+	}
+}
+
 //+kubebuilder:rbac:groups=primaza.io,namespace=system,resources=serviceclaims,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=primaza.io,namespace=system,resources=serviceclaims/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=primaza.io,namespace=system,resources=serviceclaims/finalizers,verbs=update
@@ -394,6 +402,7 @@ func (r *ServiceClaimReconciler) pushToClusterEnvironments(
 			return err
 		}
 		if err = controlplane.PushServiceBinding(ctx, &sclaim, secret, r.Scheme, r.Client, &sclaim.Spec.ApplicationClusterContext.Namespace, ce.Spec.ApplicationNamespaces, cfg); err != nil {
+			l.Error(err, "error pushing service binding", "serviceclaim", sclaim)
 			errs = append(errs, err)
 		}
 	} else {

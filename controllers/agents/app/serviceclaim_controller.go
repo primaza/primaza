@@ -26,13 +26,13 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
-	sccontrollers "github.com/primaza/primaza/controllers"
 	"github.com/primaza/primaza/pkg/primaza/constants"
 	"github.com/primaza/primaza/pkg/primaza/workercluster"
 )
@@ -41,7 +41,17 @@ const ServiceClaimFinalizer = "serviceclaims.primaza.io/finalizer"
 
 // ServiceClaimReconciler reconciles a ServiceClaim object
 type ServiceClaimReconciler struct {
-	sccontrollers.ServiceClaimReconciler
+	client.Client
+	Scheme *runtime.Scheme
+	Mapper meta.RESTMapper
+}
+
+func NewServiceClaimReconciler(mgr ctrl.Manager) *ServiceClaimReconciler {
+	return &ServiceClaimReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+		Mapper: mgr.GetRESTMapper(),
+	}
 }
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to

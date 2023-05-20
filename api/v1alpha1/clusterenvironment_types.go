@@ -17,8 +17,30 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+const (
+	SynchronizationStrategyPull SynchronizationStrategy = "Pull"
+	SynchronizationStrategyPush SynchronizationStrategy = "Push"
+)
+
+var synchronizationStrategies = map[string]SynchronizationStrategy{
+	string(SynchronizationStrategyPull): SynchronizationStrategyPull,
+	string(SynchronizationStrategyPush): SynchronizationStrategyPush,
+}
+
+func ParseSynchronizationStrategy(s string) (*SynchronizationStrategy, error) {
+	if p, ok := synchronizationStrategies[s]; ok {
+		return &p, nil
+	}
+	return nil, fmt.Errorf("cannot parse '%s' as SynchronizationStrategy", s)
+}
+
+// SynchronizationStrategy defines the synchronization strategy
+type SynchronizationStrategy string
 
 // ClusterEnvironmentSpec defines the desired state of ClusterEnvironment
 type ClusterEnvironmentSpec struct {
@@ -42,6 +64,12 @@ type ClusterEnvironmentSpec struct {
 
 	// Cluster Admin's contact information
 	ContactInfo string `json:"contactInfo,omitempty"`
+
+	// SynchronizationStrategy defines whether Primaza will watch clusters (Pull)
+	// or Agents will Push data as they have (Push)
+	//+kubebuilder:validation:Enum=Pull;Push
+	//+kubebuilder:default:=Push
+	SynchronizationStrategy SynchronizationStrategy `json:"synchronizationStrategy"`
 }
 
 // ClusterEnvironmentStatus defines the observed state of ClusterEnvironment

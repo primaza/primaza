@@ -197,6 +197,27 @@ def on_primaza_cluster_check_service_catalog_reduced(context, cluster_name, cata
         timeout=60)
 
 
+@step(u'On Primaza Cluster "{cluster_name}", ServiceClaim "{name}" state will eventually move to "{state}"')
+@step(u'On Primaza Cluster "{cluster_name}", ServiceClaim "{name}" on namespace "{namespace}" state will eventually move to "{state}"')
+def on_primaza_cluster_check_service_claim_status(
+        context, cluster_name: str, name: str, state: str, namespace: str = "primaza-system", timeout=120):
+    cluster = context.cluster_provider.get_primaza_cluster(cluster_name)
+    return on_cluster_cluster_check_service_claim_status(cluster, name, namespace, state, timeout)
+
+
+def on_cluster_cluster_check_service_claim_status(cluster, name, namespace, state, timeout):
+    polling2.poll(
+        target=lambda: cluster.read_primaza_custom_object(
+            version="v1alpha1",
+            namespace=namespace,
+            plural="serviceclaims",
+            name=name).get("status", {}).get("state", None),
+        check_success=lambda x: x is not None and x == state,
+        ignore_exceptions=(ApiException,),
+        step=1,
+        timeout=timeout)
+
+
 @step(u'On Primaza Cluster "{cluster_name}", ServiceBinding "{name}" on namespace "{namespace}" state will eventually move to "{state}"')
 def on_primaza_cluster_check_service_binding_status(context, cluster_name, name, namespace, state, timeout=120):
     cluster = context.cluster_provider.get_primaza_cluster(cluster_name)

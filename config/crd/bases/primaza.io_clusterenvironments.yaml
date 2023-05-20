@@ -77,9 +77,18 @@ spec:
                 items:
                   type: string
                 type: array
+              synchronizationStrategy:
+                default: Push
+                description: SynchronizationStrategy defines whether Primaza will
+                  watch clusters (Pull) or Agents will Push data as they have (Push)
+                enum:
+                - Pull
+                - Push
+                type: string
             required:
             - clusterContextSecret
             - environmentName
+            - synchronizationStrategy
             type: object
           status:
             description: ClusterEnvironmentStatus defines the observed state of ClusterEnvironment
