@@ -59,6 +59,7 @@ const (
 	ClientCreationErrorReason    = "ClientCreationError"
 	PermissionsNotGrantedReason  = "PermissionsNotGranted"
 	ErrorDuringHealthCheckReason = "ErrorDuringHealthCheck"
+	HealthCheckFailedReason      = "HealthCheckFailed"
 )
 
 // ClusterEnvironmentReconciler reconciles a ClusterEnvironment object
@@ -190,6 +191,7 @@ func (r *ClusterEnvironmentReconciler) MonitorHealth(ctx context.Context, ns str
 		l.Info("ClusterEnvironment list spec", "ceList", ceList)
 		for i := range ceList.Items {
 			ce := &(ceList.Items[i])
+
 			// get cluster config
 			cfg, err := clustercontext.GetClusterRESTConfig(ctx, r.Client, ce.Namespace, ce.Spec.ClusterContextSecret)
 			if err != nil {
@@ -209,15 +211,40 @@ func (r *ClusterEnvironmentReconciler) MonitorHealth(ctx context.Context, ns str
 			// test connection
 			if err := r.testConnection(ctx, cfg, ce); err != nil {
 				l.Error(err, "Connection test failed")
+				c := workercluster.ConnectionStatus{
+					State:   primazaiov1alpha1.ClusterEnvironmentStateOffline,
+					Reason:  HealthCheckFailedReason,
+					Message: fmt.Sprintf("connection test failed: %s", err),
+				}
+				r.updateClusterEnvironmentStatus(ctx, ce, c)
+				if err := r.Client.Status().Update(ctx, ce); err != nil {
+					l.Error(err, "error updating cluster environment status", "status", ce.Status)
+					continue
+				}
 			}
 
 			// test permissions
 			_, _, err = r.testNamespacesPermissions(ctx, cfg, ce)
 			if err != nil {
 				l.Error(err, "Permission test failed")
+				c := workercluster.ConnectionStatus{
+					State:   primazaiov1alpha1.ClusterEnvironmentStateOffline,
+					Reason:  HealthCheckFailedReason,
+					Message: fmt.Sprintf("permission test failed: %s", err),
+				}
+				r.updateClusterEnvironmentStatus(ctx, ce, c)
+				if err := r.Client.Status().Update(ctx, ce); err != nil {
+					l.Error(err, "error updating cluster environment status", "status", ce.Status)
+					continue
+				}
 			}
 
+			// if tests passed commit status changes made by above tests
+			if err := r.Client.Status().Update(ctx, ce); err != nil {
+				l.Error(err, "error updating cluster environment status", "status", ce.Status)
+			}
 		}
+
 		time.Sleep(time.Duration(hci) * time.Second)
 	}
 }

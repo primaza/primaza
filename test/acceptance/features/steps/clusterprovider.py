@@ -41,7 +41,7 @@ class ClusterProvider(object):
 
     def create_primaza_cluster(self, cluster_name: str, version: str = None) -> PrimazaCluster:
         """
-        Creates a new Worker cluster
+        Creates a new Primaza cluster
         """
         cluster = self.build_primaza_cluster(cluster_name, version)
         self.clusters.primaza[cluster_name] = cluster
@@ -49,22 +49,30 @@ class ClusterProvider(object):
 
     def create_worker_cluster(self, cluster_name: str, version: str = None) -> WorkerCluster:
         """
-        Creates a new Primaza cluster
+        Creates a new Worker cluster
         """
         cluster = self.build_worker_cluster(cluster_name, version)
         self.clusters.workers[cluster_name] = cluster
         return cluster
+
+    def delete_cluster(self, cluster_name: str):
+        """
+        Deletes a running cluster by name
+        """
+        if cluster_name in self.clusters.primaza.keys():
+            self.clusters.primaza.get[cluster_name].delete()
+
+        if cluster_name in self.clusters.workers.keys():
+            self.clusters.workers[cluster_name].delete()
 
     def delete_clusters(self):
         """
         Deletes all the running cluster. Use this on cleanup.
         """
         for name, primaza in self.clusters.primaza.items():
-            print(f"deleting primaza cluster '{name}'")
             primaza.delete()
 
         for name, worker in self.clusters.workers.items():
-            print(f"deleting worker cluster '{name}'")
             worker.delete()
 
     def build_primaza_cluster(self, _name: str, _version: str = None):
