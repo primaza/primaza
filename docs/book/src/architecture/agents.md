@@ -2,6 +2,7 @@
 <!-- vim-markdown-toc GFM -->
 
 * [Agents](#agents)
+* [Configure Agents](#configure-agent)
 * [Application agent](#application-agent)
     * [Binding a Service](#binding-a-service)
     * [Claiming a Service](#claiming-a-service)
@@ -24,6 +25,23 @@ Two kinds of Primaza Agents are defined:
 To allow agents to perform operations in the namespace, they need an identity (Service Account) with the right permissions.
 
 [primazactl](https://github.com/primaza/primazactl) is an in-development companion tool to help administrators configuring clusters and namespaces.
+
+
+# Configure agent
+
+Application agent and Service agent deployent are configured in Primaza's Control Plane at runtime.
+There exists a ConfigMap named `primaza-manager-config` in `primaza-system` namespace.
+
+This ConfigMap consists of following keys:
+    * `agentapp-image` : Application agent image
+    * `agentsvc-image` : Service agent image
+    * `agentapp-manifest` : Application agent manifest
+    * `agentsvc-manifest` : Service agent manifest
+
+By default the config map is populated using the make target `agents-configmap` executed at runtime.
+This ConfigMap is used in `primaza-controller-manager` deployment as environment variables.
+A user can modify the values of `primaza-manager-config` and then delete the `primaza-controller-manager` pod in `primaza-system` namespace.
+This would reset the environment variables defined in  `primaza-manager-config` deployment.
 
 
 # Application agent
