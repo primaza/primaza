@@ -250,7 +250,7 @@ func (r *ServiceClassReconciler) HandleRegisteredServices(ctx context.Context, s
 	l := log.FromContext(ctx)
 	var err error
 
-	config, remote_namespace, err := workercluster.GetPrimazaKubeconfig(ctx, serviceClass.Namespace, r.Client, constants.ServiceAgentKubeconfigSecretName)
+	config, remote_namespace, err := workercluster.GetPrimazaKubeconfig(ctx)
 	if err != nil {
 		return err
 	}
@@ -521,7 +521,7 @@ func (r *ServiceClassReconciler) CreateOrUpdateRegisteredService(ctx context.Con
 	if mappings, err = ServiceEndpointDefinitionMapping(r.Client, obj, serviceClass); err != nil {
 		return err
 	}
-	config, remote_namespace, err := workercluster.GetPrimazaKubeconfig(ctx, serviceClass.Namespace, r.Client, constants.ServiceAgentKubeconfigSecretName)
+	config, remote_namespace, err := workercluster.GetPrimazaKubeconfig(ctx)
 	if err != nil {
 		return err
 	}
@@ -562,7 +562,7 @@ func (r *ServiceClassReconciler) CreateOrUpdateRegisteredService(ctx context.Con
 
 func (r *ServiceClassReconciler) DeleteRegisteredService(ctx context.Context, serviceClass v1alpha1.ServiceClass) error {
 	l := log.FromContext(ctx)
-	config, _, err := workercluster.GetPrimazaKubeconfig(ctx, serviceClass.Namespace, r.Client, constants.ServiceAgentKubeconfigSecretName)
+	config, _, err := workercluster.GetPrimazaKubeconfig(ctx)
 	if err != nil {
 		return err
 	}

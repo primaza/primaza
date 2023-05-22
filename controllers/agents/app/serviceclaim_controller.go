@@ -66,7 +66,7 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, err
 	}
 
-	config, remote_namespace, err := workercluster.GetPrimazaKubeconfig(ctx, sclaim.Namespace, r.Client, constants.ApplicationAgentKubeconfigSecretName)
+	config, remote_namespace, err := workercluster.GetPrimazaKubeconfig(ctx)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

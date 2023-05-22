@@ -133,7 +133,17 @@ def application_agent_is_deployed(context, cluster_name: str, namespace: str):
 def ensure_application_namespace_exists(
         context, cluster_name: str, namespace: str, cluster_environment: str, tenant: str = "primaza-system"):
     primaza = context.cluster_provider.get_primaza_cluster(cluster_name)  # type: PrimazaCluster
-    primaza.create_application_namespace(namespace, tenant, cluster_environment)
+    (secret,  name) = primaza.create_agent_identity(
+        agent_type="app",
+        tenant=tenant,
+        cluster_environment=cluster_environment,
+        namespace=namespace)
+    kubeconfig = primaza.bake_sa_kubeconfig_yaml(name, secret.data["token"])
+    primaza.create_application_namespace(
+            namespace=namespace,
+            tenant=tenant,
+            cluster_environment=cluster_environment,
+            kubeconfig=kubeconfig)
 
 
 @step(u'On Primaza Cluster "{cluster_name}", sleep for {time_interval:d} minutes')

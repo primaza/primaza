@@ -58,5 +58,14 @@ spec:
           requests:
             cpu: 10m
             memory: 64Mi
+        volumeMounts:
+          - name: primaza-secret-volume
+            mountPath: /etc/primaza
+            readOnly: true
       serviceAccountName: primaza-app-agent
       terminationGracePeriodSeconds: 10
+      volumes:
+      - name: primaza-secret-volume
+        secret:
+          defaultMode: 420
+          secretName: primaza-app-kubeconfig

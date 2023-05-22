@@ -3,7 +3,7 @@ Feature: Bind application to the secret pushed by agent app controller
     Scenario: Service binding projection of a secret into an application with direct reference
 
         Given Primaza Cluster "main" is running
-        And   On Primaza Cluster "main", namespace "applications" exists
+        And   On Primaza Cluster "main", application namespace "applications" for ClusterEnvironment "worker" exists
         And   On Primaza Cluster "main", Primaza Application Agent is deployed into namespace "applications"
         And   On Primaza Cluster "main", test application "newapp" is running in namespace "applications"
         And   On Primaza Cluster "main", Resource is created
@@ -32,7 +32,7 @@ Feature: Bind application to the secret pushed by agent app controller
         """
         Then On Primaza Cluster "main", ServiceBinding "newapp-binding" on namespace "applications" state will eventually move to "Ready"
         And  On Primaza Cluster "main", in demo application's pod running in namespace "applications" file "/bindings/newapp-binding/username" has content "AzureDiamond"
-
+    
     Scenario: Agents bind application on Worker Cluster
 
         Given Primaza Cluster "main" is running
@@ -82,11 +82,11 @@ Feature: Bind application to the secret pushed by agent app controller
         Then On Worker Cluster "worker", ServiceBinding "app-binding" on namespace "applications" state will eventually move to "Ready"
         And  On Worker Cluster "worker", in demo application's pod running in namespace "applications" file "/bindings/app-binding/username" has content "AzureDiamond"
         And  On Worker Cluster "worker", in demo application's pod running in namespace "applications" file "/bindings/app-binding/password" has content "pass"
-
+    
     Scenario: Service binding projection works for multiple applications matching the labels
 
         Given Primaza Cluster "main" is running
-        And   On Primaza Cluster "main", namespace "applications" exists
+        And   On Primaza Cluster "main", application namespace "applications" for ClusterEnvironment "worker" exists
         And   On Primaza Cluster "main", Primaza Application Agent is deployed into namespace "applications"
         And   On Primaza Cluster "main", test application "applicationone" is running in namespace "applications"
         And   On Primaza Cluster "main", test application "applicationtwo" is running in namespace "applications"
@@ -122,7 +122,7 @@ Feature: Bind application to the secret pushed by agent app controller
     Scenario: Service binding resource being deleted
 
         Given Primaza Cluster "main" is running
-        And   On Primaza Cluster "main", namespace "applications" exists
+        And   On Primaza Cluster "main", application namespace "applications" for ClusterEnvironment "worker" exists
         And   On Primaza Cluster "main", Primaza Application Agent is deployed into namespace "applications"
         And   On Primaza Cluster "main", test application "newapp" is running in namespace "applications"
         And   On Primaza Cluster "main", Resource is created
@@ -169,7 +169,7 @@ Feature: Bind application to the secret pushed by agent app controller
     Scenario: Application Agent watches ServiceBindings' resources and projection works for application created after ServiceBinding creation
 
         Given Primaza Cluster "main" is running
-        And On Primaza Cluster "main", namespace "applications" exists
+        And   On Primaza Cluster "main", application namespace "applications" for ClusterEnvironment "worker" exists
         And On Primaza Cluster "main", Primaza Application Agent is deployed into namespace "applications"
         And On Primaza Cluster "main", Resource is created
         """
@@ -204,7 +204,7 @@ Feature: Bind application to the secret pushed by agent app controller
     Scenario: Service binding status updated when application is deleted
 
         Given Primaza Cluster "main" is running
-        And On Primaza Cluster "main", namespace "applications" exists
+        And   On Primaza Cluster "main", application namespace "applications" for ClusterEnvironment "worker" exists
         And On Primaza Cluster "main", Primaza Application Agent is deployed into namespace "applications"
         And On Primaza Cluster "main", Resource is created
         """
