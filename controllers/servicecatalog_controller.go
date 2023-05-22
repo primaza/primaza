@@ -25,6 +25,7 @@ import (
 	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
 	"github.com/primaza/primaza/pkg/primaza/clustercontext"
 	"github.com/primaza/primaza/pkg/primaza/controlplane"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -50,6 +51,12 @@ func (r *ServiceCatalogReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	err := r.Get(ctx, req.NamespacedName, &serviceCatalog)
 	if err != nil {
 		l.Error(err, "Failed to retrieve ServiceCatalog")
+		if apierrors.IsNotFound(err) {
+			// nothing to do as it means no ClusterEnvironment
+			// exists for deleted ServiceCatalog
+			return ctrl.Result{}, nil
+		}
+
 		return ctrl.Result{}, err
 	}
 
