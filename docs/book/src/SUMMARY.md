@@ -6,6 +6,7 @@
     - [Agents](./architecture/agents.md)
         - [Application Agent](./architecture/application-agent.md)
         - [Service Agent](./architecture/service-agent.md)
+    - [Resources](./architecture/resources.md)
 - [Entities](./entities.md)
     - [Cluster Environment](./entities/clusterenvironment.md)
     - [Registered Service](./entities/registeredservice.md)
