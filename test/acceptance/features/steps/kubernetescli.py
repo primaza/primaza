@@ -13,7 +13,6 @@ from steps.environment import ctx
 from steps.command import Command
 from steps.util import substitute_scenario_id
 from behave import register_type, step
-from steps.workercluster import WorkerCluster
 
 
 class Kubernetes(object):
