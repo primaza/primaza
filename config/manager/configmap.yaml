@@ -66,10 +66,19 @@ data:
                 capabilities:
                   drop:
                     - ALL
+              volumeMounts:
+                - mountPath: /etc/primaza
+                  name: primaza-secret-volume
+                  readOnly: true
           securityContext:
             runAsNonRoot: true
           serviceAccountName: primaza-app-agent
           terminationGracePeriodSeconds: 10
+          volumes:
+            - name: primaza-secret-volume
+              secret:
+                defaultMode: 420
+                secretName: primaza-app-kubeconfig
   agentsvc-manifest: |
     apiVersion: apps/v1
     kind: Deployment
@@ -134,6 +143,9 @@ data:
                 - mountPath: /tmp/k8s-webhook-server/serving-certs
                   name: cert
                   readOnly: true
+                - mountPath: /etc/primaza
+                  name: primaza-secret-volume
+                  readOnly: true
           securityContext:
             runAsNonRoot: true
           serviceAccountName: primaza-svc-agent
@@ -143,3 +155,7 @@ data:
               secret:
                 defaultMode: 420
                 secretName: webhook-server-cert
+            - name: primaza-secret-volume
+              secret:
+                defaultMode: 420
+                secretName: primaza-svc-kubeconfig
