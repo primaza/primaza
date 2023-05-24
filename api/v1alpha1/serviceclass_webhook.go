@@ -73,50 +73,50 @@ func (r *ServiceClassResource) ValidateMapping() field.ErrorList {
 }
 
 // ValidateCreate implements admission.CustomValidator
-func (v *serviceClassValidator) ValidateCreate(ctx context.Context, obj runtime.Object) error {
+func (v *serviceClassValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	r, ok := obj.(*ServiceClass)
 	if !ok {
 		err := fmt.Errorf("Object is not a Service Class")
 		serviceclasslog.Error(err, "Attempted to validate non-ServiceClass resource", "gvk", obj.GetObjectKind().GroupVersionKind())
-		return err
+		return nil, err
 	}
 
 	serviceclasslog.Info("validate create", "name", r.Name)
 	errs, err := v.IsDuplicateClass(ctx, *r)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	errs = append(errs, r.Spec.Resource.ValidateMapping()...)
-	return errs.ToAggregate()
+	return nil, errs.ToAggregate()
 }
 
 // ValidateDelete implements admission.CustomValidator
-func (v *serviceClassValidator) ValidateDelete(ctx context.Context, obj runtime.Object) error {
+func (v *serviceClassValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	r, ok := obj.(*ServiceClass)
 	if !ok {
 		err := fmt.Errorf("Object is not a Service Class")
 		serviceclasslog.Error(err, "Attempted to validate non-ServiceClass resource", "gvk", obj.GetObjectKind().GroupVersionKind())
-		return err
+		return nil, err
 	}
 
 	serviceclasslog.Info("validate delete", "name", r.Name)
-	return nil // no validation
+	return nil, nil // no validation
 }
 
 // ValidateUpdate implements admission.CustomValidator
-func (v *serviceClassValidator) ValidateUpdate(ctx context.Context, oldObj runtime.Object, newObj runtime.Object) error {
+func (v *serviceClassValidator) ValidateUpdate(ctx context.Context, oldObj runtime.Object, newObj runtime.Object) (admission.Warnings, error) {
 	newClass, ok := newObj.(*ServiceClass)
 	if !ok {
 		err := fmt.Errorf("Object is not a Service Class")
 		serviceclasslog.Error(err, "Attempted to validate non-ServiceClass resource", "gvk", newObj.GetObjectKind().GroupVersionKind())
-		return err
+		return nil, err
 	}
 
 	serviceclasslog.Info("validate update", "name", newClass.Name)
 
 	oldServiceClass, ok := oldObj.(*ServiceClass)
 	if !ok {
-		return fmt.Errorf("Old object is not a ServiceClass")
+		return nil, fmt.Errorf("Old object is not a ServiceClass")
 	}
 
 	errs := field.ErrorList{}
@@ -145,11 +145,11 @@ func (v *serviceClassValidator) ValidateUpdate(ctx context.Context, oldObj runti
 	errs = append(errs, newClass.Spec.Resource.ValidateMapping()...)
 	list, err := v.IsDuplicateClass(ctx, *newClass)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	errs = append(errs, list...)
 
-	return errs.ToAggregate()
+	return nil, errs.ToAggregate()
 }
 
 func (validator *serviceClassValidator) IsDuplicateClass(ctx context.Context, serviceClass ServiceClass) (field.ErrorList, error) {

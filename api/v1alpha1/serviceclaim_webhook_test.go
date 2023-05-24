@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 func newServiceClaim(name, namespace string, spec ServiceClaimSpec) ServiceClaim {
@@ -38,6 +39,11 @@ func newServiceClaim(name, namespace string, spec ServiceClaimSpec) ServiceClaim
 }
 
 var _ = Describe("Webhook tests", func() {
+	type validationResult struct {
+		warnings admission.Warnings
+		err      error
+	}
+
 	Context("When creating ServiceClaim with ApplicationClusterContext and EnvironmentTag", func() {
 		It("should an error saying the resource cannot be created", func() {
 			var validator serviceClaimValidator
@@ -58,8 +64,16 @@ var _ = Describe("Webhook tests", func() {
 				},
 			)
 
-			expected := fmt.Errorf("Both ApplicationClusterContext and EnvironmentTag cannot be used together")
-			Expect(validator.ValidateCreate(context.Background(), &serviceClaim)).To(Equal(expected))
+			expected := validationResult{
+				warnings: nil,
+				err:      fmt.Errorf("Both ApplicationClusterContext and EnvironmentTag cannot be used together"),
+			}
+			w, err := validator.ValidateCreate(context.Background(), &serviceClaim)
+			obtained := validationResult{
+				warnings: w,
+				err:      err,
+			}
+			Expect(obtained).To(Equal(expected))
 		})
 	})
 
@@ -82,8 +96,16 @@ var _ = Describe("Webhook tests", func() {
 				},
 			)
 
-			expected := fmt.Errorf("Both ApplicationClusterContext and EnvironmentTag cannot be empty")
-			Expect(validator.ValidateCreate(context.Background(), &serviceClaim)).To(Equal(expected))
+			expected := validationResult{
+				warnings: nil,
+				err:      fmt.Errorf("Both ApplicationClusterContext and EnvironmentTag cannot be empty"),
+			}
+			w, err := validator.ValidateCreate(context.Background(), &serviceClaim)
+			obtained := validationResult{
+				warnings: w,
+				err:      err,
+			}
+			Expect(obtained).To(Equal(expected))
 		})
 	})
 
@@ -109,10 +131,16 @@ var _ = Describe("Webhook tests", func() {
 					EnvironmentTag: "prod",
 				},
 			)
-
-			expected := fmt.Errorf("Both Application name and Application selector cannot be used together")
-			Expect(validator.ValidateCreate(context.Background(), &serviceClaim)).To(Equal(expected))
+			expected := validationResult{
+				warnings: nil,
+				err:      fmt.Errorf("Both Application name and Application selector cannot be used together"),
+			}
+			w, err := validator.ValidateCreate(context.Background(), &serviceClaim)
+			obtained := validationResult{
+				warnings: w,
+				err:      err,
+			}
+			Expect(obtained).To(Equal(expected))
 		})
 	})
-
 })

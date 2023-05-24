@@ -50,29 +50,29 @@ func (r *ServiceClaim) SetupWebhookWithManager(mgr ctrl.Manager) error {
 var _ admission.CustomValidator = &serviceClaimValidator{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (v *serviceClaimValidator) ValidateCreate(ctx context.Context, obj runtime.Object) error {
+func (v *serviceClaimValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	r, ok := obj.(*ServiceClaim)
 	if !ok {
 		err := fmt.Errorf("Object is not a Service Claim")
 		serviceclasslog.Error(err, "Attempted to validate non-ServiceClaim resource", "gvk", obj.GetObjectKind().GroupVersionKind())
-		return err
+		return nil, err
 	}
 
 	serviceclaimlog.Info("validate create", "name", r.Name)
 	return v.validate(r)
 }
 
-func (v *serviceClaimValidator) validate(r *ServiceClaim) error {
+func (v *serviceClaimValidator) validate(r *ServiceClaim) (admission.Warnings, error) {
 	if r.Spec.ApplicationClusterContext != nil && r.Spec.EnvironmentTag != "" {
-		return fmt.Errorf("Both ApplicationClusterContext and EnvironmentTag cannot be used together")
+		return nil, fmt.Errorf("Both ApplicationClusterContext and EnvironmentTag cannot be used together")
 	}
 	if r.Spec.ApplicationClusterContext == nil && r.Spec.EnvironmentTag == "" {
-		return fmt.Errorf("Both ApplicationClusterContext and EnvironmentTag cannot be empty")
+		return nil, fmt.Errorf("Both ApplicationClusterContext and EnvironmentTag cannot be empty")
 	}
 	if r.Spec.Application.Name != "" && r.Spec.Application.Selector != nil {
-		return fmt.Errorf("Both Application name and Application selector cannot be used together")
+		return nil, fmt.Errorf("Both Application name and Application selector cannot be used together")
 	}
-	return nil
+	return nil, nil
 }
 
 func (v *serviceClaimValidator) validateUpdate(old *ServiceClaim, new *ServiceClaim) error {
@@ -84,36 +84,36 @@ func (v *serviceClaimValidator) validateUpdate(old *ServiceClaim, new *ServiceCl
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (v *serviceClaimValidator) ValidateUpdate(ctx context.Context, oldObj runtime.Object, newObj runtime.Object) error {
+func (v *serviceClaimValidator) ValidateUpdate(ctx context.Context, oldObj runtime.Object, newObj runtime.Object) (admission.Warnings, error) {
 	newServiceClaim, ok := newObj.(*ServiceClaim)
 	if !ok {
 		err := fmt.Errorf("Object is not a Service Claim")
 		serviceclasslog.Error(err, "Attempted to validate non-ServiceClaim resource", "gvk", newObj.GetObjectKind().GroupVersionKind())
-		return err
+		return nil, err
 	}
 
 	oldServiceClaim, ok := oldObj.(*ServiceClaim)
 	if !ok {
 		err := fmt.Errorf("Old Object is not a Service Claim")
 		serviceclasslog.Error(err, "Attempted to validate non-ServiceClaim resource", "gvk", oldObj.GetObjectKind().GroupVersionKind())
-		return err
+		return nil, err
 	}
 
 	serviceclaimlog.Info("validate update", "name", newServiceClaim.Name)
-	return v.validateUpdate(oldServiceClaim, newServiceClaim)
+	return nil, v.validateUpdate(oldServiceClaim, newServiceClaim)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (v *serviceClaimValidator) ValidateDelete(ctx context.Context, obj runtime.Object) error {
+func (v *serviceClaimValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	r, ok := obj.(*ServiceClaim)
 	if !ok {
 		err := fmt.Errorf("Object is not a Service Claim")
 		serviceclasslog.Error(err, "Attempted to validate non-ServiceClaim resource", "gvk", obj.GetObjectKind().GroupVersionKind())
-		return err
+		return nil, err
 	}
 
 	serviceclaimlog.Info("validate delete", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object deletion.
-	return nil
+	return nil, nil
 }
