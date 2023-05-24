@@ -1,7 +1,11 @@
 # Summary
 
 - [Introduction](./introduction.md)
-- [Architecture](./architecture/agents.md)
+- [Architecture](./architecture/architecture.md)
+    - [Control Plane](./architecture/control-plane.md)
+    - [Agents](./architecture/agents.md)
+        - [Application Agent](./architecture/application-agent.md)
+        - [Service Agent](./architecture/service-agent.md)
 - [Entities](./entities.md)
     - [Cluster Environment](./entities/clusterenvironment.md)
     - [Registered Service](./entities/registeredservice.md)

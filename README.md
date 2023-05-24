@@ -42,7 +42,7 @@
 
 ## Implementation
 
-[Primaza's architecture](./docs/architecture/agents.md) is composed by the following elements:
+[Primaza's architecture](./docs/book/src/architecture/architecture.md) is composed by the following elements:
 - Primaza control plane: manages environments, services and claims
 - Application agents: binds applications to services
 - Service agents: discover services
