@@ -4,3 +4,7 @@ resources:
 - ../namespace
 - ../agent
 namespace: services
+images:
+- name: agentsvc
+  newName: agentsvc
+  newTag: latest

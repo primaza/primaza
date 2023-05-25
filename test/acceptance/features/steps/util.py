@@ -23,7 +23,6 @@ def substitute_scenario_id(context, text="$scenario_id"):
 def get_env(env):
     value = os.getenv(env)
     assert env is not None, f"{env} environment variable needs to be set"
-    print(f"{env} = {value}")
     return value
 
 

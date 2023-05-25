@@ -119,12 +119,45 @@ jobs:
           FEATURES=$(ls *.feature | jq -R -s -c 'split("\n")[:-1]')
           echo "features=$FEATURES" >> $GITHUB_OUTPUT
 
+  build:
+    name: Build images
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - make: primaza
+            image-name: primaza-controller
+          - make: agentapp
+            image-name: agentapp
+          - make: agentsvc
+            image-name: agentsvc
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Checkout Git Repository
+        uses: actions/checkout@v3
+
+      - name: Build images
+        run: |
+          make ${{ matrix.make }} docker-build IMG=${{ matrix.image-name }}:latest
+          docker save ${{ matrix.image-name }}:latest -o ${{ matrix.image-name }}.tar
+
+      - name: Upload image artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: images
+          path: ${{ matrix.image-name }}.tar
+
   acceptance:
     name: Acceptance Tests
     runs-on: ubuntu-20.04
     timeout-minutes: 90
 
-    needs: features
+    needs: ["features", "build"]
     strategy:
       fail-fast: false
       matrix:
@@ -150,12 +183,25 @@ jobs:
         with:
           start-minikube: false
 
+      - name: Download pre-built images
+        uses: actions/download-artifact@v3
+        with:
+          name: images
+          path: images/
+
       - name: Acceptance tests
         timeout-minutes: 60
-        run: make kustomize test-acceptance
+        run: |
+          docker load -i images/primaza-controller.tar
+          docker load -i images/agentapp.tar
+          docker load -i images/agentsvc.tar
+          make kustomize test-acceptance
         env:
           EXTRA_BEHAVE_ARGS: -i test/acceptance/features/${{ matrix.feature }} --tags=~@disable-github-actions
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PRIMAZA_CONTROLLER_IMAGE_REF: primaza-controller:latest
+          PRIMAZA_AGENTAPP_IMAGE_REF: agentapp:latest
+          PRIMAZA_AGENTSVC_IMAGE_REF: agentsvc:latest
 
       - uses: actions/upload-artifact@v3
         if: ${{ steps.check-skip-acceptance.outputs.can_skip != 'true' && always() }}
