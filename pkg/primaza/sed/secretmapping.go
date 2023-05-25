@@ -35,8 +35,8 @@ type SEDSecretRefMapping struct {
 	cli       client.Client
 
 	key        string
-	secretName *jsonpath.JSONPath
-	secretKey  *jsonpath.JSONPath
+	secretName v1alpha1.FieldMapping
+	secretKey  v1alpha1.FieldMapping
 }
 
 func NewSEDSecretRefMapping(
@@ -45,23 +45,13 @@ func NewSEDSecretRefMapping(
 	cli client.Client,
 	mapping v1alpha1.ServiceClassSecretRefFieldMapping,
 ) (*SEDSecretRefMapping, error) {
-	pathName := jsonpath.New("")
-	if err := pathName.Parse(fmt.Sprintf("{%s}", mapping.SecretName)); err != nil {
-		return nil, err
-	}
-
-	pathKey := jsonpath.New("")
-	if err := pathKey.Parse(fmt.Sprintf("{%s}", mapping.SecretKey)); err != nil {
-		return nil, err
-	}
-
 	return &SEDSecretRefMapping{
 		namespace:  namespace,
 		resource:   resource,
 		cli:        cli,
 		key:        mapping.Name,
-		secretKey:  pathKey,
-		secretName: pathName,
+		secretKey:  mapping.SecretKey,
+		secretName: mapping.SecretName,
 	}, nil
 }
 
@@ -69,12 +59,27 @@ func (s *SEDSecretRefMapping) Key() string {
 	return s.key
 }
 
+func readValue(mapping v1alpha1.FieldMapping, resource unstructured.Unstructured) (*string, error) {
+	switch {
+	case mapping.Constant != nil:
+		return mapping.Constant, nil
+	case mapping.JsonPathExpr != nil:
+		jsonPath := jsonpath.New("")
+		if err := jsonPath.Parse(fmt.Sprintf("{%s}", *mapping.JsonPathExpr)); err != nil {
+			return nil, err
+		}
+		return readSingleJsonPath(jsonPath, resource)
+	default:
+		return nil, fmt.Errorf("invalid mapping: neither Constant nor JsonPathExpr defined")
+	}
+}
+
 func (mapping *SEDSecretRefMapping) ReadKey(ctx context.Context) (*string, error) {
-	secKey, err := readSingleJsonPath(mapping.secretKey, mapping.resource)
+	secKey, err := readValue(mapping.secretKey, mapping.resource)
 	if err != nil {
 		return nil, err
 	}
-	secName, err := readSingleJsonPath(mapping.secretName, mapping.resource)
+	secName, err := readValue(mapping.secretName, mapping.resource)
 	if err != nil {
 		return nil, err
 	}

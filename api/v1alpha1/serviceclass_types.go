@@ -43,13 +43,22 @@ type ServiceClassSecretRefFieldMapping struct {
 	// Name of the data referred to
 	Name string `json:"name"`
 
-	// SecretName defines a JsonPath used to extract the name
-	// of a linked secret from resource's specification
-	SecretName string `json:"secretName"`
+	// SecretName defines a constant value or a JsonPath used to extract from
+	// resource's specification the name of a linked secret
+	SecretName FieldMapping `json:"secretName"`
 
-	// SecretKey defines a JsonPath used to extract from resource's specification
-	// the Key to be copied from the linked secret
-	SecretKey string `json:"secretKey"`
+	// SecretKey defines a constant value or a JsonPath used to extract from
+	// resource's specification the Key to be copied from the linked secret
+	SecretKey FieldMapping `json:"secretKey"`
+}
+
+// +kubebuilder:validation:MaxProperties:=1
+// +kubebuilder:validation:MinProperties:=1
+type FieldMapping struct {
+	// Constant is a constant value for the field
+	Constant *string `json:"constant,omitempty"`
+	// JsonPathExpr represents a jsonPath for extracting the field
+	JsonPathExpr *string `json:"jsonPath,omitempty"`
 }
 
 // ServiceClassResource defines

@@ -111,14 +111,37 @@ spec:
                               description: Name of the data referred to
                               type: string
                             secretKey:
-                              description: SecretKey defines a JsonPath used to extract
-                                from resource's specification the Key to be copied
-                                from the linked secret
-                              type: string
+                              description: SecretKey defines a constant value or a
+                                JsonPath used to extract from resource's specification
+                                the Key to be copied from the linked secret
+                              maxProperties: 1
+                              minProperties: 1
+                              properties:
+                                constant:
+                                  description: Constant is a constant value for the
+                                    field
+                                  type: string
+                                jsonPath:
+                                  description: JsonPathExpr represents a jsonPath
+                                    for extracting the field
+                                  type: string
+                              type: object
                             secretName:
-                              description: SecretName defines a JsonPath used to extract
-                                the name of a linked secret from resource's specification
-                              type: string
+                              description: SecretName defines a constant value or
+                                a JsonPath used to extract from resource's specification
+                                the name of a linked secret
+                              maxProperties: 1
+                              minProperties: 1
+                              properties:
+                                constant:
+                                  description: Constant is a constant value for the
+                                    field
+                                  type: string
+                                jsonPath:
+                                  description: JsonPathExpr represents a jsonPath
+                                    for extracting the field
+                                  type: string
+                              type: object
                           required:
                           - name
                           - secretKey

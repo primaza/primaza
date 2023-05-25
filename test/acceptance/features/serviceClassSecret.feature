@@ -23,7 +23,7 @@ Feature: ServicesClasses can extract RegisteredService from resource-linked secr
               name: primaza-svc-worker-services
             """
 
-    Scenario: A Service Class creates Registered Services as specified
+    Scenario: A Service Class creates Registered Services as specified (JsonPath secretRefField)
         Given On Worker Cluster "worker", Resource is created
             """
             apiVersion: stable.example.com/v1
@@ -59,8 +59,63 @@ Feature: ServicesClasses can extract RegisteredService from resource-linked secr
                     serviceEndpointDefinitionMappings:
                         secretRefFields:
                         - name: host
-                          secretName: .spec.fromSecret[0].secretName
-                          secretKey: .spec.fromSecret[0].secretKey
+                          secretName:
+                            jsonPath: .spec.fromSecret[0].secretName
+                          secretKey:
+                            jsonPath: .spec.fromSecret[0].secretKey
+                serviceClassIdentity:
+                  - name: type
+                    value: backend
+                  - name: provider
+                    value: stable.example.com
+                  - name: version
+                    value: v1
+            """
+        Then The resource registeredservices.primaza.io/$scenario_id:primaza-system is available in cluster "main"
+        And jsonpath ".spec.serviceEndpointDefinition[0]" on "registeredservices.primaza.io/$scenario_id:primaza-system" in cluster main is "{"name": "host", "valueFromSecret": {"key": "host", "name": "$scenario_id-descriptor"}}"
+        And The resource secrets/$scenario_id-descriptor:primaza-system is available in cluster "main"
+        And jsonpath ".data.host" on "secrets/$scenario_id-descriptor:primaza-system" in cluster main is ""aW50ZXJuYWwuZGIuc3RhYmxlLmV4YW1wbGUuY29t""
+
+    Scenario: A Service Class creates Registered Services as specified (Constant secretRefField)
+        Given On Worker Cluster "worker", Resource is created
+            """
+            apiVersion: stable.example.com/v1
+            kind: Backend
+            metadata:
+                name: $scenario_id
+                namespace: services
+            spec:
+                fromSecret:
+                - secretName: $scenario_id-sec
+                  secretKey: internal-host
+            ---
+            apiVersion: v1
+            kind: Secret
+            metadata:
+                name: $scenario_id-sec
+                namespace: services
+            stringData:
+                internal-host: internal.db.stable.example.com
+            """
+        When On Worker Cluster "worker", Resource is created
+            """
+            apiVersion: primaza.io/v1alpha1
+            kind: ServiceClass
+            metadata:
+                name: $scenario_id-serviceclass
+                namespace: services
+            spec:
+                constraints: {}
+                resource:
+                    apiVersion: stable.example.com/v1
+                    kind: Backend
+                    serviceEndpointDefinitionMappings:
+                        secretRefFields:
+                        - name: host
+                          secretName:
+                            constant: $scenario_id-sec
+                          secretKey:
+                            constant: internal-host
                 serviceClassIdentity:
                   - name: type
                     value: backend
@@ -102,8 +157,10 @@ Feature: ServicesClasses can extract RegisteredService from resource-linked secr
                     serviceEndpointDefinitionMappings:
                         secretRefFields:
                         - name: host
-                          secretName: .spec.fromSecret[0].secretName
-                          secretKey: .spec.fromSecret[0].secretKey
+                          secretName:
+                            jsonPath: .spec.fromSecret[0].secretName
+                          secretKey:
+                            jsonPath: .spec.fromSecret[0].secretKey
                 serviceClassIdentity:
                   - name: type
                     value: backend
