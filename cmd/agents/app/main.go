@@ -33,12 +33,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
-	sccontrollers "github.com/primaza/primaza/controllers"
 	controllers "github.com/primaza/primaza/controllers/agents/app"
 	//+kubebuilder:scaffold:imports
 )
 
-const EnvWatchNamespace = "WATCH_NAMESPACE"
+const (
+	EnvWatchNamespace          = "WATCH_NAMESPACE"
+	EnvSynchronizationStrategy = "SYNCHRONIZATION_STRATEGY"
+)
 
 var (
 	scheme   = runtime.NewScheme()
@@ -74,6 +76,12 @@ func main() {
 		setupLog.Error(err, "unable to start manager")
 	}
 
+	s, err := getSynchronizationStrategyFromEnv()
+	if err != nil {
+		setupLog.Error(err, "unable to start manager")
+		os.Exit(1)
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
@@ -104,12 +112,13 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "ServiceBinding")
 		os.Exit(1)
 	}
-	if err = (&controllers.ServiceClaimReconciler{
-		ServiceClaimReconciler: sccontrollers.ServiceClaimReconciler{Client: mgr.GetClient(),
-			Scheme: mgr.GetScheme(),
-		}}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ServiceClaim")
-		os.Exit(1)
+
+	if *s == primazaiov1alpha1.SynchronizationStrategyPush {
+		serviceClaimController := controllers.NewServiceClaimReconciler(mgr)
+		if err = serviceClaimController.SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "ServiceClaim")
+			os.Exit(1)
+		}
 	}
 	if err = (&controllers.ServiceCatalogReconciler{
 		Client: mgr.GetClient(),
@@ -139,6 +148,17 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+func getSynchronizationStrategyFromEnv() (*primazaiov1alpha1.SynchronizationStrategy, error) {
+	s, ok := os.LookupEnv(EnvSynchronizationStrategy)
+	if !ok {
+		return nil, fmt.Errorf(
+			"synchronization strategy environment variable is not defined: %s",
+			EnvSynchronizationStrategy)
+	}
+
+	return primazaiov1alpha1.ParseSynchronizationStrategy(s)
 }
 
 func getWatchNamespaceFromEnv() (string, error) {

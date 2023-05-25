@@ -21,33 +21,40 @@ import (
 	"fmt"
 
 	"github.com/primaza/primaza/pkg/primaza/workercluster"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/yaml"
 )
 
 type NamespacesUnbinder interface {
 	UnbindNamespaces(context.Context, string, string, []string) error
 }
 
-func NewApplicationNamespacesUnbinder(primazaClient client.Client, workerClient *kubernetes.Clientset) NamespacesUnbinder {
+func NewApplicationNamespacesUnbinder(primazaClient client.Client, workerClient *kubernetes.Clientset, deploymentManifest, configMapManifest string) NamespacesUnbinder {
 	return &namespacesUnbinder{
-		pcli:        primazaClient,
-		wcli:        workerClient,
-		kind:        ApplicationNamespaceType,
-		deleteAgent: workercluster.DeleteApplicationAgent,
+		pcli:               primazaClient,
+		wcli:               workerClient,
+		kind:               ApplicationNamespaceType,
+		deploymentManifest: deploymentManifest,
+		configMapManifest:  configMapManifest,
+		deleteAgent:        workercluster.DeleteAgent,
 	}
 }
 
-func NewServiceNamespacesUnbinder(primazaClient client.Client, workerClient *kubernetes.Clientset) NamespacesUnbinder {
+func NewServiceNamespacesUnbinder(primazaClient client.Client, workerClient *kubernetes.Clientset, deploymentManifest, configMapManifest string) NamespacesUnbinder {
 	return &namespacesUnbinder{
-		pcli:        primazaClient,
-		wcli:        workerClient,
-		kind:        ServiceNamespaceType,
-		deleteAgent: workercluster.DeleteServiceAgent,
+		pcli:               primazaClient,
+		wcli:               workerClient,
+		kind:               ServiceNamespaceType,
+		deploymentManifest: deploymentManifest,
+		configMapManifest:  configMapManifest,
+		deleteAgent:        workercluster.DeleteAgent,
 	}
 }
 
@@ -56,7 +63,30 @@ type namespacesUnbinder struct {
 	wcli *kubernetes.Clientset
 	kind NamespaceType
 
-	deleteAgent func(context.Context, *kubernetes.Clientset, string) error
+	deploymentManifest string
+	configMapManifest  string
+
+	deleteAgent func(context.Context, *kubernetes.Clientset, string, string, string) error
+}
+
+func (u namespacesUnbinder) getDeploymentName() (string, error) {
+	var dep appsv1.Deployment
+	err := yaml.Unmarshal([]byte(u.deploymentManifest), &dep)
+	if err != nil {
+		return "", fmt.Errorf("unmarshal deployment error: %w", err)
+	}
+
+	return dep.GetName(), nil
+}
+
+func (u namespacesUnbinder) getConfigMapName() (string, error) {
+	var cm corev1.ConfigMap
+	err := yaml.Unmarshal([]byte(u.configMapManifest), &cm)
+	if err != nil {
+		return "", fmt.Errorf("unmarshal deployment error: %w", err)
+	}
+
+	return cm.GetName(), nil
 }
 
 func (b *namespacesUnbinder) UnbindNamespaces(ctx context.Context, ceName, ceNamespace string, namespaces []string) error {
@@ -82,7 +112,17 @@ func (b *namespacesUnbinder) unbindNamespace(ctx context.Context, ceName, ceName
 		return err
 	}
 
-	if err := b.deleteAgent(ctx, b.wcli, namespace); err != nil && !errors.IsNotFound(err) {
+	d, err := b.getDeploymentName()
+	if err != nil {
+		return err
+	}
+
+	c, err := b.getConfigMapName()
+	if err != nil {
+		return err
+	}
+
+	if err := b.deleteAgent(ctx, b.wcli, namespace, d, c); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 

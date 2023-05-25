@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -30,11 +31,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/primaza/primaza/api/v1alpha1"
 	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
 	"github.com/primaza/primaza/pkg/envtag"
 	"github.com/primaza/primaza/pkg/primaza/clustercontext"
@@ -65,11 +68,46 @@ const (
 // ClusterEnvironmentReconciler reconciles a ClusterEnvironment object
 type ClusterEnvironmentReconciler struct {
 	client.Client
-	Scheme           *runtime.Scheme
-	AppAgentImage    string
-	SvcAgentImage    string
-	AppAgentManifest string
-	SvcAgentManifest string
+	Scheme *runtime.Scheme
+
+	appInformersMux sync.Mutex
+	appInformers    map[string]informer
+	svcInformersMux sync.Mutex
+	svcInformers    map[string]informer
+
+	config ClusterEnvironmentReconcilerConfig
+}
+
+type ClusterEnvironmentReconcilerConfig struct {
+	ControlPlaneNamespace  string
+	AppAgentImage          string
+	SvcAgentImage          string
+	AppAgentManifest       string
+	SvcAgentManifest       string
+	AppAgentConfigManifest string
+	SvcAgentConfigManifest string
+}
+
+func NewClusterEnvironmentReconciler(mgr ctrl.Manager, config ClusterEnvironmentReconcilerConfig) *ClusterEnvironmentReconciler {
+	return &ClusterEnvironmentReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+
+		appInformers: make(map[string]informer),
+		svcInformers: make(map[string]informer),
+
+		config: config,
+	}
+}
+
+type informer struct {
+	informer   cache.SharedIndexInformer
+	ctx        context.Context
+	cancelFunc context.CancelFunc
+}
+
+func (i *informer) run() {
+	i.informer.Run(i.ctx.Done())
 }
 
 //+kubebuilder:rbac:groups="",namespace=system,resources=secrets,verbs=create;update;delete;get;list;watch
@@ -157,6 +195,11 @@ func (r *ClusterEnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
+	if err := r.Client.Status().Update(ctx, ce); err != nil {
+		l.Error(err, "error updating cluster environment status", "status", ce.Status)
+		return ctrl.Result{}, err
+	}
+
 	// reconcile namespaces
 	l.Info("reconciling namespaces",
 		"application namespaces", ce.Spec.ApplicationNamespaces,
@@ -177,7 +220,35 @@ func (r *ClusterEnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
+	if ce.Spec.SynchronizationStrategy == primazaiov1alpha1.SynchronizationStrategyPull {
+		if err := r.runInformers(ctx, cfg, ce, fsnn, fann); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
+	if err := r.Client.Status().Update(ctx, ce); err != nil {
+		l.Error(err, "error updating cluster environment status", "status", ce.Status)
+		return ctrl.Result{}, err
+	}
+
 	return ctrl.Result{}, nil
+}
+
+func (r *ClusterEnvironmentReconciler) runInformers(ctx context.Context, cfg *rest.Config, ce *v1alpha1.ClusterEnvironment, fsnn, fann []string) error {
+	l := log.FromContext(ctx)
+	errs := []error{}
+
+	if err := r.RunSvcInformers(ctx, cfg, *ce, fsnn); err != nil {
+		l.Error(err, "error running service informers")
+		errs = append(errs, err)
+	}
+
+	if err := r.RunAppInformers(ctx, cfg, *ce, fann); err != nil {
+		l.Error(err, "error running application informers")
+		errs = append(errs, err)
+	}
+
+	return errors.Join(errs...)
 }
 
 func (r *ClusterEnvironmentReconciler) MonitorHealth(ctx context.Context, ns string, hci int) {
@@ -452,15 +523,18 @@ func (r *ClusterEnvironmentReconciler) reconcileNamespaces(
 	sns := slices.SubtractStr(ce.Spec.ServiceNamespaces, failedServiceNamespaces)
 
 	s := controlplane.ClusterEnvironmentState{
-		Name:                  ce.Name,
-		Namespace:             ce.Namespace,
-		ClusterConfig:         cfg,
-		ApplicationNamespaces: ans,
-		ServiceNamespaces:     sns,
-		AppAgentImage:         r.AppAgentImage,
-		SvcAgentImage:         r.SvcAgentImage,
-		AppAgentManifest:      r.AppAgentManifest,
-		SvcAgentManifest:      r.SvcAgentManifest,
+		Name:                   ce.Name,
+		Namespace:              ce.Namespace,
+		ClusterConfig:          cfg,
+		ApplicationNamespaces:  ans,
+		ServiceNamespaces:      sns,
+		AppAgentImage:          r.config.AppAgentImage,
+		SvcAgentImage:          r.config.SvcAgentImage,
+		AppAgentManifest:       r.config.AppAgentManifest,
+		SvcAgentManifest:       r.config.SvcAgentManifest,
+		AppAgentConfigManifest: r.config.AppAgentConfigManifest,
+		SvcAgentConfigManifest: r.config.SvcAgentConfigManifest,
+		Strategy:               ce.Spec.SynchronizationStrategy,
 	}
 
 	nr, err := controlplane.NewNamespaceReconciler(s)
@@ -590,15 +664,18 @@ func (r *ClusterEnvironmentReconciler) finalizeClusterEnvironmentInNamespaces(ct
 	}
 
 	s := controlplane.ClusterEnvironmentState{
-		Name:                  ce.Name,
-		Namespace:             ce.Namespace,
-		ClusterConfig:         kcfg,
-		ApplicationNamespaces: []string{},
-		ServiceNamespaces:     []string{},
-		AppAgentImage:         r.AppAgentImage,
-		SvcAgentImage:         r.SvcAgentImage,
-		AppAgentManifest:      r.AppAgentManifest,
-		SvcAgentManifest:      r.SvcAgentManifest,
+		Name:                   ce.Name,
+		Namespace:              ce.Namespace,
+		ClusterConfig:          kcfg,
+		ApplicationNamespaces:  []string{},
+		ServiceNamespaces:      []string{},
+		AppAgentImage:          r.config.AppAgentImage,
+		SvcAgentImage:          r.config.SvcAgentImage,
+		AppAgentManifest:       r.config.AppAgentManifest,
+		SvcAgentManifest:       r.config.SvcAgentManifest,
+		AppAgentConfigManifest: r.config.AppAgentConfigManifest,
+		SvcAgentConfigManifest: r.config.SvcAgentConfigManifest,
+		Strategy:               ce.Spec.SynchronizationStrategy,
 	}
 
 	nr, err := controlplane.NewNamespaceReconciler(s)

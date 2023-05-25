@@ -34,6 +34,11 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
+          - name: SYNCHRONIZATION_STRATEGY
+            valueFrom:
+              configMapKeyRef:
+                name: primaza-agentapp-config
+                key: synchronization-strategy
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

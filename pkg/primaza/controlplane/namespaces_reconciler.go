@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 
+	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
 	"github.com/primaza/primaza/pkg/primaza/constants"
 	"github.com/primaza/primaza/pkg/slices"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -34,12 +35,15 @@ type ClusterEnvironmentState struct {
 	Namespace     string
 	ClusterConfig *rest.Config
 
-	ApplicationNamespaces []string
-	ServiceNamespaces     []string
-	AppAgentImage         string
-	SvcAgentImage         string
-	AppAgentManifest      string
-	SvcAgentManifest      string
+	ApplicationNamespaces  []string
+	ServiceNamespaces      []string
+	AppAgentImage          string
+	SvcAgentImage          string
+	AppAgentManifest       string
+	SvcAgentManifest       string
+	AppAgentConfigManifest string
+	SvcAgentConfigManifest string
+	Strategy               primazaiov1alpha1.SynchronizationStrategy
 }
 
 type NamespacesReconciler interface {
@@ -71,10 +75,10 @@ func NewNamespaceReconciler(e ClusterEnvironmentState) (NamespacesReconciler, er
 	return &namespacesReconciler{
 		pcli:        cli,
 		env:         e,
-		appBinder:   NewApplicationNamespacesBinder(cli, wcli, e.AppAgentManifest, e.AppAgentImage),
-		appUnbinder: NewApplicationNamespacesUnbinder(cli, wcli),
-		svcBinder:   NewServiceNamespacesBinder(cli, wcli, e.SvcAgentManifest, e.SvcAgentImage),
-		svcUnbinder: NewServiceNamespacesUnbinder(cli, wcli),
+		appBinder:   NewApplicationNamespacesBinder(cli, wcli, e.AppAgentManifest, e.AppAgentImage, e.AppAgentConfigManifest, e.Strategy),
+		appUnbinder: NewApplicationNamespacesUnbinder(cli, wcli, e.AppAgentManifest, e.AppAgentConfigManifest),
+		svcBinder:   NewServiceNamespacesBinder(cli, wcli, e.SvcAgentManifest, e.SvcAgentImage, e.SvcAgentConfigManifest, e.Strategy),
+		svcUnbinder: NewServiceNamespacesUnbinder(cli, wcli, e.SvcAgentManifest, e.SvcAgentConfigManifest),
 	}, nil
 }
 

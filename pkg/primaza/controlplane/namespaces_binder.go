@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 
+	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
 	"github.com/primaza/primaza/pkg/primaza/workercluster"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -34,25 +35,43 @@ type NamespacesBinder interface {
 	BindNamespaces(ctx context.Context, ceName string, ceNamespace string, namespaces []string) error
 }
 
-func NewApplicationNamespacesBinder(primazaClient client.Client, workerClient *kubernetes.Clientset, agentManifest string, agentImage string) NamespacesBinder {
+func NewApplicationNamespacesBinder(
+	primazaClient client.Client,
+	workerClient *kubernetes.Clientset,
+	agentManifest string,
+	agentImage string,
+	agentConfig string,
+	strategy primazaiov1alpha1.SynchronizationStrategy,
+) NamespacesBinder {
 	return &namespacesBinder{
 		pcli:          primazaClient,
 		wcli:          workerClient,
 		kind:          ApplicationNamespaceType,
 		agentManifest: agentManifest,
 		agentImage:    agentImage,
-		pushAgent:     workercluster.PushApplicationAgent,
+		agentConfig:   agentConfig,
+		strategy:      strategy,
+		pushAgent:     workercluster.PushAgent,
 	}
 }
 
-func NewServiceNamespacesBinder(primazaClient client.Client, workerClient *kubernetes.Clientset, agentManifest string, agentImage string) NamespacesBinder {
+func NewServiceNamespacesBinder(
+	primazaClient client.Client,
+	workerClient *kubernetes.Clientset,
+	agentManifest string,
+	agentImage string,
+	agentConfig string,
+	strategy primazaiov1alpha1.SynchronizationStrategy,
+) NamespacesBinder {
 	return &namespacesBinder{
 		pcli:          primazaClient,
 		wcli:          workerClient,
 		kind:          ServiceNamespaceType,
 		agentManifest: agentManifest,
 		agentImage:    agentImage,
-		pushAgent:     workercluster.PushServiceAgent,
+		agentConfig:   agentConfig,
+		strategy:      strategy,
+		pushAgent:     workercluster.PushAgent,
 	}
 }
 
@@ -63,7 +82,17 @@ type namespacesBinder struct {
 
 	agentManifest string
 	agentImage    string
-	pushAgent     func(context.Context, *kubernetes.Clientset, string, string, string, string) error
+	agentConfig   string
+	strategy      primazaiov1alpha1.SynchronizationStrategy
+	pushAgent     func(
+		context.Context,
+		*kubernetes.Clientset,
+		string,
+		string,
+		string,
+		string,
+		string,
+		primazaiov1alpha1.SynchronizationStrategy) error
 }
 
 func (b *namespacesBinder) BindNamespaces(ctx context.Context, ceName string, ceNamespace string, namespaces []string) error {
@@ -88,7 +117,16 @@ func (b *namespacesBinder) bindNamespace(ctx context.Context, ceName, ceNamespac
 		return err
 	}
 
-	if err := b.pushAgent(ctx, b.wcli, namespace, ceName, b.agentManifest, b.agentImage); err != nil {
+	if err := b.pushAgent(
+		ctx,
+		b.wcli,
+		namespace,
+		ceName,
+		b.agentManifest,
+		b.agentImage,
+		b.agentConfig,
+		b.strategy,
+	); err != nil {
 		return err
 	}
 

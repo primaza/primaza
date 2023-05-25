@@ -750,8 +750,11 @@ def resource_is_not_available(context, resource_type, name, namespace, cluster):
         tf.flush()
 
         kubernetes = Kubernetes(kubeconfig=tf.name)
-        assert kubernetes.search_resource_in_namespace(resource_type, name, namespace) is None, \
-            f"Expected resource {resource_type}/{name} not to be available!"
+        polling2.poll(
+            target=lambda: kubernetes.search_resource_in_namespace(resource_type, name, namespace),
+            check_success=lambda x: x is None,
+            step=3,
+            timeout=120)
 
 
 @step(u'On Primaza Cluster "{cluster}", ClusterEnvironment "{ce_name}" is deleted')

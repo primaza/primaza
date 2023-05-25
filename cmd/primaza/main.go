@@ -49,6 +49,8 @@ const (
 	MinimumHealtCheckInterval  int = 10
 	EnvAppAgentManifest            = "AGENT_APP_MANIFEST"
 	EnvSvcAgentManifest            = "AGENT_SVC_MANIFEST"
+	EnvAppAgentConfigManifest      = "AGENT_APP_CONFIG_MANIFEST"
+	EnvSvcAgentConfigManifest      = "AGENT_SVC_CONFIG_MANIFEST"
 )
 
 var (
@@ -111,23 +113,23 @@ func main() {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
-	cer := &controllers.ClusterEnvironmentReconciler{
-		Client:           mgr.GetClient(),
-		Scheme:           mgr.GetScheme(),
-		AppAgentImage:    cfg.AppImage,
-		SvcAgentImage:    cfg.SvcImage,
-		AppAgentManifest: cfg.EnvAppAgentManifest,
-		SvcAgentManifest: cfg.EnvSvcAgentManifest,
+	cerConfig := controllers.ClusterEnvironmentReconcilerConfig{
+		ControlPlaneNamespace:  cfg.WatchNamespace,
+		AppAgentImage:          cfg.AppImage,
+		SvcAgentImage:          cfg.SvcImage,
+		AppAgentManifest:       cfg.AppAgentManifest,
+		AppAgentConfigManifest: cfg.AppAgentConfigManifest,
+		SvcAgentManifest:       cfg.SvcAgentManifest,
+		SvcAgentConfigManifest: cfg.SvcAgentConfigManifest,
 	}
-	if err = (cer).SetupWithManager(mgr); err != nil {
+	cer := controllers.NewClusterEnvironmentReconciler(mgr, cerConfig)
+	if err = cer.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterEnvironment")
 		os.Exit(1)
 	}
 
-	if err = (&controllers.ServiceClaimReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	serviceClaimController := controllers.NewServiceClaimReconciler(mgr)
+	if err := serviceClaimController.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ServiceClaim")
 		os.Exit(1)
 	}
@@ -224,12 +226,14 @@ func (h *clusterEnvironmentHealthcheck) Start(ctx context.Context) error {
 }
 
 type config struct {
-	WatchNamespace      string
-	AppImage            string
-	SvcImage            string
-	HealthCheckInterval int
-	EnvAppAgentManifest string
-	EnvSvcAgentManifest string
+	WatchNamespace         string
+	AppImage               string
+	SvcImage               string
+	HealthCheckInterval    int
+	AppAgentManifest       string
+	SvcAgentManifest       string
+	AppAgentConfigManifest string
+	SvcAgentConfigManifest string
 }
 
 func getConfig(log logr.Logger) (*config, error) {
@@ -260,13 +264,25 @@ func getConfig(log logr.Logger) (*config, error) {
 		return nil, err
 	}
 
+	acm, err := getRequiredEnv(EnvAppAgentConfigManifest)
+	if err != nil {
+		return nil, err
+	}
+
+	scm, err := getRequiredEnv(EnvSvcAgentConfigManifest)
+	if err != nil {
+		return nil, err
+	}
+
 	return &config{
-		WatchNamespace:      ns,
-		AppImage:            ai,
-		SvcImage:            si,
-		HealthCheckInterval: hci,
-		EnvAppAgentManifest: as,
-		EnvSvcAgentManifest: ss,
+		WatchNamespace:         ns,
+		AppImage:               ai,
+		SvcImage:               si,
+		HealthCheckInterval:    hci,
+		AppAgentManifest:       as,
+		SvcAgentManifest:       ss,
+		AppAgentConfigManifest: acm,
+		SvcAgentConfigManifest: scm,
 	}, nil
 }
 

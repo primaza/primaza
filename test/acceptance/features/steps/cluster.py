@@ -260,7 +260,7 @@ class Cluster(object):
         role_name = f"primaza:controlplane:{nstype}"
         pmz_rules = [client.V1PolicyRule(
             api_groups=["primaza.io"],
-            resources=["serviceclasses"] if nstype == "svc" else ["servicebindings", "servicecatalogs"],
+            resources=["serviceclasses", "registeredservices"] if nstype == "svc" else ["servicebindings", "servicecatalogs", "serviceclaims"],
             verbs=["get", "list", "watch", "create", "update", "patch", "delete"])]
 
         r = client.V1Role(
@@ -270,6 +270,10 @@ class Cluster(object):
                     api_groups=[""],
                     resources=["secrets"],
                     verbs=["create", "get", "update"]),
+                client.V1PolicyRule(
+                    api_groups=[""],
+                    resources=["configmaps"],
+                    verbs=["create"]),
                 client.V1PolicyRule(
                     api_groups=[""],
                     resources=["secrets"],
@@ -284,6 +288,11 @@ class Cluster(object):
                     resources=["deployments"],
                     verbs=["delete", "get"],
                     resource_names=[f"primaza-{nstype}-agent"]),
+                client.V1PolicyRule(
+                    api_groups=[""],
+                    resources=["configmaps"],
+                    verbs=["delete", "get"],
+                    resource_names=[f"primaza-agent{nstype}-config"]),
             ] + pmz_rules)
         rbacv1.create_namespaced_role(namespace, r)
 
