@@ -26,7 +26,6 @@ import (
 
 	"github.com/primaza/primaza/api/v1alpha1"
 	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
-	"github.com/primaza/primaza/pkg/primaza/constants"
 	"go.uber.org/atomic"
 	v1 "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/api/meta"
@@ -654,7 +653,7 @@ func (r *ServiceBindingReconciler) RunInformer(ctx context.Context, resource sch
 			var psSecret *v1.Secret
 			var applicationResourceList []unstructured.Unstructured
 			applicationResource := obj.(*unstructured.Unstructured)
-			if applicationResource.GetName() == constants.ApplicationAgentDeploymentName {
+			if !verifyApplicationSatisfiesServiceBindingSpec(applicationResource, serviceBinding) {
 				return
 			}
 			applicationResourceList = append(applicationResourceList, *applicationResource)
@@ -674,11 +673,11 @@ func (r *ServiceBindingReconciler) RunInformer(ctx context.Context, resource sch
 			}
 			var applicationResourceList []unstructured.Unstructured
 			applicationResource := future.(*unstructured.Unstructured)
-			if applicationResource.GetName() == constants.ApplicationAgentDeploymentName {
-				return
-			}
 			applicationResourceList = append(applicationResourceList, *applicationResource)
 			l.Info(fmt.Sprintf("application resource %v", applicationResourceList))
+			if !verifyApplicationSatisfiesServiceBindingSpec(applicationResource, serviceBinding) {
+				return
+			}
 			var psSecret *v1.Secret
 			if psSecret, err = r.GetSecret(ctx, serviceBinding, applicationResourceList); err != nil {
 				l.Error(err, "Informer AddEventHandler: Error retrieving secret")
@@ -694,24 +693,26 @@ func (r *ServiceBindingReconciler) RunInformer(ctx context.Context, resource sch
 				return
 			}
 			applicationResource := obj.(*unstructured.Unstructured)
-			if applicationResource.GetName() == constants.ApplicationAgentDeploymentName {
+			applications, _ := r.getApplication(ctx, serviceBinding)
+			if !verifyApplicationSatisfiesServiceBindingSpec(applicationResource, serviceBinding) {
 				return
 			}
-			applications, _ := r.getApplication(ctx, serviceBinding)
-			if len(applications) == 0 {
-				var sb primazaiov1alpha1.ServiceBinding
-				if err := r.Get(ctx, types.NamespacedName{Name: serviceBinding.Name, Namespace: serviceBinding.Namespace}, &sb); err == nil {
-					// applications are deleted, so setting the service binding status to false and reconcile
-					if errUpdateStatus := r.setStatus(ctx,
-						sb,
-						metav1.ConditionFalse,
-						conditionGetAppsFailureReason,
-						primazaiov1alpha1.ServiceBindingStateReady,
-						"application was bound with the secret but the application got deleted",
-						primazaiov1alpha1.ServiceBindingBoundCondition); errUpdateStatus != nil {
-						l.Error(errUpdateStatus, "error on updating status")
-						return
-					}
+
+			if len(applications) != 0 {
+				return
+			}
+			var sb primazaiov1alpha1.ServiceBinding
+			if err := r.Get(ctx, types.NamespacedName{Name: serviceBinding.Name, Namespace: serviceBinding.Namespace}, &sb); err == nil {
+				// applications are deleted, so setting the service binding status to false and reconcile
+				if errUpdateStatus := r.setStatus(ctx,
+					sb,
+					metav1.ConditionFalse,
+					conditionGetAppsFailureReason,
+					primazaiov1alpha1.ServiceBindingStateReady,
+					"application was bound with the secret but the application got deleted",
+					primazaiov1alpha1.ServiceBindingBoundCondition); errUpdateStatus != nil {
+					l.Error(errUpdateStatus, "error on updating status")
+					return
 				}
 			}
 		},
@@ -735,6 +736,21 @@ func (r *ServiceBindingReconciler) RunInformer(ctx context.Context, resource sch
 	synced.Store(true)
 
 	return nil
+}
+
+func verifyApplicationSatisfiesServiceBindingSpec(obj *unstructured.Unstructured, sb v1alpha1.ServiceBinding) bool {
+	switch {
+	case sb.Spec.Application.Name == obj.GetName():
+		return true
+	case sb.Spec.Application.Selector != nil:
+		for label, value := range obj.GetLabels() {
+			val, ok := sb.Spec.Application.Selector.MatchLabels[label]
+			return ok && value == val
+		}
+	default:
+		return false
+	}
+	return false
 }
 
 // SetupWithManager sets up the controller with the Manager.

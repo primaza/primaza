@@ -25,16 +25,16 @@ metadata:
   name: '{name}'
   namespace: {namespace}
   labels:
-    app: myapp
+    app: {label}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: myapp
+      app: {label}
   template:
     metadata:
       labels:
-        app: myapp
+        app: {label}
     spec:
       containers:
       - name: myapp
@@ -371,10 +371,10 @@ EOF"""
     def get_deployment_names_of_given_pattern(self, deployment_name_pattern, namespace):
         return self.search_resource_lst_in_namespace("deployment", deployment_name_pattern, namespace)
 
-    def new_app(self, name, image_name, namespace):
-        output, exit_code = self.cmd.run(f"{ctx.cli} apply -f -", self.deployment_template.format(name=name, image_name=image_name, namespace=namespace))
+    def new_app(self, name, image_name, namespace, label):
+        output, exit_code = self.cmd.run(f"{ctx.cli} apply -f -", self.deployment_template.format(name=name, image_name=image_name, namespace=namespace, label=label))  # noqa: E501
         assert exit_code == 0, f"Non-zero exit code ({exit_code}) returned when attempting to create a new app \n: {output}"
-        output, exit_code = self.cmd.run(f"{ctx.cli} wait --for=jsonpath=\'{{.status.phase}}\'=Running pod -l app=myapp -n {namespace} --timeout=60s")
+        output, exit_code = self.cmd.run(f"{ctx.cli} wait --for=jsonpath=\'{{.status.phase}}\'=Running pod -l app={label} -n {namespace} --timeout=60s")
         assert exit_code == 0, f"Non-zero exit code ({exit_code}) returned when waiting for new app to rollout \n: {output}"
 
     def set_label(self, name, label, namespace):
@@ -396,14 +396,14 @@ EOF"""
             f'{ctx.cli} wait --for=condition={condition}={value} {resource}/{name} --timeout={timeout}s -n {namespace}')
         assert exit_code == 0, f"Condition {condition}={value} for {resource}/{name} in {namespace} namespace was not met\n: {output}"
 
-    def check_file_content_from_myapp(self, namespace, file_path):
+    def check_file_content_from_myapp(self, namespace, label, file_path):
         output, exit_code = self.cmd.run(
-            f'{ctx.cli} exec $({ctx.cli} get pod -l app=myapp -n {namespace} -o name) -n {namespace} -- cat {file_path}')
+            f'{ctx.cli} exec $({ctx.cli} get pod -l app={label} -n {namespace} -o name) -n {namespace} -- cat {file_path}')
         return output
 
-    def file_exists_in_myapp(self, namespace, file_path):
+    def file_exists_in_myapp(self, namespace, file_path, label):
         output, exit_code = self.cmd.run(
-            f'{ctx.cli} exec $({ctx.cli} get pod -l app=myapp -n {namespace} -o name) -n {namespace} -- test -f {file_path}')
+            f'{ctx.cli} exec $({ctx.cli} get pod -l app={label} -n {namespace} -o name) -n {namespace} -- test -f {file_path}')
         return exit_code
 
 
@@ -592,24 +592,24 @@ def on_primaza_cluster_delete_registered_service(context, primaza_cluster, prima
         Kubernetes(kubeconfig=tf.name).delete_by_name("registeredservice", primaza_rs, "primaza-system")
 
 
-@step(u'On Primaza Cluster "{primaza_cluster}", test application "{app_name}" is running in namespace "{namespace}"')
-def application_is_running(context, primaza_cluster, app_name, namespace):
+@step(u'On Primaza Cluster "{primaza_cluster}", test application "{app_name}" with label "{label}" is running in namespace "{namespace}"')
+def application_is_running(context, primaza_cluster, app_name, namespace, label):
     with tempfile.NamedTemporaryFile() as tf:
         kubeconfig = context.cluster_provider.get_primaza_cluster(primaza_cluster).get_admin_kubeconfig()
         tf.write(kubeconfig.encode("utf-8"))
         tf.flush()
 
-        Kubernetes(kubeconfig=tf.name).new_app(app_name, "quay.io/service-binding/generic-test-app:20220216", namespace)
+        Kubernetes(kubeconfig=tf.name).new_app(app_name, "quay.io/service-binding/generic-test-app:20220216", namespace, label)
 
 
-@step(u'On Worker Cluster "{worker_cluster}", test application "{app_name}" is running in namespace "{namespace}"')
-def application_is_running_on_worker(context, worker_cluster, app_name, namespace):
+@step(u'On Worker Cluster "{worker_cluster}", test application "{app_name}" with label "{label}" is running in namespace "{namespace}"')
+def application_is_running_on_worker(context, worker_cluster, app_name, namespace, label):
     with tempfile.NamedTemporaryFile() as tf:
         kubeconfig = context.cluster_provider.get_worker_cluster(worker_cluster).get_admin_kubeconfig()
         tf.write(kubeconfig.encode("utf-8"))
         tf.flush()
 
-        Kubernetes(kubeconfig=tf.name).new_app(app_name, "quay.io/service-binding/generic-test-app:20220216", namespace)
+        Kubernetes(kubeconfig=tf.name).new_app(app_name, "quay.io/service-binding/generic-test-app:20220216", namespace, label)
 
 
 @step(u'On Primaza Cluster "{cluster}", namespace "{namespace}" exists')
@@ -622,32 +622,32 @@ def namespace_is_created_primaza_cluster(context, cluster, namespace):
         Kubernetes(kubeconfig=tf.name).create_namespace(namespace)
 
 
-@step(u'On Primaza Cluster "{cluster}", file "{file_path}" is unavailable in application pod running in namespace "{namespace}"')
-def check_file_unavailable(context, cluster, file_path, namespace):
+@step(u'On Primaza Cluster "{cluster}", file "{file_path}" is unavailable in application pod with label "{label}" running in namespace "{namespace}"')  # noqa: E501
+def check_file_unavailable(context, cluster, file_path, namespace, label):
     with tempfile.NamedTemporaryFile() as tf:
         kubeconfig = context.cluster_provider.get_primaza_cluster(cluster).get_admin_kubeconfig()
         tf.write(kubeconfig.encode("utf-8"))
         tf.flush()
-        exit_code = Kubernetes(kubeconfig=tf.name).file_exists_in_myapp(namespace, file_path)
+        exit_code = Kubernetes(kubeconfig=tf.name).file_exists_in_myapp(namespace, file_path, label)
         assert exit_code == 1
 
 
-@step(u'On Primaza Cluster "{cluster}", in demo application\'s pod running in namespace "{namespace}" file "{file_path}" has content "{content}"')
-def on_primaza_check_file_content(context, cluster, file_path, namespace, content):
+@step(u'On Primaza Cluster "{cluster}", in demo application\'s pod with label {label} running in namespace "{namespace}" file "{file_path}" has content "{content}"')  # noqa: E501
+def on_primaza_check_file_content(context, cluster, file_path, namespace, content, label):
     with tempfile.NamedTemporaryFile() as tf:
         kubeconfig = context.cluster_provider.get_primaza_cluster(cluster).get_admin_kubeconfig()
         tf.write(kubeconfig.encode("utf-8"))
         tf.flush()
-        polling2.poll(lambda: Kubernetes(kubeconfig=tf.name).check_file_content_from_myapp(namespace, file_path) == content, step=20, timeout=120)
+        polling2.poll(lambda: Kubernetes(kubeconfig=tf.name).check_file_content_from_myapp(namespace, label, file_path) == content, step=20, timeout=120)
 
 
-@step(u'On Worker Cluster "{cluster}", in demo application\'s pod running in namespace "{namespace}" file "{file_path}" has content "{content}"')
-def on_worker_cluster_check_file_available(context, cluster, file_path, namespace, content):
+@step(u'On Worker Cluster "{cluster}", in demo application\'s pod with label {label} running in namespace "{namespace}" file "{file_path}" has content "{content}"')  # noqa: E501
+def on_worker_cluster_check_file_available(context, cluster, file_path, namespace, content, label):
     with tempfile.NamedTemporaryFile() as tf:
         kubeconfig = context.cluster_provider.get_worker_cluster(cluster).get_admin_kubeconfig()
         tf.write(kubeconfig.encode("utf-8"))
         tf.flush()
-        polling2.poll(lambda: Kubernetes(kubeconfig=tf.name).check_file_content_from_myapp(namespace, file_path) == content, step=20, timeout=120)
+        polling2.poll(lambda: Kubernetes(kubeconfig=tf.name).check_file_content_from_myapp(namespace, label, file_path) == content, step=20, timeout=120)
 
 
 @step(u'On Worker Cluster "{cluster_name}", Resource "{resource_type}" with name "{resource_name}" exists in namespace "{namespace}"')
