@@ -153,7 +153,7 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		if strings.Contains(err.Error(), "admission webhook \"vserviceclaim.kb.io\" denied the request") {
 			c := metav1.Condition{
 				LastTransitionTime: metav1.NewTime(time.Now()),
-				Type:               primazaiov1alpha1.ServiceClaimConditionReady,
+				Type:               string(primazaiov1alpha1.ServiceClaimConditionReady),
 				Status:             metav1.ConditionFalse,
 				Reason:             constants.ValidationErrorReason,
 				Message:            err.Error(),

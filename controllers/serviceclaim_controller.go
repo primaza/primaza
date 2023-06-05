@@ -313,7 +313,7 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 	if !registeredServiceFound {
 		c := metav1.Condition{
 			LastTransitionTime: metav1.NewTime(time.Now()),
-			Type:               primazaiov1alpha1.ServiceClaimConditionReady,
+			Type:               string(primazaiov1alpha1.ServiceClaimConditionReady),
 			Status:             metav1.ConditionFalse,
 			Reason:             constants.NoMatchingServiceFoundReason,
 			Message:            "SCI is not matched",
@@ -334,7 +334,7 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 	if len(sclaim.Spec.ServiceEndpointDefinitionKeys) > count {
 		c := metav1.Condition{
 			LastTransitionTime: metav1.NewTime(time.Now()),
-			Type:               primazaiov1alpha1.ServiceClaimConditionReady,
+			Type:               string(primazaiov1alpha1.ServiceClaimConditionReady),
 			Status:             metav1.ConditionFalse,
 			Reason:             constants.NoMatchingServiceFoundReason,
 			Message:            "key not available in the list of SEDs",
