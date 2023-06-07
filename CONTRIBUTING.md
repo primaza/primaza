@@ -138,8 +138,7 @@ what we want.
 
 ### Docs
 
-* Include AsciiDoc [doc updates](docs/userguide) for user visible features
-* We use [Antora framework](https://docs.antora.org/antora/latest/) for AsciiDoc rendering 
+* We use [mdbook](https://rust-lang.github.io/mdBook/) for Markdown rendering
 * Spelling and grammar should be correct
 * Try to make formatting look as good as possible (use preview mode to check, i.e. render the content locally using `make site`)
 * Should explain thoroughly how the new feature works
