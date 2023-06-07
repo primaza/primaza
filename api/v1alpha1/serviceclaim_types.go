@@ -20,10 +20,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type ServiceClaimApplicationClusterContext struct {
-	ClusterEnvironmentName string `json:"clusterEnvironmentName"`
-	Namespace              string `json:"namespace"`
-}
+type ServiceClaimState string
+
+const (
+	ServiceClaimConditionReady ServiceClaimState = "Ready"
+	ServiceClaimStatePending   ServiceClaimState = "Pending"
+	ServiceClaimStateResolved  ServiceClaimState = "Resolved"
+	ServiceClaimStateInvalid   ServiceClaimState = "Invalid"
+)
 
 // ServiceClaimSpec defines the desired state of ServiceClaim
 type ServiceClaimSpec struct {
@@ -45,9 +49,10 @@ type ServiceClaimSpec struct {
 	ApplicationClusterContext *ServiceClaimApplicationClusterContext `json:"applicationClusterContext,omitempty"`
 }
 
-const (
-	ServiceClaimConditionReady = "Ready"
-)
+type ServiceClaimApplicationClusterContext struct {
+	ClusterEnvironmentName string `json:"clusterEnvironmentName"`
+	Namespace              string `json:"namespace"`
+}
 
 // ServiceClaimStatus defines the observed state of ServiceClaim
 type ServiceClaimStatus struct {
@@ -58,14 +63,6 @@ type ServiceClaimStatus struct {
 	RegisteredService string             `json:"registeredService"`
 	Conditions        []metav1.Condition `json:"conditions,omitempty"`
 }
-
-type ServiceClaimState string
-
-const (
-	ServiceClaimStatePending  ServiceClaimState = "Pending"
-	ServiceClaimStateResolved ServiceClaimState = "Resolved"
-	ServiceClaimStateInvalid  ServiceClaimState = "Invalid"
-)
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
