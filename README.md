@@ -1,65 +1,24 @@
-# Primaza
+# :knot: Primaza
 
-## Multi Cluster Service Consumption Framework
+Primaza is a multi-cluster Service Consumption Framework.
+Primaza is namespace-scoped and does not required any resource at cluster level other than its CRDs.
 
-### The Problem
-- Modern application stacks are increasingly complex
-- Managing connections to all your supporting Services becomes more and more challenging… and that’s before you introduce additional clouds and hybrid environments
-- No platform enables easy consumption of hybrid cloud services
-- Needed to provide Scalability, Security and Portability
-- Previous solutions (OSBAPI, Service Binding, etc.) gained moderate traction
-  - Replace one complexity with another
-  - Heavyweight, onerous, exacting implementations
-- Customers are left to implement ad-hoc solutions
-- Manual steps to provision and consume cloud service (not scalable)
-- Custom IaC to provide the scale required (boilerplate imperative code)
-- Too much time spent on non-value added activities
+With Primaza you can create Primaza Tenants and link namespaces from multiple clusters.
+These namespaces can be configured to allow primaza to Discover Services and/or Bind Services to applications.
 
-### The Solution
+Tenants are isolated and can be logically separated in Environments.
+Environments are isolated from a point of view of a non-admin user.
+Finally, services can be configured to be shared across Environments.
 
-- Separated logical environments that can span across different kubernetes clusters
-- An automatically collated Catalog that appropriately exposes available Services to Applications
-- Leverages industry best practices to securely deliver service endpoint data to applications
-- A platform that enables hybrid cloud services consumption in a portable, secured and scalable way
+Please refer to [:blue_book: The Primaza Book](https://www.primaza.io) for a detailed explanation of internals.
 
-### Benefits to Service Providers
+For an easy setup of a Primaza tenant, please take a look at [primazactl](https://github.com/primaza/primazactl).
 
-- No action required!
-- Continue to focus on delivering their cloud service with well-defined APIs
-- Continue to work with Service Kubernetes APIs and Controllers
-
-### Benefits to Administrators
-
-- Automatic addition of services to the catalog (via Service Class) - manual catalog management still possible (via Registered Service)
-- Service Classes are easy to create, and can be built by the service provider, administrators, or third-parties
-- Popular Service Classes delivered by Primaza out of the box
-
-### Benefits to Developer
-- Service Catalog makes it easy to discover new services and see what is available in the environment
-- Developers can automatically and easily claim services from the catalog
-- Claims can be requested for multiple environments (CI/CD capable)
-- Developers can discover/learn via provided sandbox
-
-## Implementation
-
-[Primaza's architecture](./docs/book/src/architecture/architecture.md) is composed by the following elements:
-- Primaza control plane: manages environments, services and claims
-- Application agents: binds applications to services
-- Service agents: discover services
+![image](docs/book/src/imgs/tenant-environments-view.png)
 
 
-Primaza defines the following entities and controllers to provide the above described features.
+## Contributing and Code of Conduct
 
-Entities:
-* [Cluster Environment](./docs/book/src/entities/clusterenvironment.md): represents an development environment on a kubernetes Cluster.
-* [Registered Service](./docs/book/src/entities/registeredservice.md): represents running instance of a software service.
-* [Service Binding](./docs/book/src/entities/servicebinding.md): projects secrets referenced by ServiceBinding resources to application compute resources.
-* [Service Class](./docs/book/src/entities/serviceclass.md): defines how a registered service can be automatically generated from a service
-* [Service Claim](./docs/book/src/entities/serviceclaim.md): represents a claim for Registered Service.
-* [Service Catalog](./docs/book/src/entities/servicecatalog.md): represents group of Registered Services.
+Discussions on new features happens in the [:left_speech_bubble: Repository's Discussions](https://github.com/primaza/primaza/discussions), feel free to contribute.
 
-Controllers:
-* Discovery Controller
-* Claiming Controller
-* Binding Controller
-
+Also, refer to [CONTRIBUTING.md](./CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for contribution rules.
