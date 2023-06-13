@@ -30,7 +30,10 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/google/uuid"
 	"github.com/primaza/primaza/api/v1alpha1"
@@ -115,17 +118,14 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	case "":
 		sclaim.Status.ClaimID = uuid.New().String()
 		l.Info("reconciling new service claim")
-		return ctrl.Result{}, r.processPendingClaim(ctx, req, sclaim)
-	case primazaiov1alpha1.ServiceClaimStatePending:
-		l.Info("reconciling pending service claim")
-		return ctrl.Result{}, r.processPendingClaim(ctx, req, sclaim)
+		return ctrl.Result{}, r.processClaim(ctx, req, sclaim)
 	default:
-		l.Info("reconciling resolved service claim")
-		return ctrl.Result{}, nil
+		l.Info("reconciling resolved and pending service claim")
+		return ctrl.Result{}, r.processClaim(ctx, req, sclaim)
 	}
 }
 
-func (r *ServiceClaimReconciler) processPendingClaim(ctx context.Context, req ctrl.Request, sclaim primazaiov1alpha1.ServiceClaim) error {
+func (r *ServiceClaimReconciler) processClaim(ctx context.Context, req ctrl.Request, sclaim primazaiov1alpha1.ServiceClaim) error {
 	l := log.FromContext(ctx)
 
 	var rsl primazaiov1alpha1.RegisteredServiceList
@@ -488,7 +488,40 @@ func (r *ServiceClaimReconciler) DeleteServiceBindingsAndSecret(
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ServiceClaimReconciler) SetupWithManager(mgr ctrl.Manager) error {
+
+	genPred := predicate.GenerationChangedPredicate{}
+	reconcileOnRegisteredServiceUpdate := func(ctx context.Context, a client.Object) []reconcile.Request {
+		l := log.FromContext(ctx)
+		rs, ok := a.(*v1alpha1.RegisteredService)
+		if !ok {
+			l.Info("error parsing object to RegisteredService when mapping to ServiceClaim reconciliation trigger", "object", a)
+			return []reconcile.Request{}
+		}
+		if rs.Status.State != `Claimed` {
+			l.Info("Registered service is unclaimed, no service claim to reconcile", "registered-service", rs.Name)
+			return []reconcile.Request{}
+		}
+		serviceclaims := &v1alpha1.ServiceClaimList{}
+		opts := &client.ListOptions{}
+		if err := r.List(ctx, serviceclaims, opts); err != nil {
+			l.Error(err,
+				"unable to list the ServiceClaims and reconcile for Registered Service Updates",
+				"RegisteredService", rs.Name)
+			return []reconcile.Request{}
+		}
+		for _, sc := range serviceclaims.Items {
+			if sc.Status.State == "Resolved" && sc.Status.RegisteredService == rs.Name {
+				return []reconcile.Request{{NamespacedName: types.NamespacedName{
+					Namespace: sc.Namespace,
+					Name:      sc.Name,
+				}}}
+			}
+		}
+		return []reconcile.Request{}
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&primazaiov1alpha1.ServiceClaim{}).
+		Watches(&primazaiov1alpha1.RegisteredService{}, handler.EnqueueRequestsFromMapFunc(reconcileOnRegisteredServiceUpdate)).
+		WithEventFilter(genPred).
 		Complete(r)
 }
