@@ -14,4 +14,4 @@
     - [Service Class](./entities/serviceclass.md)
     - [Service Claim](./entities/serviceclaim.md)
     - [Service Catalog](./entities/servicecatalog.md)
-
+- [Releases](./releases.md)

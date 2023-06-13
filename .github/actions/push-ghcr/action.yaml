@@ -1,0 +1,52 @@
+name: 'Create and publish Docker images'
+description: 'Creates a publishes the Primaza''s Docker images for Control Plane, Application Agent, and Service Agent'
+
+inputs:
+  registry:
+    description: 'The Docker registry to use'
+    required: false
+    default: ghcr.io
+  image_basename:
+    description: |
+      'Image base name. It will be used as it is for Control Plane,
+      suffixed for "-appagent" and "-svcagent" for Application Agent
+      and Service Agent respectively'
+    required: false
+    default: ${{ github.repository }}
+  image_tag:
+    description: 'The Docker image tag'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: 'Build Primaza Docker image'
+      shell: bash
+      run: |
+        DOCKER_BUILD_ARGS="--label org.opencontainers.image.source=https://github.com/${{ github.repository }} -t ${IMG}" \
+          make primaza docker-build
+      env:
+        IMG: ${{ inputs.registry }}/${{ inputs.image_basename }}:${{ inputs.image_tag }}
+
+    - name: 'Build AgentApp Docker image'
+      shell: bash
+      run: |
+        DOCKER_BUILD_ARGS="--label org.opencontainers.image.source=https://github.com/${{ github.repository }} -t ${IMG}" \
+          make agentapp docker-build
+      env:
+        IMG: ${{ inputs.registry }}/${{ inputs.image_basename }}-agentapp:${{ inputs.image_tag }}
+
+    - name: 'Build AgentSvc Docker image'
+      shell: bash
+      run: |
+        DOCKER_BUILD_ARGS="--label org.opencontainers.image.source=https://github.com/${{ github.repository }} -t ${IMG}" \
+          make agentsvc docker-build
+      env:
+        IMG: ${{ inputs.registry }}/${{ inputs.image_basename }}-agentsvc:${{ inputs.image_tag }}
+
+    - name: 'Push Docker images'
+      shell: bash
+      run: |
+        docker push ${{ inputs.registry }}/${{ inputs.image_basename }}:${{ inputs.image_tag }}
+        docker push ${{ inputs.registry }}/${{ inputs.image_basename }}-agentapp:${{ inputs.image_tag }}
+        docker push ${{ inputs.registry }}/${{ inputs.image_basename }}-agentsvc:${{ inputs.image_tag }}

@@ -20,7 +20,7 @@ jobs:
       packages: write
 
     steps:
-      - name: Log in to the Container registry
+      - name: 'Log in to the Container registry'
         uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc
         with:
           registry: ${{ env.REGISTRY }}
@@ -30,44 +30,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Build Primaza Docker image
+      - name: Set Version and Manifests
         run: |
-          IMG="${IMG_BASE}:$(git rev-parse --short HEAD)" \
-            DOCKER_BUILD_ARGS="--label org.opencontainers.image.source=https://github.com/${{ github.repository }} -t ${IMG_BASE}:latest" \
-            make primaza docker-build
-        env:
-          IMG_BASE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          echo "COMMIT_ID=$(git rev-parse --short $GITHUB_SHA)" >> $GITHUB_ENV
 
-      - name: Build AgentApp Docker image
-        run: |
-          IMG="${IMG_BASE}:$(git rev-parse --short HEAD)" \
-            DOCKER_BUILD_ARGS="--label org.opencontainers.image.source=https://github.com/${{ github.repository }} -t ${IMG_BASE}:latest" \
-            make agentapp docker-build
-        env:
-          IMG_BASE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-agentapp
+      - name: 'Build and Push Images with tag COMMIT_ID'
+        uses: ./.github/actions/push-ghcr
+        with:
+          registry: ${{ env.REGISTRY }}
+          image_basename: ${{ env.IMAGE_NAME }}
+          image_tag: ${{ env.COMMIT_ID }}
 
-      - name: Build AgentSvc Docker image
-        run: |
-          IMG="${IMG_BASE}:$(git rev-parse --short HEAD)" \
-            DOCKER_BUILD_ARGS="--label org.opencontainers.image.source=https://github.com/${{ github.repository }} -t ${IMG_BASE}:latest" \
-            make agentsvc docker-build
-        env:
-          IMG_BASE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-agentsvc
-
-      - name: Push Docker images
-        run: |
-          set -e
-
-          # push built images
-          docker push "$IMG_BASE_PRIMAZA:$(git rev-parse --short HEAD)"
-          docker push "$IMG_BASE_AGENTSVC:$(git rev-parse --short HEAD)"
-          docker push "$IMG_BASE_AGENTAPP:$(git rev-parse --short HEAD)"
-
-          # push latest tag for currently built images
-          docker push "$IMG_BASE_PRIMAZA:latest"
-          docker push "$IMG_BASE_AGENTSVC:latest"
-          docker push "$IMG_BASE_AGENTAPP:latest"
-        env:
-          IMG_BASE_PRIMAZA: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          IMG_BASE_AGENTAPP: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-agentapp
-          IMG_BASE_AGENTSVC: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-agentsvc
+      - name: 'Build and Push Images with tag latest'
+        uses: ./.github/actions/push-ghcr
+        with:
+          registry: ${{ env.REGISTRY }}
+          image_basename: ${{ env.IMAGE_NAME }}
+          image_tag: latest
