@@ -89,12 +89,19 @@ def ensure_primaza_cluster_has_clustercontext(context, primaza_cluster_name: str
 
 @step(u'On Primaza Cluster "{primaza_cluster_name}", the status of ServiceClaim "{service_claim_name}" is "{status}"')
 def ensure_status_of_service_claim(context, primaza_cluster_name: str, service_claim_name: str, status: str, tenant: str = "primaza-system"):
-    primaza_cluster = context.cluster_provider.get_primaza_cluster(primaza_cluster_name)
+    primaza_cluster = context.cluster_provider.get_primaza_cluster(primaza_cluster_name)  # type: PrimazaCluster
     group = "primaza.io"
     version = "v1alpha1"
     plural = "serviceclaims"
-    response = primaza_cluster.read_custom_resource_status(group, version, plural, service_claim_name, tenant)
-    assert response["status"]["state"] == status
+    polling2.poll(
+        target=lambda: primaza_cluster.read_custom_resource_status(group, version, plural, service_claim_name, tenant),
+        ignore_exceptions=(ApiException,),
+        step=1,
+        timeout=60,
+        check_success=lambda response: "status" in response.keys() and
+                                       "state" in response["status"].keys() and
+                                       response["status"]["state"] == status
+    )
 
 
 @step(u'On Primaza Cluster "{primaza_cluster_name}", the secret "{secret_name}" in namespace "{namespace}" has the key "{key}" with value "{value}"')
