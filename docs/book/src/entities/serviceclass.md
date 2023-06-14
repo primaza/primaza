@@ -24,26 +24,26 @@ For more information on how to use these properties, refer to the [Registered Se
 ### `resource` field
 
 The `resource`'s ServiceClass field contains all the information needed for identifying the resources it refers to, i.e. `apiVersion` and `kind`.
-Also, it contains the rules for extracting the Service Endpoint Definition secret data, i.e. `serviceEndpointDefinitionMappings`.
+It also contains the rules for extracting the Service Endpoint Definition secret data, i.e. `serviceEndpointDefinitionMappings`.
 
 Mapping rules apply to the resource specification (`resourceFields`) or to a secret (`secretRefFields`).
 
-To extract data from the resource, you define an entry in the `resourceFields` list.
+To extract data from the resource, add an entry to the `resourceFields` list.
 Each entry contains the following properties:
 * `name`: is used as the key in the Registered Service's Service Endpoint Definition
 * `jsonPath`: a JSONPath rule to extract the value for the current Service Endpoint Definition key
 * `secret`: declares whether this field should be stored in a secret of if it can be embedded in the Registered Service specification
 
-To extract data from a secret, you define an entry in the `secretRefFields` list.
+To extract data from a secret, add an entry to the `secretRefFields` list.
 Data extracted from a secret is always stored in a new secret.
 Each entry contains the following properties:
 * `name`: is used as the key in the Registered Service's Service Endpoint Definition
 * `secretName`: represents the name of the secret to look for.
-  It that has the following two mutually exclusive sub-properties:
+  It also contains two mutually exclusive sub-properties:
     * `jsonPath`: a JSONPath rule to extract the name of the secret from the resource specification
     * `constant`: a constant value for the secret name
 * `secretKey`: represents the secret's key to use.
-  It has the following two mutually exclusive sub-properties:
+  It contains two mutually exclusive sub-properties:
     * `jsonPath`: a JSONPath rule to extract the key of the secret from the resource specification
     * `constant`: a constant value for the secret name
 
