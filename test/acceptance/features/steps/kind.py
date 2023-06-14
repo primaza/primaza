@@ -85,11 +85,6 @@ server: https:\\/\\/$(docker container inspect {self.cluster_name}-control-plane
         assert exit_code == 0, f"error retrieving kubeconfig for cluster '{self.cluster_name}'"
         return output
 
-    def ipaddress(self):
-        output, exit_code = self.exec(f'docker container inspect {self.cluster_name}-control-plane --format {{{{.NetworkSettings.Networks.kind.IPAddress}}}}')
-        assert exit_code == 0, f"error retrieving kubeconfig for cluster '{self.cluster_name}'"
-        return output
-
 
 class PrimazaKind(PrimazaCluster):
     __controller_image: str = get_env("PRIMAZA_CONTROLLER_IMAGE_REF")
