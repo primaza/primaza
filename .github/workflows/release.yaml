@@ -1,0 +1,140 @@
+name: Release primaza
+
+on:  # yamllint disable-line rule:truthy
+  push:
+    tags:
+    - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Primaza release version"
+        required: true
+        default: "latest"
+
+permissions:
+  contents: write
+
+env:
+  GO111MODULE: "on"
+  GO_VERSION: "^1.20"
+  OUT_DIR: ./out/workflow
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    name: Release Primaza
+    runs-on: ubuntu-20.04
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Set Version and Manifests
+        run: |
+          # set version based on dispatch type
+          version="latest"
+          if [[ "${{github.event_name}}" == "workflow_dispatch" ]]; then
+            version=${{ github.event.inputs.version }}
+          elif [[ "${{github.ref_type}}" == "tag" ]]; then
+            version=${{ github.ref_name }}
+          fi
+          echo "VERSION=$version" >> $GITHUB_ENV
+          echo "CONTROL_PLANE_CONFIG_FILE=control_plane_config_$version.yaml" >> $GITHUB_ENV
+          echo "CRDS_CONFIG_FILE=crds_config_$version.yaml" >> $GITHUB_ENV
+          echo "APPLICATION_NAMESPACE_CONFIG_FILE=application_namespace_config_$version.yaml" >> $GITHUB_ENV
+          echo "SERVICE_NAMESPACE_CONFIG_FILE=service_namespace_config_$version.yaml" >> $GITHUB_ENV
+
+      - name: 'Log in to the Container registry'
+        uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Output folder
+        run: mkdir -p ${{ env.OUT_DIR }}
+
+      - name: Delete previous release and tag
+        if: ${{ env.VERSION == 'latest' }}
+        uses: dev-drprasad/delete-tag-and-release@v0.2.1
+        with:
+          delete_release: true # default: false
+          tag_name: ${{ env.VERSION }} # tag name to delete
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 'Build and Push Images'
+        uses: ./.github/actions/push-ghcr
+        with:
+          registry: ${{ env.REGISTRY }}
+          image_basename: ${{ env.IMAGE_NAME }}
+          image_tag: ${{ env.VERSION }}
+
+      - name: 'Make manifests'
+        run: make manifests
+
+      - name: 'Build manifests: Primaza'
+        run: |
+          ( cd config/manager && \
+            kustomize edit set image primaza-controller=${IMG} && \
+            kustomize edit add configmap manager-config \
+              --behavior merge --disableNameSuffixHash \
+              --from-literal agentapp-image=$(IMG_APP) \
+              --from-literal agentsvc-image=$(IMG_SVC) )
+          kustomize build config/default > ${{ env.OUT_DIR }}/${{ env.CONTROL_PLANE_CONFIG_FILE }}
+        env:
+          IMG: ghcr.io/primaza/primaza:${{ env.VERSION }}
+          IMG_APP: ghcr.io/primaza/primaza-agentapp:${{ env.VERSION }}
+          IMG_SVC: ghcr.io/primaza/primaza-agentsvc:${{ env.VERSION }}
+
+      - name: 'Build manifests: CRDs'
+        run: |
+          kustomize build config/crd > ${{ env.OUT_DIR }}/${{ env.CRDS_CONFIG_FILE }}
+        env:
+          IMG: ghcr.io/primaza/primaza:${{ env.VERSION }}
+
+      - name: 'Build manifests: Application Agent'
+        run: |
+          kustomize build config/agents/app/namespace > ${{ env.OUT_DIR }}/${{ env.APPLICATION_NAMESPACE_CONFIG_FILE }}
+
+      - name: 'Build manifests: Service Agent'
+        run: |
+          kustomize build \
+            --load-restrictor LoadRestrictionsNone \
+            config/agents/svc/namespace > ${{ env.OUT_DIR }}/${{ env.SERVICE_NAMESPACE_CONFIG_FILE }}
+
+      - name: Release for tag event
+        if: ${{ github.ref_type == 'tag' }}
+        uses: softprops/action-gh-release@v1
+        with:
+          body: "Release version ${{ env.VERSION }}"
+          draft: true
+          generate_release_notes: true
+          files: |
+            ${{ env.OUT_DIR }}/${{ env.CONTROL_PLANE_CONFIG_FILE }}
+            ${{ env.OUT_DIR }}/${{ env.CRDS_CONFIG_FILE }}
+            ${{ env.OUT_DIR }}/${{ env.APPLICATION_NAMESPACE_CONFIG_FILE }}
+            ${{ env.OUT_DIR }}/${{ env.SERVICE_NAMESPACE_CONFIG_FILE }}
+
+      - name: Release for non tag events
+        if: ${{ github.ref_type != 'tag' }}
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.VERSION }}
+          body: "Release version ${{ env.VERSION }}"
+          draft: true
+          generate_release_notes: true
+          files: |
+            ${{ env.OUT_DIR }}/${{ env.CONTROL_PLANE_CONFIG_FILE }}
+            ${{ env.OUT_DIR }}/${{ env.CRDS_CONFIG_FILE }}
+            ${{ env.OUT_DIR }}/${{ env.APPLICATION_NAMESPACE_CONFIG_FILE }}
+            ${{ env.OUT_DIR }}/${{ env.SERVICE_NAMESPACE_CONFIG_FILE }}
