@@ -15,15 +15,12 @@ ACCEPTANCE_TEST_TARGETS := test-acceptance test-acceptance-dr test-acceptance-x 
 
 $(ACCEPTANCE_TEST_TARGETS): ensure-agentsvc-image ensure-agentapp-image ensure-controller-image
 
-ifeq ($(origin PRIMAZA_CONTROLLER_IMAGE_REF), undefined)
-export PRIMAZA_CONTROLLER_IMAGE_REF = primaza-controller:latest
-endif
-ifeq ($(origin PRIMAZA_AGENTAPP_IMAGE_REF), undefined)
-export PRIMAZA_AGENTAPP_IMAGE_REF = agentapp:latest
-endif
-ifeq ($(origin PRIMAZA_AGENTSVC_IMAGE_REF), undefined)
-export PRIMAZA_AGENTSVC_IMAGE_REF ?= agentsvc:latest
-endif
+PRIMAZA_CONTROLLER_IMAGE_REF ?= primaza-controller:latest
+PRIMAZA_AGENTAPP_IMAGE_REF ?= agentapp:latest
+PRIMAZA_AGENTSVC_IMAGE_REF ?= agentsvc:latest
+export PRIMAZA_CONTROLLER_IMAGE_REF
+export PRIMAZA_AGENTAPP_IMAGE_REF
+export PRIMAZA_AGENTSVC_IMAGE_REF
 
 .PHONY: ensure-controller-image
 ensure-controller-image:
