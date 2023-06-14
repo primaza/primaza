@@ -165,22 +165,8 @@ func (r *ClusterEnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 	}
 
-	// get cluster config
-	cfg, err := clustercontext.GetClusterRESTConfig(ctx, r.Client, ce.Namespace, ce.Spec.ClusterContextSecret)
+	cfg, err := r.retrieveClusterContextSecret(ctx, ce)
 	if err != nil {
-		if errors.Is(err, clustercontext.ErrSecretNotFound) {
-			c := workercluster.ConnectionStatus{
-				State:   primazaiov1alpha1.ClusterEnvironmentStateOffline,
-				Reason:  ClientCreationErrorReason,
-				Message: fmt.Sprintf("error creating the client: %s", err),
-			}
-			r.updateClusterEnvironmentStatus(ctx, ce, c)
-			if err := r.Client.Status().Update(ctx, ce); err != nil {
-				l.Error(err, "error updating cluster environment status", "status", ce.Status)
-				return ctrl.Result{}, err
-			}
-		}
-
 		return ctrl.Result{}, err
 	}
 
@@ -232,6 +218,97 @@ func (r *ClusterEnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *ClusterEnvironmentReconciler) retrieveClusterContextSecret(
+	ctx context.Context,
+	ce *v1alpha1.ClusterEnvironment,
+) (*rest.Config, error) {
+	// get cluster config and ensure OwnerReference is set
+	ces, err := r.getClusterContextSecret(ctx, ce)
+	if err != nil {
+		return nil, err
+	}
+
+	r.ensureOwnershipOfClusterContextSecret(ctx, ce, ces)
+
+	cfg, err := r.extractClusterContextRESTConfig(ctx, ce, ces)
+	if err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+func (r *ClusterEnvironmentReconciler) ensureOwnershipOfClusterContextSecret(
+	ctx context.Context,
+	ce *v1alpha1.ClusterEnvironment,
+	s *corev1.Secret,
+) {
+	logError := func(err error) {
+		l := log.FromContext(ctx)
+		l.Info("error setting owner reference on ClusterContext secret",
+			"cluster-environment", ce.Name,
+			"secret", ce.Spec.ClusterContextSecret,
+			"error", err)
+	}
+
+	if err := controllerutil.SetControllerReference(ce, s, r.Scheme); err != nil {
+		logError(err)
+		return
+	}
+
+	if err := r.Client.Update(ctx, s); err != nil {
+		logError(err)
+	}
+}
+
+func (r *ClusterEnvironmentReconciler) extractClusterContextRESTConfig(
+	ctx context.Context,
+	ce *v1alpha1.ClusterEnvironment,
+	s *corev1.Secret,
+) (*rest.Config, error) {
+	l := log.FromContext(ctx)
+
+	cfg, err := clustercontext.ExtractClusterRESTConfig(s)
+	if err != nil {
+		c := workercluster.ConnectionStatus{
+			State:   primazaiov1alpha1.ClusterEnvironmentStateOffline,
+			Reason:  ClientCreationErrorReason,
+			Message: fmt.Sprintf("error creating the client: %s", err),
+		}
+		r.updateClusterEnvironmentStatus(ctx, ce, c)
+		if err := r.Client.Status().Update(ctx, ce); err != nil {
+			l.Error(err, "error updating cluster environment status", "status", ce.Status)
+			return nil, err
+		}
+
+		return nil, err
+	}
+	return cfg, nil
+}
+
+func (r *ClusterEnvironmentReconciler) getClusterContextSecret(
+	ctx context.Context,
+	ce *v1alpha1.ClusterEnvironment,
+) (*corev1.Secret, error) {
+	l := log.FromContext(ctx)
+
+	s, err := clustercontext.GetClusterContextSecret(ctx, r.Client, ce)
+	if err != nil {
+		c := workercluster.ConnectionStatus{
+			State:   primazaiov1alpha1.ClusterEnvironmentStateOffline,
+			Reason:  ClientCreationErrorReason,
+			Message: fmt.Sprintf("error retrieving the ClusterContext secret: %s", err),
+		}
+		r.updateClusterEnvironmentStatus(ctx, ce, c)
+		if err := r.Client.Status().Update(ctx, ce); err != nil {
+			l.Error(err, "error updating cluster environment status", "status", ce.Status)
+			return nil, err
+		}
+
+		return nil, err
+	}
+	return s, nil
 }
 
 func (r *ClusterEnvironmentReconciler) runInformers(ctx context.Context, cfg *rest.Config, ce *v1alpha1.ClusterEnvironment, fsnn, fann []string) error {
@@ -690,5 +767,6 @@ func (r *ClusterEnvironmentReconciler) finalizeClusterEnvironmentInNamespaces(ct
 func (r *ClusterEnvironmentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&primazaiov1alpha1.ClusterEnvironment{}).
+		Owns(&corev1.Secret{}).
 		Complete(r)
 }

@@ -64,7 +64,11 @@ func GetClusterRESTConfig(ctx context.Context, cli client.Client, secretNamespac
 		return nil, err
 	}
 
-	return clientcmd.RESTConfigFromKubeConfig(s.Data["kubeconfig"])
+	return ExtractClusterRESTConfig(s)
+}
+
+func ExtractClusterRESTConfig(secret *corev1.Secret) (*rest.Config, error) {
+	return clientcmd.RESTConfigFromKubeConfig(secret.Data["kubeconfig"])
 }
 
 func getSecret(ctx context.Context, cli client.Client, secretNamespace, secretName string) (*corev1.Secret, error) {
@@ -78,4 +82,8 @@ func getSecret(ctx context.Context, cli client.Client, secretNamespace, secretNa
 	}
 
 	return s, nil
+}
+
+func GetClusterContextSecret(ctx context.Context, cli client.Client, ce *primazaiov1alpha1.ClusterEnvironment) (*corev1.Secret, error) {
+	return getSecret(ctx, cli, ce.Namespace, ce.Spec.ClusterContextSecret)
 }
