@@ -40,6 +40,18 @@ Feature: ClusterEnvironment's Healthchecks
         Then On Primaza Cluster "main", ClusterEnvironment "worker" state will eventually move to "Offline"
         And On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "Online" has Reason "ErrorDuringHealthCheck"
 
+    Scenario: Status change for ClusterEnvironment: ClusterContextSecret is updated incorrectly
+        When On Primaza Cluster "main", "secret" named "primaza-kw" in "primaza-system" is patched
+        """
+        {
+            "data": {
+                "kubeconfig": ""
+            }
+        }
+        """
+        Then On Primaza Cluster "main", ClusterEnvironment "worker" state will eventually move to "Offline"
+        And On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "Online" has Reason "ErrorDuringHealthCheck"
+
     Scenario: Status change for ClusterEnvironment: Worker cluster is deleted
         When Worker Cluster "worker" is deleted
         Then On Primaza Cluster "main", ClusterEnvironment "worker" state will eventually move to "Offline"
