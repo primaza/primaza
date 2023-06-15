@@ -55,3 +55,11 @@ func GetAgentSvcRequiredPermissions() []authz.ResourcePermissions {
 		},
 	}
 }
+
+func GetAppPermissionList() []authz.Permission {
+	return authz.AppPermissionList
+}
+
+func GetSvcPermissionList() []authz.Permission {
+	return authz.SvcPermissionList
+}

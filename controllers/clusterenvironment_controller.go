@@ -172,12 +172,19 @@ func (r *ClusterEnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	// test connection
 	if err := r.testConnection(ctx, cfg, ce); err != nil {
+		l.Error(err, "error testing connection")
 		return ctrl.Result{}, err
+	}
+
+	// check excess permissions
+	if err := r.checkExcessPermissions(ctx, cfg, ce); err != nil {
+		l.Error(err, "excess permission check failed")
 	}
 
 	// test permissions
 	fann, fsnn, err := r.testNamespacesPermissions(ctx, cfg, ce)
 	if err != nil {
+		l.Error(err, "error testing namespaces permissions")
 		return ctrl.Result{}, err
 	}
 
@@ -400,6 +407,11 @@ func (r *ClusterEnvironmentReconciler) MonitorHealth(ctx context.Context, ns str
 				}
 			}
 
+			// check excess permissions
+			if err := r.checkExcessPermissions(ctx, cfg, ce); err != nil {
+				l.Error(err, "Excess permission check failed")
+			}
+
 			// if tests passed commit status changes made by above tests
 			if err := r.Client.Status().Update(ctx, ce); err != nil {
 				l.Error(err, "error updating cluster environment status", "status", ce.Status)
@@ -532,6 +544,50 @@ func (r *ClusterEnvironmentReconciler) reconcileApplicationNamespaces(ctx contex
 	errcm := r.reconcileServiceBindingApplicationNamespaces(ctx, cfg, ce, nns)
 	errct := r.reconcileServiceCatalogApplicationNamespaces(ctx, cfg, ce, nns)
 	return errors.Join(errcm, errct)
+}
+
+func (r *ClusterEnvironmentReconciler) checkExcessPermissions(ctx context.Context, cfg *rest.Config, ce *primazaiov1alpha1.ClusterEnvironment) error {
+	l := log.FromContext(ctx)
+	errs := []error{}
+
+	// check application namespaces permissions
+	apc := controlplane.NewAgentAppPermissionsChecker(cfg)
+	if ep, err := apc.CheckExcessPermission(ctx, ce.Spec.ApplicationNamespaces); err != nil {
+		errs = append(errs, err)
+	} else if len(ep) > 0 {
+		m := metav1.Condition{
+			Type:    "ExcessPermissions",
+			Reason:  "ExcessPermissions",
+			Message: "More permissions than required granted for Application Namespaces",
+			Status:  "True",
+		}
+
+		meta.SetStatusCondition(&ce.Status.Conditions, m)
+		if err := r.Client.Status().Update(ctx, ce); err != nil {
+			l.Error(err, "error updating cluster environment status", "status", ce.Status)
+			errs = append(errs, err)
+		}
+	}
+
+	// check service namespaces permissions
+	spc := controlplane.NewAgentSvcPermissionsChecker(cfg)
+	if ep, err := spc.CheckExcessPermission(ctx, ce.Spec.ServiceNamespaces); err != nil {
+		errs = append(errs, err)
+	} else if len(ep) > 0 {
+		m := metav1.Condition{
+			Type:    "ExcessPermissions",
+			Reason:  "ExcessPermissions",
+			Message: "More permissions than required granted for Service Namespaces",
+			Status:  "False",
+		}
+
+		meta.SetStatusCondition(&ce.Status.Conditions, m)
+		if err := r.Client.Status().Update(ctx, ce); err != nil {
+			l.Error(err, "error updating cluster environment status", "status", ce.Status)
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
 }
 
 func (r *ClusterEnvironmentReconciler) testNamespacesPermissions(ctx context.Context, cfg *rest.Config, ce *primazaiov1alpha1.ClusterEnvironment) ([]string, []string, error) {
