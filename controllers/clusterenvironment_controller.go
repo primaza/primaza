@@ -341,7 +341,7 @@ func (r *ClusterEnvironmentReconciler) MonitorHealth(ctx context.Context, ns str
 			ce := &(ceList.Items[i])
 
 			// get cluster config
-			cfg, err := clustercontext.GetClusterRESTConfig(ctx, r.Client, ce.Namespace, ce.Spec.ClusterContextSecret)
+			cfg, err := r.retrieveClusterContextSecret(ctx, ce)
 			if err != nil {
 				if errors.Is(err, clustercontext.ErrSecretNotFound) {
 					c := workercluster.ConnectionStatus{
@@ -354,6 +354,19 @@ func (r *ClusterEnvironmentReconciler) MonitorHealth(ctx context.Context, ns str
 						l.Error(err, "error updating cluster environment status", "status", ce.Status)
 					}
 				}
+			}
+			if cfg == nil {
+				l.Info("Not running healthchecks for ClusterEnvironment: empty kubeconfig from ClusterContext Secret", "ClusterEnvironment", ce.Name)
+				c := workercluster.ConnectionStatus{
+					State:   primazaiov1alpha1.ClusterEnvironmentStateOffline,
+					Reason:  ErrorDuringHealthCheckReason,
+					Message: "kubeclient config is empty",
+				}
+				r.updateClusterEnvironmentStatus(ctx, ce, c)
+				if err := r.Client.Status().Update(ctx, ce); err != nil {
+					l.Error(err, "error updating cluster environment status", "status", ce.Status)
+				}
+				continue
 			}
 
 			// test connection
@@ -735,7 +748,7 @@ func (r *ClusterEnvironmentReconciler) CreateServiceCatalog(ctx context.Context,
 }
 
 func (r *ClusterEnvironmentReconciler) finalizeClusterEnvironmentInNamespaces(ctx context.Context, ce *primazaiov1alpha1.ClusterEnvironment) error {
-	kcfg, err := clustercontext.GetClusterRESTConfig(ctx, r.Client, ce.Namespace, ce.Spec.ClusterContextSecret)
+	kcfg, err := r.retrieveClusterContextSecret(ctx, ce)
 	if err != nil {
 		return err
 	}
