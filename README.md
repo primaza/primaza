@@ -10,7 +10,7 @@ Tenants are isolated and can be logically separated in Environments.
 Environments are isolated from a point of view of a non-admin user.
 Finally, services can be configured to be shared across Environments.
 
-Please refer to [:blue_book: The Primaza Book](https://www.primaza.io) for a detailed explanation of internals.
+Please refer to [:blue_book: The Primaza Book](https://www.primaza.io) for a detailed explanation of internals and for [Tutorials](https://www.primaza.io/tutorials/tutorials.html).
 
 For an easy setup of a Primaza tenant, please take a look at [primazactl](https://github.com/primaza/primazactl).
 

@@ -1,0 +1,15 @@
+version: '3.9'
+services:
+  mdbook:
+    build:
+      dockerfile: Dockerfile
+      context: .
+      args:
+        MDBOOK_VERSION: ${MDBOOK_VERSION:-v0.4.30}
+    volumes:
+      - ../../hack/tutorials:/primaza/hack/tutorials:ro
+      - ../../docs/book:/primaza/docs/book
+    user: ${ID:-0}
+    working_dir: /primaza/docs/book
+    command:
+      - build
