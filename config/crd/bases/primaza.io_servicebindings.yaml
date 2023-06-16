@@ -111,9 +111,9 @@ spec:
                 - apiVersion
                 - kind
                 type: object
-              env:
-                description: Env creates environment variables based on the Secret
-                  values
+              envs:
+                description: Envs declares environment variables based on the ServiceEndpointDefinitionSecret
+                  to be projected into the application
                 items:
                   description: Environment represents a key to Secret data keys and
                     name of the environment variable

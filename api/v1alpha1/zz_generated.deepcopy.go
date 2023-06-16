@@ -442,8 +442,8 @@ func (in *ServiceBindingList) DeepCopyObject() runtime.Object {
 func (in *ServiceBindingSpec) DeepCopyInto(out *ServiceBindingSpec) {
 	*out = *in
 	in.Application.DeepCopyInto(&out.Application)
-	if in.Env != nil {
-		in, out := &in.Env, &out.Env
+	if in.Envs != nil {
+		in, out := &in.Envs, &out.Envs
 		*out = make([]Environment, len(*in))
 		copy(*out, *in)
 	}
@@ -678,6 +678,11 @@ func (in *ServiceClaimSpec) DeepCopyInto(out *ServiceClaimSpec) {
 		in, out := &in.ApplicationClusterContext, &out.ApplicationClusterContext
 		*out = new(ServiceClaimApplicationClusterContext)
 		**out = **in
+	}
+	if in.Envs != nil {
+		in, out := &in.Envs, &out.Envs
+		*out = make([]Environment, len(*in))
+		copy(*out, *in)
 	}
 }
 

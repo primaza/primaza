@@ -47,6 +47,10 @@ type ServiceClaimSpec struct {
 	EnvironmentTag string `json:"environmentTag,omitempty"`
 	// +optional
 	ApplicationClusterContext *ServiceClaimApplicationClusterContext `json:"applicationClusterContext,omitempty"`
+
+	// Envs allows projecting Service Endpoint Definition's data as Environment Variables in the Pod
+	// +optional
+	Envs []Environment `json:"envs,omitempty"`
 }
 
 type ServiceClaimApplicationClusterContext struct {

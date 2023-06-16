@@ -419,6 +419,17 @@ func (r *ServiceBindingReconciler) getApplication(ctx context.Context,
 	return applications, nil
 }
 
+func removeServiceBindingEnvironments(envList []v1.EnvVar, sb primazaiov1alpha1.ServiceBinding) []v1.EnvVar {
+	var envListCopy []v1.EnvVar
+	for _, val := range envList {
+		if val.ValueFrom != nil && val.ValueFrom.SecretKeyRef != nil &&
+			val.ValueFrom.SecretKeyRef.Name != sb.Spec.ServiceEndpointDefinitionSecret {
+			envListCopy = append(envListCopy, val)
+		}
+	}
+	return envListCopy
+}
+
 func (r *ServiceBindingReconciler) updateContainerInfo(ctx context.Context, containers []interface{}, sb primazaiov1alpha1.ServiceBinding, mountPathDir, volumeName string, psSecret *v1.Secret) error {
 
 	l := log.FromContext(ctx)
@@ -431,13 +442,24 @@ func (r *ServiceBindingReconciler) updateContainerInfo(ctx context.Context, cont
 			return err
 		}
 
-		for _, e := range sb.Spec.Env {
-			c.Env = append(c.Env, v1.EnvVar{
-				Name:  e.Name,
-				Value: string(psSecret.Data[e.Key]),
-			})
-
+		// first remove the present environment variables
+		c.Env = removeServiceBindingEnvironments(c.Env, sb)
+		// update environment variables
+		for _, e := range sb.Spec.Envs {
+			env := v1.EnvVar{
+				Name: e.Name,
+				ValueFrom: &v1.EnvVarSource{
+					SecretKeyRef: &v1.SecretKeySelector{
+						Key: e.Key,
+						LocalObjectReference: v1.LocalObjectReference{
+							Name: psSecret.Name,
+						},
+					},
+				},
+			}
+			c.Env = append(c.Env, env)
 		}
+
 		mountPath := ""
 		for _, e := range c.Env {
 			if e.Name == ServiceBindingRoot {
@@ -484,7 +506,7 @@ func (r *ServiceBindingReconciler) updateContainerInfo(ctx context.Context, cont
 
 }
 
-func (r *ServiceBindingReconciler) removeVolumeMountFromContainer(ctx context.Context, sb primazaiov1alpha1.ServiceBinding, containers []interface{}, volumeName, mountPathDir, secretName string) error {
+func (r *ServiceBindingReconciler) removeBindingInformationFromContainer(ctx context.Context, sb primazaiov1alpha1.ServiceBinding, containers []interface{}, volumeName, mountPathDir, secretName string) error {
 	l := log.FromContext(ctx)
 	for i := range containers {
 		container := &containers[i]
@@ -500,12 +522,13 @@ func (r *ServiceBindingReconciler) removeVolumeMountFromContainer(ctx context.Co
 				c.VolumeMounts = append(c.VolumeMounts[:i], c.VolumeMounts[i+1:]...)
 			}
 		}
+
 		for i, env := range c.Env {
 			if env.Name == ServiceBindingRoot {
 				c.Env = append(c.Env[:i], c.Env[(i+1):]...)
 			}
 		}
-
+		c.Env = removeServiceBindingEnvironments(c.Env, sb)
 		nu, err := runtime.DefaultUnstructuredConverter.ToUnstructured(c)
 		if err != nil {
 			return err
@@ -516,7 +539,7 @@ func (r *ServiceBindingReconciler) removeVolumeMountFromContainer(ctx context.Co
 	return nil
 }
 
-func (r *ServiceBindingReconciler) removeVolumeMount(ctx context.Context, sb primazaiov1alpha1.ServiceBinding, application unstructured.Unstructured, volumeName, mountPathDir, secretName string) error {
+func (r *ServiceBindingReconciler) removeVolumeMountAndEnvironment(ctx context.Context, sb primazaiov1alpha1.ServiceBinding, application unstructured.Unstructured, volumeName, mountPathDir, secretName string) error {
 	l := log.FromContext(ctx)
 	l.Info("Prepare removing application mounting")
 
@@ -564,7 +587,7 @@ func (r *ServiceBindingReconciler) removeVolumeMount(ctx context.Context, sb pri
 		}
 
 		l.Info("remove volume mounts from containers", "containers", containers)
-		if err = r.removeVolumeMountFromContainer(ctx, sb, containers, mountPathDir, volumeName, secretName); err != nil {
+		if err = r.removeBindingInformationFromContainer(ctx, sb, containers, mountPathDir, volumeName, secretName); err != nil {
 			return err
 		}
 
@@ -590,7 +613,7 @@ func (r *ServiceBindingReconciler) unbindApplications(ctx context.Context,
 	mountPathDir := serviceBinding.Name
 	secretName := serviceBinding.Spec.ServiceEndpointDefinitionSecret
 	for _, application := range applications {
-		err := r.removeVolumeMount(ctx, serviceBinding, application, volumeName, mountPathDir, secretName)
+		err := r.removeVolumeMountAndEnvironment(ctx, serviceBinding, application, volumeName, mountPathDir, secretName)
 		if err != nil {
 			el = append(el, err)
 		}

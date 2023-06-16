@@ -77,7 +77,16 @@ func (v *serviceClaimValidator) validate(r *ServiceClaim) (admission.Warnings, e
 
 func (v *serviceClaimValidator) validateUpdate(old *ServiceClaim, new *ServiceClaim) error {
 
-	if !reflect.DeepEqual(old.Spec, new.Spec) {
+	if new.Spec.ApplicationClusterContext != nil && new.Spec.EnvironmentTag != "" {
+		return fmt.Errorf("Both ApplicationClusterContext and EnvironmentTag cannot be used together")
+	}
+	if new.Spec.ApplicationClusterContext == nil && new.Spec.EnvironmentTag == "" {
+		return fmt.Errorf("Both ApplicationClusterContext and EnvironmentTag cannot be empty")
+	}
+	if new.Spec.Application.Name != "" && new.Spec.Application.Selector != nil {
+		return fmt.Errorf("Both Application name and Application selector cannot be used together")
+	}
+	if !reflect.DeepEqual(old.Spec.ServiceClassIdentity, new.Spec.ServiceClassIdentity) || !reflect.DeepEqual(old.Spec.ServiceEndpointDefinitionKeys, new.Spec.ServiceEndpointDefinitionKeys) {
 		return fmt.Errorf("Service Claim's Service Class Identity or Service Endpoint Definition Keys are not meant to be updated, Please delete the existing service claim")
 	}
 	return nil

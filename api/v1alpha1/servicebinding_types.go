@@ -38,8 +38,10 @@ type ServiceBindingSpec struct {
 	// +required
 	Application ApplicationSelector `json:"application"`
 
-	// Env creates environment variables based on the Secret values
-	Env []Environment `json:"env,omitempty"`
+	// Envs declares environment variables based on the ServiceEndpointDefinitionSecret to be
+	// projected into the application
+	// +optional
+	Envs []Environment `json:"envs,omitempty"`
 }
 
 // Environment represents a key to Secret data keys and name of the environment variable
