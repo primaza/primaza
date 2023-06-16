@@ -15,15 +15,12 @@ ACCEPTANCE_TEST_TARGETS := test-acceptance test-acceptance-dr test-acceptance-x 
 
 $(ACCEPTANCE_TEST_TARGETS): ensure-agentsvc-image ensure-agentapp-image ensure-controller-image
 
-ifeq ($(origin PRIMAZA_CONTROLLER_IMAGE_REF), undefined)
-export PRIMAZA_CONTROLLER_IMAGE_REF = primaza-controller:latest
-endif
-ifeq ($(origin PRIMAZA_AGENTAPP_IMAGE_REF), undefined)
-export PRIMAZA_AGENTAPP_IMAGE_REF = agentapp:latest
-endif
-ifeq ($(origin PRIMAZA_AGENTSVC_IMAGE_REF), undefined)
-export PRIMAZA_AGENTSVC_IMAGE_REF ?= agentsvc:latest
-endif
+PRIMAZA_CONTROLLER_IMAGE_REF ?= primaza-controller:latest
+PRIMAZA_AGENTAPP_IMAGE_REF ?= agentapp:latest
+PRIMAZA_AGENTSVC_IMAGE_REF ?= agentsvc:latest
+export PRIMAZA_CONTROLLER_IMAGE_REF
+export PRIMAZA_AGENTAPP_IMAGE_REF
+export PRIMAZA_AGENTSVC_IMAGE_REF
 
 .PHONY: ensure-controller-image
 ensure-controller-image:
@@ -37,7 +34,7 @@ endif
 	@echo "using $(PRIMAZA_CONTROLLER_IMAGE_REF) as primaza controller"
 
 .PHONY: ensure-agentapp-image
-ensure-agentapp-image:
+ensure-agentapp-image: yq
 ifeq ($(origin PRIMAZA_AGENTAPP_IMAGE_REF), file)
 	$(MAKE) agentapp docker-build IMG=$(PRIMAZA_AGENTAPP_IMAGE_REF)
 else
@@ -46,9 +43,10 @@ ifneq ($(origin PULL_IMAGES), undefined)
 endif
 endif
 	@echo "using $(PRIMAZA_AGENTAPP_IMAGE_REF) as application agent"
+	@$(YQ) eval --inplace ".data.agentapp-image = \"$(PRIMAZA_AGENTAPP_IMAGE_REF)\"" config/manager/configmap.yaml
 
 .PHONY: ensure-agentsvc-image
-ensure-agentsvc-image:
+ensure-agentsvc-image: yq
 ifeq ($(origin PRIMAZA_AGENTSVC_IMAGE_REF), file)
 	$(MAKE) agentsvc docker-build IMG=$(PRIMAZA_AGENTSVC_IMAGE_REF)
 else
@@ -57,6 +55,7 @@ ifneq ($(origin PULL_IMAGES), undefined)
 endif
 endif
 	@echo "using $(PRIMAZA_AGENTSVC_IMAGE_REF) as service agent"
+	@$(YQ) eval --inplace ".data.agentsvc-image = \"$(PRIMAZA_AGENTSVC_IMAGE_REF)\"" config/manager/configmap.yaml
 
 .PHONY: setup-venv
 setup-venv: ## Setup virtual environment

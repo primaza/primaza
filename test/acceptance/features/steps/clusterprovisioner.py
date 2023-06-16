@@ -27,9 +27,3 @@ class ClusterProvisioner(object):
         returns the admin kubeconfig
         """
         pass
-
-    def ipaddress(self) -> str:
-        """
-        returns the kubernetes cluster IP address
-        """
-        pass
