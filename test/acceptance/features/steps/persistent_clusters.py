@@ -312,6 +312,7 @@ class PersistentWorkerCluster(WorkerCluster):
                 patch = '{"metadata": {"finalizers": []}}'
                 cmd.run(f'kubectl delete -n {namespace} {resource} --force --timeout=60s')
                 cmd.run(f'kubectl patch -n {namespace} {resource} -p \'{patch}\' --type=merge')
+
         resourcelist = ",".join(resources)
         out, err = cmd.run(f"kubectl delete -n {namespace} {resourcelist} --all --ignore-not-found")
         assert err == 0, "failed to run command!"
