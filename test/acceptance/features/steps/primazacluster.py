@@ -27,7 +27,7 @@ class PrimazaCluster(Cluster):
         super().start()
         self.install_primaza()
 
-    def create_clustercontext_secret(self, secret_name: str, kubeconfig: str):
+    def create_clustercontext_secret(self, secret_name: str, kubeconfig: str, owner: dict | None = None):
         """
         Creates the Primaza's ClusterContext secret
         """
@@ -45,6 +45,14 @@ class PrimazaCluster(Cluster):
         secret = client.V1Secret(
             metadata=client.V1ObjectMeta(name=secret_name),
             string_data={"kubeconfig": kubeconfig})
+
+        if owner is not None:
+            secret.metadata.owner_references = [client.V1OwnerReference(
+                api_version=owner["apiVersion"],
+                kind=owner["kind"],
+                name=owner["metadata"]["name"],
+                uid=owner["metadata"]["uid"])]
+
         corev1.create_namespaced_secret(namespace=namespace, body=secret)
 
 
@@ -63,7 +71,13 @@ def ensure_primaza_cluster_has_worker_clustercontext(
     worker_cluster = context.cluster_provider.get_worker_cluster(worker_cluster_name)
 
     cc_kubeconfig = worker_cluster.get_primaza_sa_kubeconfig_yaml(tenant, ce_name)
-    primaza_cluster.create_clustercontext_secret(secret_name, cc_kubeconfig)
+    ce = None
+    try:
+        ce = primaza_cluster.read_custom_object(tenant, "primaza.io", "v1alpha1", "clusterenvironments", ce_name)
+    except ApiException as e:
+        if e.reason != "Not Found":
+            raise e
+    primaza_cluster.create_clustercontext_secret(secret_name, cc_kubeconfig, ce)
 
 
 @given('On Primaza Cluster "{primaza_cluster_name}", an invalid Worker "{worker_cluster_name}"\'s ClusterContext secret "{secret_name}" for ClusterEnvironment "{ce_name}" is published')  # noqa: e501
