@@ -41,6 +41,8 @@ Please refer to https://github.com/servicebinding/spec#reconciler-implementation
 #### Claiming from Primaza's Control Plane Namespace
 
 When a ServiceClaim is created in Primaza's Control Plane's Namespace, Primaza builds the ServiceBinding and Service Endpoint Definition Secrets and pushes them resources to all the application namespaces of matching ClusterEnvironments.
+The ServiceClaim controller in Primaza Control Plane watches RegisteredService resources.
+Any change made to `ServiceEndpointDefinition` values in RegisteredService are propogated to the secret and ServiceBinding resource in application namespace by Primaza.
 
 #### Claiming from Application Namespace
 
