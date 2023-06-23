@@ -15,10 +15,3 @@
 help: ## Display this help
 	@awk -v t=$(TARGET) 'BEGIN {if (length(t) != 0) s=" "; printf "\nUsage:\n make %s%s\033[36m<target>\033[0m\n", t, s }'
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-30s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
-
-
-MDBOOK_VERSION ?= v0.4.28
-
-.PHONY: book
-book: ## builds The Primaza Book
-	docker run --rm -v $(PROJECT_DIR)/docs/book:/book -w /book -u $$(id -u):$$(id -g) peaceiris/mdbook:$(MDBOOK_VERSION) build

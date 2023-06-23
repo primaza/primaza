@@ -6,6 +6,7 @@ $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
 ## Tool Binaries
+PRIMAZACTL ?= $(LOCALBIN)/primazactl
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
@@ -16,6 +17,12 @@ KUSTOMIZE_VERSION ?= v4.5.7
 CONTROLLER_TOOLS_VERSION ?= v0.11.3
 CERTMANAGER_VERSION ?= v1.11.1
 YQ_VERSION ?= v4
+PRIMAZACTL_VERSION ?= latest
+
+.PHONY: primazactl
+primazactl: $(PRIMAZACTL) ## Download primazactl locally if necessary.
+$(PRIMAZACTL): $(LOCALBIN)
+	test -s $(PRIMAZACTL) || { curl -sSL https://github.com/primaza/primazactl/releases/download/$(PRIMAZACTL_VERSION)/primazactl -o $(PRIMAZACTL) && chmod +x $(PRIMAZACTL); }
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 .PHONY: kustomize
