@@ -26,6 +26,6 @@ updates:
       interval: weekly
 
   - package-ecosystem: docker
-    directory: "deploy/"
+    directory: "deploy/**/*"
     schedule:
       interval: weekly
