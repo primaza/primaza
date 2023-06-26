@@ -120,6 +120,24 @@ spec:
                 description: EnvironmentTag allows the controller to search for those
                   application cluster environments that define such EnvironmentTag
                 type: string
+              envs:
+                description: Envs allows projecting Service Endpoint Definition's
+                  data as Environment Variables in the Pod
+                items:
+                  description: Environment represents a key to Secret data keys and
+                    name of the environment variable
+                  properties:
+                    key:
+                      description: Secret data key
+                      type: string
+                    name:
+                      description: Name of the environment variable
+                      type: string
+                  required:
+                  - key
+                  - name
+                  type: object
+                type: array
               serviceClassIdentity:
                 description: ServiceClassIdentity defines a set of attributes that
                   are sufficient to identify a service class.  A ServiceClaim whose

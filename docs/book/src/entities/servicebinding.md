@@ -28,6 +28,9 @@ The ServiceBinding's specification contains the following **required** propertie
   A ServiceBinding **MAY** define the application reference by name or by label selector.
   Name and label selector are mutually exclusive.
 
+The ServiceBinding's specification also contains the following **optional** property:
+- `envs`: Envs declares environment variables based on the        ServiceEndpointDefinitionSecret to be projected into the application
+
 ## Status
 
 The ServiceBinding's status contains the properties `state` and `conditions`.
@@ -50,6 +53,7 @@ The `conditions` list of the service binding contains the following properties:
 ### Creation
 
 When a ServiceBinding is created, the secret referenced by the ServiceBinding itself will be projected into all the matching applications.
+The EnvironmentVariables `envs` declared in the specification will also be projected to the matching application pods.
 Matching applications are calculated as defined at in the section [Specification](#specification)
 
 ### Deletion
