@@ -114,13 +114,21 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		}
 	}
 
+	l.Info("reconciling service claim", "service-claim", sclaim)
 	switch sclaim.Status.State {
 	case "":
 		sclaim.Status.ClaimID = uuid.New().String()
 		l.Info("reconciling new service claim")
 		return ctrl.Result{}, r.processClaim(ctx, req, sclaim)
+	case primazaiov1alpha1.ServiceClaimStateResolved:
+		l.Info("reconciling Resolved service claim")
+		if err := r.processResolvedServiceClaim(ctx, sclaim); err != nil {
+			l.Error(err, "error processing Resolved ServiceClaim")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
 	default:
-		l.Info("reconciling resolved and pending service claim")
+		l.Info("reconciling Pending and marked for deletion service claim")
 		return ctrl.Result{}, r.processClaim(ctx, req, sclaim)
 	}
 }
@@ -135,9 +143,8 @@ func (r *ServiceClaimReconciler) processClaim(ctx context.Context, req ctrl.Requ
 		return client.IgnoreNotFound(err)
 	}
 
-	err := r.processServiceClaim(ctx, req, rsl, sclaim)
-	if err != nil {
-		l.Error(err, "unable while processing ServiceClaim")
+	if err := r.processServiceClaim(ctx, rsl, sclaim); err != nil {
+		l.Error(err, "error processing ServiceClaim")
 		return err
 	}
 	return nil
@@ -203,7 +210,7 @@ func checkSCISubset(serviceClaim, registeredService []v1alpha1.ServiceClassIdent
 
 func (r *ServiceClaimReconciler) extractServiceEndpointDefinition(
 	ctx context.Context,
-	req ctrl.Request,
+	namespace string,
 	rs v1alpha1.RegisteredService,
 	sedKeys []string,
 	secret *corev1.Secret) (int, error) {
@@ -223,7 +230,7 @@ func (r *ServiceClaimReconciler) extractServiceEndpointDefinition(
 		} else if k := sed.ValueFromSecret.Key; k != "" { // check value if the key is non-empty
 			if slices.ItemContains(sedKeys, sed.Name) {
 				sec := &corev1.Secret{}
-				nn := types.NamespacedName{Namespace: req.Namespace, Name: sed.ValueFromSecret.Name}
+				nn := types.NamespacedName{Namespace: namespace, Name: sed.ValueFromSecret.Name}
 				if err := r.Get(ctx, nn, sec); err != nil {
 					l.Info("unable to retrieve Secret", "error", err, "secret", nn)
 					continue
@@ -237,7 +244,7 @@ func (r *ServiceClaimReconciler) extractServiceEndpointDefinition(
 	return count, nil
 }
 
-func (r *ServiceClaimReconciler) changeServiceState(ctx context.Context, rs primazaiov1alpha1.RegisteredService, state string) error {
+func (r *ServiceClaimReconciler) changeServiceState(ctx context.Context, rs primazaiov1alpha1.RegisteredService, state primazaiov1alpha1.RegisteredServiceState) error {
 	rs.Status.State = state
 	if err := r.Status().Update(ctx, &rs); err != nil {
 		return err
@@ -248,11 +255,11 @@ func (r *ServiceClaimReconciler) changeServiceState(ctx context.Context, rs prim
 
 func (r *ServiceClaimReconciler) getEnvironmentFromClusterEnvironment(
 	ctx context.Context,
-	req ctrl.Request,
+	namespace string,
 	clusterEnvironmentName string) (*primazaiov1alpha1.ClusterEnvironment, error) {
 	l := log.FromContext(ctx)
 	ce := &primazaiov1alpha1.ClusterEnvironment{}
-	objectKey := types.NamespacedName{Name: clusterEnvironmentName, Namespace: req.NamespacedName.Namespace}
+	objectKey := types.NamespacedName{Name: clusterEnvironmentName, Namespace: namespace}
 	if err := r.Get(ctx, objectKey, ce); err != nil {
 		l.Info("unable to retrieve ClusterEnvironment", "error", err)
 		return nil, client.IgnoreNotFound(err)
@@ -261,16 +268,97 @@ func (r *ServiceClaimReconciler) getEnvironmentFromClusterEnvironment(
 	return ce, nil
 }
 
+func (r *ServiceClaimReconciler) getServiceEndpointDefinition(
+	ctx context.Context,
+	sclaim primazaiov1alpha1.ServiceClaim,
+	rs primazaiov1alpha1.RegisteredService,
+) (*corev1.Secret, error) {
+	l := log.FromContext(ctx)
+
+	secret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      sclaim.Name,
+			Namespace: sclaim.Namespace,
+		},
+		StringData: map[string]string{},
+	}
+
+	// extract Service Endpoint Definition
+	if _, err := r.extractServiceEndpointDefinition(
+		ctx, sclaim.Namespace, rs, sclaim.Spec.ServiceEndpointDefinitionKeys, &secret); err != nil {
+		l.Error(err, "error extracting ServiceEndpointDefinition",
+			"registered-service", rs, "service-claim", sclaim)
+		return nil, err
+	}
+
+	// ServiceClassIdentity values are going to override
+	// any values in the secret resource
+	for _, sci := range sclaim.Spec.ServiceClassIdentity {
+		secret.StringData[sci.Name] = sci.Value
+	}
+
+	return &secret, nil
+}
+
+func (r *ServiceClaimReconciler) processResolvedServiceClaim(
+	ctx context.Context,
+	sclaim primazaiov1alpha1.ServiceClaim) error {
+	l := log.FromContext(ctx)
+
+	// retrieve already bound RegisteredService
+	var rs primazaiov1alpha1.RegisteredService
+	k := types.NamespacedName{Name: sclaim.Status.RegisteredService, Namespace: sclaim.Namespace}
+	if err := r.Get(ctx, k, &rs, &client.GetOptions{}); err != nil {
+		l.Info("error retrieving the RegisteredService", "error", err, "registered-service", k)
+		return err
+	}
+
+	// bake the ServiceEndpointDefinition Secret
+	secret, err := r.getServiceEndpointDefinition(ctx, sclaim, rs)
+	if err != nil {
+		l.Error(err, "error baking the ServiceEndpointDefinition", "registered-service", rs, "service-claim", sclaim)
+		return err
+	}
+
+	// Update RegisteredService status to Claimed to avoid raise conditions
+	if err := r.changeServiceState(ctx, rs, primazaiov1alpha1.RegisteredServiceStateClaimed); err != nil {
+		l.Error(err, "error updating the RegisteredService", "registered-service", rs, "service-claim", sclaim)
+		return err
+	}
+
+	if err := r.pushToClusterEnvironments(ctx, sclaim, secret); err != nil {
+		l.Error(err,
+			"error pushing the ServiceBinding and secret to the cluster environments",
+			"registered-service", rs, "service-claim", sclaim)
+		// Update RegisteredService status back to Available
+		if err := r.changeServiceState(ctx, rs, primazaiov1alpha1.RegisteredServiceStateAvailable); err != nil {
+			l.Error(err,
+				"error updating the RegisteredService with details on failed push of Service Binding",
+				"registered-service", rs, "service-claim", sclaim)
+		}
+		return err
+	}
+
+	sclaim.Status.State = primazaiov1alpha1.ServiceClaimStateResolved
+	sclaim.Status.RegisteredService = rs.Name
+	if err := r.Status().Update(ctx, &sclaim); err != nil {
+		l.Error(err, "error updating the ServiceClaim",
+			"registered-service", rs, "service-claim", sclaim)
+		return err
+	}
+
+	return nil
+}
+
 func (r *ServiceClaimReconciler) processServiceClaim(
 	ctx context.Context,
-	req ctrl.Request,
 	rsl primazaiov1alpha1.RegisteredServiceList,
 	sclaim primazaiov1alpha1.ServiceClaim) error {
 	l := log.FromContext(ctx)
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      req.NamespacedName.Name,
-			Namespace: req.NamespacedName.Namespace,
+			Name:      sclaim.Name,
+			Namespace: sclaim.Namespace,
 		},
 		StringData: map[string]string{},
 	}
@@ -283,7 +371,7 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 	env := sclaim.Spec.EnvironmentTag
 	if sclaim.Spec.ApplicationClusterContext != nil {
 		var err error
-		ce, err := r.getEnvironmentFromClusterEnvironment(ctx, req, sclaim.Spec.ApplicationClusterContext.ClusterEnvironmentName)
+		ce, err := r.getEnvironmentFromClusterEnvironment(ctx, sclaim.Namespace, sclaim.Spec.ApplicationClusterContext.ClusterEnvironmentName)
 		if err != nil {
 			l.Error(err, "unable to get environment from cluster environment")
 			return err
@@ -293,6 +381,11 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 	}
 
 	for _, rs := range rsl.Items {
+		// Check if the registered Service is Available
+		if rs.Status.State != primazaiov1alpha1.RegisteredServiceStateAvailable {
+			continue
+		}
+
 		// Check if the ServiceClassIdentity given in ServiceClaim is a subset of
 		// ServiceClassIdentity given in the RegisteredService
 		if checkSCISubset(sclaim.Spec.ServiceClassIdentity, rs.Spec.ServiceClassIdentity) &&
@@ -301,7 +394,8 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 			registeredServiceFound = true
 			registeredService = rs
 			var err error
-			count, err = r.extractServiceEndpointDefinition(ctx, req, rs, sclaim.Spec.ServiceEndpointDefinitionKeys, secret)
+			count, err = r.extractServiceEndpointDefinition(
+				ctx, sclaim.Namespace, rs, sclaim.Spec.ServiceEndpointDefinitionKeys, secret)
 			if err != nil {
 				l.Error(err, "unable to extract SED")
 				return err
@@ -320,7 +414,7 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 		}
 		meta.SetStatusCondition(&sclaim.Status.Conditions, c)
 
-		sclaim.Status.State = "Pending"
+		sclaim.Status.State = primazaiov1alpha1.ServiceClaimStatePending
 		if err := r.Status().Update(ctx, &sclaim); err != nil {
 			l.Error(err, "unable to update the ServiceClaim", "ServiceClaim", sclaim)
 			return err
@@ -341,7 +435,7 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 		}
 		meta.SetStatusCondition(&sclaim.Status.Conditions, c)
 
-		sclaim.Status.State = "Pending"
+		sclaim.Status.State = primazaiov1alpha1.ServiceClaimStatePending
 		if err := r.Status().Update(ctx, &sclaim); err != nil {
 			l.Error(err, "unable to update the ServiceClaim", "ServiceClaim", sclaim)
 			return err
@@ -362,7 +456,7 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 		return err
 	}
 
-	err := r.pushToClusterEnvironments(ctx, req, sclaim, secret)
+	err := r.pushToClusterEnvironments(ctx, sclaim, secret)
 	if err != nil {
 		l.Error(err, "error pushing to cluster environments")
 		// Update RegisteredService status back to Available
@@ -372,7 +466,7 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 		return client.IgnoreNotFound(err)
 	}
 
-	sclaim.Status.State = "Resolved"
+	sclaim.Status.State = primazaiov1alpha1.ServiceClaimStateResolved
 	sclaim.Status.RegisteredService = registeredService.Name
 	if err := r.Status().Update(ctx, &sclaim); err != nil {
 		l.Error(err, "unable to update the ServiceClaim", "ServiceClaim", sclaim)
@@ -384,7 +478,6 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 
 func (r *ServiceClaimReconciler) pushToClusterEnvironments(
 	ctx context.Context,
-	req ctrl.Request,
 	sclaim primazaiov1alpha1.ServiceClaim,
 	secret *corev1.Secret,
 ) error {
@@ -392,7 +485,7 @@ func (r *ServiceClaimReconciler) pushToClusterEnvironments(
 	errs := []error{}
 	if sclaim.Spec.ApplicationClusterContext != nil {
 		var err error
-		ce, err := r.getEnvironmentFromClusterEnvironment(ctx, req, sclaim.Spec.ApplicationClusterContext.ClusterEnvironmentName)
+		ce, err := r.getEnvironmentFromClusterEnvironment(ctx, sclaim.Namespace, sclaim.Spec.ApplicationClusterContext.ClusterEnvironmentName)
 		if err != nil {
 			l.Info("error getting ClusterEnvironment", "error", err)
 			return err
@@ -446,7 +539,7 @@ func (r *ServiceClaimReconciler) DeleteServiceBindingsAndSecret(
 
 	if sclaim.Spec.ApplicationClusterContext != nil {
 		var err error
-		ce, err := r.getEnvironmentFromClusterEnvironment(ctx, req, sclaim.Spec.ApplicationClusterContext.ClusterEnvironmentName)
+		ce, err := r.getEnvironmentFromClusterEnvironment(ctx, sclaim.Namespace, sclaim.Spec.ApplicationClusterContext.ClusterEnvironmentName)
 		if err != nil {
 			l.Info("error getting ClusterEnvironment", "error", err)
 			return err
@@ -510,7 +603,7 @@ func (r *ServiceClaimReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return []reconcile.Request{}
 		}
 		for _, sc := range serviceclaims.Items {
-			if sc.Status.State == "Resolved" && sc.Status.RegisteredService == rs.Name {
+			if sc.Status.State == primazaiov1alpha1.ServiceClaimStateResolved && sc.Status.RegisteredService == rs.Name {
 				return []reconcile.Request{{NamespacedName: types.NamespacedName{
 					Namespace: sc.Namespace,
 					Name:      sc.Name,
