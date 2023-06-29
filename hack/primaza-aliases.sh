@@ -89,6 +89,14 @@ alias pclo="kubectl logs -f -n primaza-system -l control-plane=controller-manage
 alias pwclo="__primaza_wait_for_controller_logs"
 alias pmgpo="kubectl get pods -n primaza-system --kubeconfig=<(__primaza_get_kind_kubeconfig main)"
 alias pmgce="kubectl get clusterenvironments -n primaza-system --kubeconfig=<(__primaza_get_kind_kubeconfig main)"
+alias pmgrs="kubectl get registeredservices -n primaza-system --kubeconfig <(__primaza_get_kind_kubeconfig main)"
+alias pmgsg="kubectl get servicecatalog -n primaza-system --kubeconfig <(__primaza_get_kind_kubeconfig main)"
+alias pmgss="kubectl get serviceclasses -n primaza-system --kubeconfig <(__primaza_get_kind_kubeconfig main)"
+alias pmgsm="kubectl get serviceclaims -n primaza-system --kubeconfig <(__primaza_get_kind_kubeconfig main)"
+alias pmgwrs="kubectl get registeredservices -n primaza-system --kubeconfig <(__primaza_get_kind_kubeconfig main) -w"
+alias pmgwsg="kubectl get servicecatalog -n primaza-system --kubeconfig <(__primaza_get_kind_kubeconfig main) -w"
+alias pmgwss="kubectl get serviceclasses -n primaza-system --kubeconfig <(__primaza_get_kind_kubeconfig main) -w"
+alias pmgwsm="kubectl get serviceclaims -n primaza-system --kubeconfig <(__primaza_get_kind_kubeconfig main) -w"
 
 # worker
 alias epw='eval $(__primaza_export_env worker)'
