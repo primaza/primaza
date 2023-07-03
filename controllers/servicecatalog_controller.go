@@ -32,9 +32,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-//+kubebuilder:rbac:groups=primaza.io.primaza.io,namespace=system,resources=servicecatalogs,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=primaza.io.primaza.io,namespace=system,resources=servicecatalogs/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=primaza.io.primaza.io,namespace=system,resources=servicecatalogs/finalizers,verbs=update
+//+kubebuilder:rbac:groups=primaza.io,namespace=system,resources=servicecatalogs,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=primaza.io,namespace=system,resources=servicecatalogs/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=primaza.io,namespace=system,resources=servicecatalogs/finalizers,verbs=update
 
 // ServiceCatalogReconciler reconciles a ServiceCatalog object
 type ServiceCatalogReconciler struct {
