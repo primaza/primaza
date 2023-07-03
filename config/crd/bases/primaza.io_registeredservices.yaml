@@ -140,7 +140,12 @@ spec:
             description: RegisteredServiceStatus defines the observed state of RegisteredService.
             properties:
               state:
+                default: Available
                 description: State describes the current state of the service.
+                enum:
+                - Available
+                - Unreachable
+                - Claimed
                 type: string
             type: object
         type: object

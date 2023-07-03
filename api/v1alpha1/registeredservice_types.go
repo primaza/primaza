@@ -20,6 +20,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type RegisteredServiceState string
+
+const (
+	RegisteredServiceStateAvailable   RegisteredServiceState = "Available"
+	RegisteredServiceStateUnreachable RegisteredServiceState = "Unreachable"
+	RegisteredServiceStateClaimed     RegisteredServiceState = "Claimed"
+)
+
 // RegisteredServiceConstraints defines constrains to be honored when determining
 // whether the service can be claimed from certain environments.
 type RegisteredServiceConstraints struct {
@@ -92,7 +100,9 @@ func (s RegisteredServiceSpec) GetEnvironmentConstraints() []string {
 type RegisteredServiceStatus struct {
 	// State describes the current state of the service.
 	// +optional
-	State string `json:"state,omitempty"`
+	//+kubebuilder:validation:Enum=Available;Unreachable;Claimed
+	//+kubebuilder:default:=Available
+	State RegisteredServiceState `json:"state,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -108,12 +118,6 @@ type RegisteredService struct {
 	Spec   RegisteredServiceSpec   `json:"spec,omitempty"`
 	Status RegisteredServiceStatus `json:"status,omitempty"`
 }
-
-const (
-	RegisteredServiceStateAvailable   string = "Available"
-	RegisteredServiceStateUnreachable string = "Unreachable"
-	RegisteredServiceStateClaimed     string = "Claimed"
-)
 
 //+kubebuilder:object:root=true
 
