@@ -26,6 +26,7 @@ import (
 
 type AgentPermissionsChecker interface {
 	TestPermissions(ctx context.Context, namespaces []string) (AgentPermissionsCheckReport, error)
+	CheckExcessPermission(ctx context.Context, namespaces []string) ([]string, error)
 }
 
 type AgentPermissionsCheckReport map[string]authz.NamespacedPermissionsReport
@@ -34,6 +35,7 @@ func NewAgentAppPermissionsChecker(cfg *rest.Config) AgentPermissionsChecker {
 	return &agentPermissionsChecker{
 		cfg:                    cfg,
 		getResourcePermissions: wauthz.GetAgentAppRequiredPermissions,
+		getPermissionList:      wauthz.GetAppPermissionList,
 	}
 }
 
@@ -41,15 +43,22 @@ func NewAgentSvcPermissionsChecker(cfg *rest.Config) AgentPermissionsChecker {
 	return &agentPermissionsChecker{
 		cfg:                    cfg,
 		getResourcePermissions: wauthz.GetAgentSvcRequiredPermissions,
+		getPermissionList:      wauthz.GetSvcPermissionList,
 	}
 }
 
 type agentPermissionsChecker struct {
 	cfg                    *rest.Config
 	getResourcePermissions func() []authz.ResourcePermissions
+	getPermissionList      func() []authz.Permission
 }
 
 func (c *agentPermissionsChecker) TestPermissions(ctx context.Context, namespaces []string) (AgentPermissionsCheckReport, error) {
 	pp := c.getResourcePermissions()
 	return authz.TestResourcePermissions(ctx, c.cfg, namespaces, pp)
+}
+
+func (c *agentPermissionsChecker) CheckExcessPermission(ctx context.Context, namespaces []string) ([]string, error) {
+	pl := c.getPermissionList()
+	return authz.AccessList(ctx, c.cfg, namespaces, pl)
 }

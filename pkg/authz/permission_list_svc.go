@@ -1,0 +1,68 @@
+package authz
+
+var SvcPermissionList = []Permission{
+	{
+		APIGroups:     []string{"primaza.io"},
+		Resources:     []string{"serviceclasses", "registeredservices"},
+		ResourceNames: []string{},
+		Namespace:     "system",
+		Name:          "primaza:svc:manager",
+		Verbs:         []string{"create", "delete", "deletecollection", "get", "list", "patch", "update", "watch"},
+	},
+	{
+		APIGroups:     []string{"primaza.io"},
+		Resources:     []string{"serviceclasses/status"},
+		ResourceNames: []string{},
+		Namespace:     "system",
+		Name:          "primaza:svc:manager",
+		Verbs:         []string{"get", "patch", "update"},
+	},
+	{
+		APIGroups:     []string{""},
+		Resources:     []string{"secrets"},
+		ResourceNames: []string{},
+		Namespace:     "system",
+		Name:          "primaza:svc:manager",
+		Verbs:         []string{"create", "delete", "update", "get", "list", "watch"},
+	},
+	{
+		APIGroups:     []string{"apps"},
+		Resources:     []string{"deployments"},
+		ResourceNames: []string{},
+		Namespace:     "system",
+		Name:          "primaza:svc:manager",
+		Verbs:         []string{"get", "list", "watch"},
+	},
+	{
+		APIGroups:     []string{"apps"},
+		Resources:     []string{"deployments", "deployments/finalizers"},
+		ResourceNames: []string{"primaza-svc-agent"},
+		Namespace:     "system",
+		Name:          "primaza:svc:manager",
+		Verbs:         []string{"update"},
+	},
+	{
+		APIGroups:     []string{""},
+		Resources:     []string{"configmaps"},
+		ResourceNames: []string{},
+		Namespace:     "system",
+		Name:          "primaza:svc:leader-election",
+		Verbs:         []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+	},
+	{
+		APIGroups:     []string{"coordination.k8s.io"},
+		Resources:     []string{"leases"},
+		ResourceNames: []string{},
+		Namespace:     "system",
+		Name:          "primaza:svc:leader-election",
+		Verbs:         []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+	},
+	{
+		APIGroups:     []string{""},
+		Resources:     []string{"events"},
+		ResourceNames: []string{},
+		Namespace:     "system",
+		Name:          "primaza:svc:leader-election",
+		Verbs:         []string{"create", "patch"},
+	},
+}

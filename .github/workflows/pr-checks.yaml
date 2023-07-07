@@ -80,6 +80,7 @@ jobs:
           set -e
 
           make manifests
+          make primaza go-generate
           git update-index -q --refresh
           if ! git diff-index --quiet HEAD -- config/ ; then
             echo "the following manifests are not up-to-date"

@@ -14,6 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+//go:generate go run hack/permissionlist/permissionlist.go App pkg/authz/ config/agents/app/rbac/manager_role.yaml config/agents/app/rbac/leader_election_role.yaml && go fmt pkg/authz/permission_list_app.go
+//go:generate go run hack/permissionlist/permissionlist.go Svc pkg/authz/ config/agents/svc/rbac/manager_role.yaml config/agents/svc/rbac/leader_election_role.yaml && go fmt pkg/authz/permission_list_svc.go
+
 package main
 
 import (

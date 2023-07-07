@@ -2,8 +2,12 @@
 DOCKER_BUILD_ARGS ?=
 PRIMAZA_MAIN=./cmd/primaza/main.go
 
+.PHONY: go-generate
+go-generate:
+	$(GO) generate
+
 .PHONY: build
-build: generate fmt vet ## Build manager binary.
+build: generate fmt vet go-generate ## Build manager binary.
 	$(GO) build -o bin/manager ${PRIMAZA_MAIN}
 
 .PHONY: run
