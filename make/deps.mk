@@ -62,7 +62,10 @@ yq: $(YQ) ## Download envtest-setup locally if necessary.
 $(YQ): $(LOCALBIN)
 	test -s $(YQ) || GOBIN=$(LOCALBIN) $(GO) install github.com/mikefarah/yq/v4@$(YQ_VERSION)
 
+$(OUTPUT_DIR)/cert-manager-$(CERTMANAGER_VERSION).yaml:
+	curl -Lo $(OUTPUT_DIR)/cert-manager-$(CERTMANAGER_VERSION).yaml https://github.com/cert-manager/cert-manager/releases/download/$(CERTMANAGER_VERSION)/cert-manager.yaml
+
 .PHONY: deploy-cert-manager
-deploy-cert-manager:
-	kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/$(CERTMANAGER_VERSION)/cert-manager.yaml
+deploy-cert-manager: $(OUTPUT_DIR)/cert-manager-$(CERTMANAGER_VERSION).yaml
+	kubectl apply -f $(OUTPUT_DIR)/cert-manager-$(CERTMANAGER_VERSION).yaml
 	kubectl rollout status -n cert-manager deploy/cert-manager-webhook -w --timeout=120s

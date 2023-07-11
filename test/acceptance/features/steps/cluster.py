@@ -17,6 +17,8 @@ class Cluster(object):
     """
     cluster_name: str = None
     cluster_provisioner: ClusterProvisioner = None
+    agentapp_namespaces: set[str] = set()
+    agentsvc_namespaces: set[str] = set()
 
     def __init__(self, cluster_provisioner: ClusterProvisioner, cluster_name: str):
         self.cluster_provisioner = cluster_provisioner
@@ -30,7 +32,7 @@ class Cluster(object):
         assert ec == 0, f'Worker Cluster "{self.cluster_name}" failed to start: {output}'
         print(f'Worker "{self.cluster_name}" started')
 
-    def get_api_client(self):
+    def get_api_client(self) -> client:
         """
         Build and returns a client for the kubernetes API server of the cluster
         using the administrator user
@@ -177,7 +179,14 @@ class Cluster(object):
         corev1 = client.CoreV1Api(api_client)
 
         body = client.V1ServiceAccount(metadata=client.V1ObjectMeta(name=service_account))
-        sa = corev1.create_namespaced_service_account(namespace=namespace, body=body)
+        sa_list = corev1.list_namespaced_service_account(
+            namespace=namespace,
+            field_selector=f'metadata.name={service_account}')  # type: client.V1ServiceAccountList
+        if len(sa_list.items) != 0:
+            # the service account already exists, so update it instead of creating
+            sa = corev1.replace_namespaced_service_account(service_account, namespace, body)
+        else:
+            sa = corev1.create_namespaced_service_account(namespace=namespace, body=body)
 
         tkn = client.V1Secret(
             metadata=client.V1ObjectMeta(
@@ -194,7 +203,11 @@ class Cluster(object):
                 ]),
             type="kubernetes.io/service-account-token")
 
-        corev1.create_namespaced_secret(namespace=namespace, body=tkn)
+        secret_list = corev1.list_namespaced_secret(namespace, field_selector=f'metadata.name={secret}')
+        if len(secret_list.items) != 0:
+            corev1.replace_namespaced_secret(secret, namespace, tkn)
+        else:
+            corev1.create_namespaced_secret(namespace, tkn)
         sec = polling2.poll(
             target=lambda: corev1.read_namespaced_secret(name=secret, namespace=namespace),
             check_success=lambda s: s is not None and s.data is not None and s.data.get("token", "").startswith("ZX"),
@@ -212,7 +225,10 @@ class Cluster(object):
         # create application namespace
         try:
             ns = client.V1Namespace(metadata=client.V1ObjectMeta(name=namespace))
-            corev1.create_namespace(ns)
+            if len(corev1.list_namespace(field_selector=f'metadata.name={namespace}').items) == 0:
+                corev1.create_namespace(ns)
+            else:
+                corev1.replace_namespace(namespace, ns)
         except ApiException as e:
             if e.reason != "Conflict":
                 raise e
@@ -220,6 +236,7 @@ class Cluster(object):
         self.__prepare_agent_namespace(namespace, "agentapp")
         self.__allow_primaza_access_to_namespace(namespace, "app", tenant, cluster_environment)
         self.__create_agent_kubeconfig_secret(namespace, "app", tenant, kubeconfig)
+        self.agentapp_namespaces.add(namespace)
 
     def create_service_namespace(self, namespace: str, tenant: str, cluster_environment: str, kubeconfig: str):
         api_client = self.get_api_client()
@@ -238,18 +255,23 @@ class Cluster(object):
         self.__prepare_agent_namespace(namespace, "agentsvc")
         self.__allow_primaza_access_to_namespace(namespace, "svc", tenant, cluster_environment)
         self.__create_agent_kubeconfig_secret(namespace, "svc", tenant, kubeconfig)
+        self.agentsvc_namespaces.add(namespace)
 
     def __create_agent_kubeconfig_secret(self, namespace: str, agent_type: str, tenant: str, kubeconfig: str):
         api_client = self.get_api_client()
         corev1 = client.CoreV1Api(api_client)
 
+        secret_name = f"primaza-{agent_type}-kubeconfig"
         secret = client.V1Secret(
-            metadata=client.V1ObjectMeta(name=f"primaza-{agent_type}-kubeconfig"),
+            metadata=client.V1ObjectMeta(name=secret_name),
             string_data={
                 "kubeconfig": kubeconfig,
                 "namespace": tenant,
             })
-        corev1.create_namespaced_secret(namespace, secret)
+        if len(corev1.list_namespaced_secret(namespace, field_selector=f'metadata.name={secret_name}').items) == 0:
+            corev1.create_namespaced_secret(namespace, secret)
+        else:
+            corev1.replace_namespaced_secret(secret_name, namespace, secret)
 
     def __allow_primaza_access_to_namespace(self, namespace: str, nstype: str, tenant: str, cluster_environment: str):
         api_client = self.get_api_client()
@@ -294,7 +316,10 @@ class Cluster(object):
                     verbs=["delete", "get"],
                     resource_names=[f"primaza-agent{nstype}-config"]),
             ] + pmz_rules)
-        rbacv1.create_namespaced_role(namespace, r)
+        if len(rbacv1.list_namespaced_role(namespace, field_selector=f'metadata.name={role_name}').items) != 0:
+            rbacv1.replace_namespaced_role(role_name, namespace, r)
+        else:
+            rbacv1.create_namespaced_role(namespace, r)
 
         # bind role to service account
         rb = client.V1RoleBinding(
@@ -310,7 +335,10 @@ class Cluster(object):
                     name=sa_name,
                     namespace=sa_namespace),
             ])
-        rbacv1.create_namespaced_role_binding(namespace=namespace, body=rb)
+        if len(rbacv1.list_namespaced_role_binding(namespace, field_selector=f'metadata.name={role_name}').items) != 0:
+            rbacv1.replace_namespaced_role_binding(role_name, namespace, rb)
+        else:
+            rbacv1.create_namespaced_role_binding(namespace, rb)
 
     def __prepare_agent_namespace(self, namespace: str, component: str):
         kubeconfig = self.cluster_provisioner.kubeconfig()

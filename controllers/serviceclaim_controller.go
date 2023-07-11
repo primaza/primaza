@@ -105,10 +105,9 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, nil
 	}
 
-	l.Info("Add Finalizer if needed")
 	// add finalizer if needed
-	if !controllerutil.ContainsFinalizer(&sclaim, ServiceClaimFinalizer) {
-		controllerutil.AddFinalizer(&sclaim, ServiceClaimFinalizer)
+	l.Info("Add Finalizer if needed")
+	if controllerutil.AddFinalizer(&sclaim, ServiceClaimFinalizer) {
 		if err := r.Update(ctx, &sclaim); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -262,7 +261,7 @@ func (r *ServiceClaimReconciler) getEnvironmentFromClusterEnvironment(
 	objectKey := types.NamespacedName{Name: clusterEnvironmentName, Namespace: namespace}
 	if err := r.Get(ctx, objectKey, ce); err != nil {
 		l.Info("unable to retrieve ClusterEnvironment", "error", err)
-		return nil, client.IgnoreNotFound(err)
+		return nil, err
 	}
 
 	return ce, nil

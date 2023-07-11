@@ -25,7 +25,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
 	"github.com/primaza/primaza/pkg/envtag"
@@ -53,8 +52,6 @@ type ServiceClassReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
 func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
-
 	sc := &primazaiov1alpha1.ServiceClass{}
 	if err := r.Get(ctx, req.NamespacedName, sc, &client.GetOptions{}); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -78,8 +75,7 @@ func (r *ServiceClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	// add finalizer if needed
-	if !controllerutil.ContainsFinalizer(sc, clusterEnvironmentFinalizer) {
-		controllerutil.AddFinalizer(sc, clusterEnvironmentFinalizer)
+	if controllerutil.AddFinalizer(sc, clusterEnvironmentFinalizer) {
 		if err := r.Update(ctx, sc); err != nil {
 			return ctrl.Result{}, err
 		}

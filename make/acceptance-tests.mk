@@ -5,22 +5,30 @@ TEST_ACCEPTANCE_CLI ?= kubectl
 TEST_ACCEPTANCE_PARALLEL ?= 4
 TEST_ACCEPTANCE_TAGS ?=
 
+PRIMAZA_CONTROLLER_IMAGE_REF ?= primaza-controller:latest
+PRIMAZA_AGENTAPP_IMAGE_REF ?= agentapp:latest
+PRIMAZA_AGENTSVC_IMAGE_REF ?= agentsvc:latest
+CLUSTER_PROVIDER ?= kind
+export PRIMAZA_CONTROLLER_IMAGE_REF
+export PRIMAZA_AGENTAPP_IMAGE_REF
+export PRIMAZA_AGENTSVC_IMAGE_REF
+export CLUSTER_PROVIDER
+
 ifdef TEST_ACCEPTANCE_TAGS
 TEST_ACCEPTANCE_TAGS_ARG ?= --tags="~@disabled" --tags="$(TEST_ACCEPTANCE_TAGS)"
 else
 TEST_ACCEPTANCE_TAGS_ARG ?= --tags="~@disabled"
 endif
 
+# Some tests can't be run unless we have full control of the cluster.  These
+# tests have been tagged with @kind to allow disabling their use.
+ifneq ($(CLUSTER_PROVIDER), kind)
+TEST_ACCEPTANCE_TAGS_ARG += --tags=~@kind
+endif
+
 ACCEPTANCE_TEST_TARGETS := test-acceptance test-acceptance-dr test-acceptance-x test-acceptance-wip test-acceptance-wip-x
 
 $(ACCEPTANCE_TEST_TARGETS): ensure-agentsvc-image ensure-agentapp-image ensure-controller-image
-
-PRIMAZA_CONTROLLER_IMAGE_REF ?= primaza-controller:latest
-PRIMAZA_AGENTAPP_IMAGE_REF ?= agentapp:latest
-PRIMAZA_AGENTSVC_IMAGE_REF ?= agentsvc:latest
-export PRIMAZA_CONTROLLER_IMAGE_REF
-export PRIMAZA_AGENTAPP_IMAGE_REF
-export PRIMAZA_AGENTSVC_IMAGE_REF
 
 .PHONY: ensure-controller-image
 ensure-controller-image:

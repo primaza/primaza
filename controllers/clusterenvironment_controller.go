@@ -144,7 +144,8 @@ func (r *ClusterEnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if ce.HasDeletionTimestamp() {
 		if controllerutil.ContainsFinalizer(ce, clusterEnvironmentFinalizer) {
 			// run finalizer
-			if err := r.finalizeClusterEnvironment(ctx, ce); err != nil {
+			err := r.finalizeClusterEnvironment(ctx, ce)
+			if client.IgnoreNotFound(err) != nil {
 				return ctrl.Result{}, err
 			}
 
@@ -158,8 +159,7 @@ func (r *ClusterEnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	// add finalizer if needed
-	if !controllerutil.ContainsFinalizer(ce, clusterEnvironmentFinalizer) {
-		controllerutil.AddFinalizer(ce, clusterEnvironmentFinalizer)
+	if controllerutil.AddFinalizer(ce, clusterEnvironmentFinalizer) {
 		if err := r.Update(ctx, ce); err != nil {
 			return ctrl.Result{}, err
 		}
