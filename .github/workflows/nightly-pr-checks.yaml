@@ -1,16 +1,8 @@
 name: PR checks
 
 on: # yamllint disable-line rule:truthy
-  pull_request:
-    branches:
-      - main
-    paths-ignore:
-      - "docs/**"
-      - "*.md"
-      - "DCO"
-      - "LICENSE"
-      - "OWNERS"
-      - "PROJECT"
+  schedule:
+    - cron: '0 0 * * *' # run at midnight daily
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -166,11 +158,6 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           architecture: "x64"
 
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: ${{ env.GO_VERSION }}
-
       - name: Download pre-built images
         uses: actions/download-artifact@v3
         with:
@@ -179,44 +166,17 @@ jobs:
 
       - name: Acceptance tests
         timeout-minutes: 60
+        run: |
+          docker load -i images/primaza-controller.tar
+          docker load -i images/agentapp.tar
+          docker load -i images/agentsvc.tar
+          make kustomize test-acceptance
         env:
-          EXTRA_BEHAVE_ARGS: -i test/acceptance/features/${{ matrix.feature }} -k --tags=~@disable-github-actions
+          EXTRA_BEHAVE_ARGS: -i test/acceptance/features/${{ matrix.feature }} --tags=~@disable-github-actions
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PRIMAZA_CONTROLLER_IMAGE_REF: primaza-controller:testing
           PRIMAZA_AGENTAPP_IMAGE_REF: agentapp:testing
           PRIMAZA_AGENTSVC_IMAGE_REF: agentsvc:testing
-          CLUSTER_PROVIDER: external
-          MAIN_KUBECONFIG: out/main-kubeconfig
-          WORKER_KUBECONFIG: out/worker-kubeconfig
-        run: |
-          # ensure out/ exists
-          mkdir out/
-
-          # we need yq
-          make yq
-          echo "##[group]Creating clusters"
-            kind create cluster --name main
-            kind create cluster --name worker
-            kind get kubeconfig --name main > ${MAIN_KUBECONFIG}
-            kind get kubeconfig --name worker > ${WORKER_KUBECONFIG}
-
-            # we need to rewrite the server addresses so that connections from
-            # both inside and outside of docker can be established using the
-            # same config
-            bin/yq -i ".clusters[0].cluster.server = \"https://$(docker container inspect main-control-plane | bin/yq '.[0].NetworkSettings.Networks.kind.IPAddress'):6443\"" out/main-kubeconfig
-            bin/yq -i ".clusters[0].cluster.server = \"https://$(docker container inspect worker-control-plane | bin/yq '.[0].NetworkSettings.Networks.kind.IPAddress'):6443\"" out/worker-kubeconfig
-
-            kind load image-archive --name main images/primaza-controller.tar
-            kind load image-archive --name main images/agentapp.tar
-            kind load image-archive --name main images/agentsvc.tar
-            kind load image-archive --name worker images/primaza-controller.tar
-            kind load image-archive --name worker images/agentapp.tar
-            kind load image-archive --name worker images/agentsvc.tar
-          echo "##[endgroup]"
-
-          echo "##[group]Running acceptance tests"
-            make kustomize test-acceptance
-          echo "##[endgroup]"
 
       - uses: actions/upload-artifact@v3
         if: ${{ steps.check-skip-acceptance.outputs.can_skip != 'true' && always() }}
@@ -232,22 +192,3 @@ jobs:
     steps:
     - name: None
       run: exit 0
-
-  single-commit:
-    name: Single commit PR
-    runs-on: ubuntu-20.04
-    if: github.event_name == 'pull_request'
-    steps:
-      - name: Checkout Git Repository
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - name: Verify number of commits in the PR is 1
-        run: |
-          COMMIT_COUNT="$(git log --oneline ${{github.event.pull_request.base.sha}}..${{github.event.pull_request.head.sha}} | wc -l)"
-          if ! [ $COMMIT_COUNT -eq 1 ]; then
-            echo "Number of commits in the PR ($COMMIT_COUNT) must not be greater than one."
-            echo "Please squash all PR commits into a single one (https://git-scm.com/book/en/v2/Git-Tools-Rewriting-History#_squashing)"
-            exit 1
-          fi
