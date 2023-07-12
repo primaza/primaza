@@ -1,4 +1,4 @@
-name: PR checks
+name: Nightly PR checks
 
 on: # yamllint disable-line rule:truthy
   schedule:
@@ -177,6 +177,7 @@ jobs:
           PRIMAZA_CONTROLLER_IMAGE_REF: primaza-controller:testing
           PRIMAZA_AGENTAPP_IMAGE_REF: agentapp:testing
           PRIMAZA_AGENTSVC_IMAGE_REF: agentsvc:testing
+          CLUSTER_PROVIDER: kind
 
       - uses: actions/upload-artifact@v3
         if: ${{ steps.check-skip-acceptance.outputs.can_skip != 'true' && always() }}
