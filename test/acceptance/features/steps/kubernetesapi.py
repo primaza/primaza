@@ -114,6 +114,7 @@ def on_primaza_cluster_check_state_not_change(context, cluster_name, ce_name,  n
 
 @step(u'On Primaza Cluster "{cluster_name}", RegisteredService "{rs_name}" state will eventually move to "{state}"')
 def on_primaza_cluster_check_registered_service_status(context, cluster_name, rs_name, state):
+    rs_name = substitute_scenario_id(context, rs_name)
     api_client = context.cluster_provider.get_primaza_cluster(cluster_name).get_api_client()
     cobj = client.CustomObjectsApi(api_client)
 
@@ -126,7 +127,7 @@ def on_primaza_cluster_check_registered_service_status(context, cluster_name, rs
             name=rs_name).get("status", {}).get("state", None),
         check_success=lambda x: x is not None and x == state,
         step=1,
-        timeout=60)
+        timeout=300)
 
 
 def registered_service_in_catalog(rs_name, catalog):

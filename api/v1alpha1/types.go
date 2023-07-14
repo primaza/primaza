@@ -57,7 +57,13 @@ type HealthCheckContainer struct {
 	// Container image with the client to run the test
 	Image string `json:"image"`
 	// Command to execute in the container to run the test
-	Command string `json:"command"`
+	Command []string `json:"command"`
+	// Minutes between runs of the healthcheck container.  Must be greater than
+	// or equal to 1.
+	//+optional
+	//+kubebuilder:default:=5
+	//+kubebuilder:validation:Minimum:=1
+	Minutes uint32 `json:"minutes"`
 }
 
 // HealthCheck defines metadata that can be used check

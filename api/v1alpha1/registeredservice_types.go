@@ -24,8 +24,9 @@ type RegisteredServiceState string
 
 const (
 	RegisteredServiceStateAvailable   RegisteredServiceState = "Available"
-	RegisteredServiceStateUnreachable RegisteredServiceState = "Unreachable"
 	RegisteredServiceStateClaimed     RegisteredServiceState = "Claimed"
+	RegisteredServiceStateUnknown     RegisteredServiceState = "Unknown"
+	RegisteredServiceStateUnreachable RegisteredServiceState = "Unreachable"
 )
 
 // RegisteredServiceConstraints defines constrains to be honored when determining
@@ -100,8 +101,8 @@ func (s RegisteredServiceSpec) GetEnvironmentConstraints() []string {
 type RegisteredServiceStatus struct {
 	// State describes the current state of the service.
 	// +optional
-	//+kubebuilder:validation:Enum=Available;Unreachable;Claimed
-	//+kubebuilder:default:=Available
+	//+kubebuilder:validation:Enum=Available;Claimed;Unknown;Unreachable
+	//+kubebuilder:default:=Unknown
 	State RegisteredServiceState `json:"state,omitempty"`
 }
 

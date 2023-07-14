@@ -58,10 +58,19 @@ spec:
                       command:
                         description: Command to execute in the container to run the
                           test
-                        type: string
+                        items:
+                          type: string
+                        type: array
                       image:
                         description: Container image with the client to run the test
                         type: string
+                      minutes:
+                        default: 5
+                        description: Minutes between runs of the healthcheck container.  Must
+                          be greater than or equal to 1.
+                        format: int32
+                        minimum: 1
+                        type: integer
                     required:
                     - command
                     - image
