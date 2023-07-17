@@ -276,3 +276,86 @@ Feature: Bind application to the secret pushed by agent app controller
         Then On Primaza Cluster "main", ServiceBinding "application-binding" on namespace "applications" state will eventually move to "Ready"
         And  On Primaza Cluster "main", in demo application's pod with label "myapp" running in namespace "applications" file "/bindings/application-binding/username" has content "AzureDiamond"
         And On Primaza Cluster "main", file "/bindings/application-binding/username" is unavailable in application pod with label "myapplication" running in namespace "applications"
+
+    Scenario: ServiceBinding by application with multiple label
+
+        Given Primaza Cluster "main" is running
+        And   On Primaza Cluster "main", application namespace "applications" for ClusterEnvironment "worker" exists
+        And   On Primaza Cluster "main", Primaza Application Agent is deployed into namespace "applications"
+        And   On Primaza Cluster "main", Resource is created
+        """
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+            name: applicationone
+            namespace: applications
+            labels:
+                app: myapp
+                two: newlabel
+        spec:
+            replicas: 1
+            selector:
+                matchLabels:
+                    app: myapp
+                    two: newlabel
+            template:
+                metadata:
+                    labels:
+                        app: myapp
+                        two: newlabel
+                spec:
+                    containers:
+                    - name: myapp
+                      image: quay.io/service-binding/generic-test-app:20220216
+        """
+        And   On Primaza Cluster "main", Resource is created
+        """
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+            name: applicationtwo
+            namespace: applications
+            labels:
+                app: myapp
+        spec:
+            replicas: 1
+            selector:
+                matchLabels:
+                    app: myapp
+            template:
+                metadata:
+                    labels:
+                        app: myapp
+                spec:
+                    containers:
+                    - name: myapp
+                      image: quay.io/service-binding/generic-test-app:20220216
+        """
+        And   On Primaza Cluster "main", Resource is created
+        """
+        apiVersion: v1
+        kind: Secret
+        metadata:
+            name: demo
+            namespace: applications
+        stringData:
+            username: AzureDiamond
+        """
+        When On Primaza Cluster "main", Resource is created
+        """
+        apiVersion: primaza.io/v1alpha1
+        kind: ServiceBinding
+        metadata:
+            name: application-binding
+            namespace: applications
+        spec:
+            serviceEndpointDefinitionSecret: demo
+            application:
+                apiVersion: apps/v1
+                kind: Deployment
+                selector:
+                    matchLabels:
+                        app: myapp
+        """
+        Then On Primaza Cluster "main", ServiceBinding "application-binding" on namespace "applications" state will eventually move to "Ready"
+        And  On Primaza Cluster "main", in demo application's pod with label "myapp" running in namespace "applications" file "/bindings/application-binding/username" has content "AzureDiamond"
