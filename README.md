@@ -1,3 +1,10 @@
+**Checks:** 
+[![nightly tests](https://github.com/primaza/primaza/actions/workflows/nightly-pr-checks.yaml/badge.svg?branch=main&event=schedule)](https://github.com/primaza/primaza/actions?query=workflow%3A%22Nightly+PR+checks%22)
+[![security checks](https://github.com/primaza/primaza/actions/workflows/security.yaml/badge.svg?branch=main)](https://github.com/primaza/primaza/actions?query=workflow%3A%22Security+checks%22+branch%3Amain)
+
+**Discuss:**
+[![Static Badge](https://img.shields.io/badge/discuss-%23primaza-blue?logo=slack)](https://kubernetes.slack.com/archives/C05FG1ZQP4Z)
+
 # :knot: Primaza
 
 Primaza is a multi-cluster Service Consumption Framework.
