@@ -64,7 +64,9 @@ Feature: Claim from an application namespace
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Available"
 
     Scenario: Claim with label selector from an application namespace
-       Given On Worker Cluster "worker", Resource is created
+        # wait for Control Plane's informer to synchronize cache before creating the ServiceClaim
+        Given 2 seconds have passed
+        And On Worker Cluster "worker", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
         kind: ServiceClaim

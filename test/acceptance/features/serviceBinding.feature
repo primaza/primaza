@@ -290,19 +290,17 @@ Feature: Bind application to the secret pushed by agent app controller
             name: applicationone
             namespace: applications
             labels:
-                app: myapp
-                two: newlabel
+                app: applicationone
+                mylabel: myapp
         spec:
             replicas: 1
             selector:
                 matchLabels:
-                    app: myapp
-                    two: newlabel
+                    app: applicationone
             template:
                 metadata:
                     labels:
-                        app: myapp
-                        two: newlabel
+                        app: applicationone
                 spec:
                     containers:
                     - name: myapp
@@ -316,16 +314,17 @@ Feature: Bind application to the secret pushed by agent app controller
             name: applicationtwo
             namespace: applications
             labels:
-                app: myapp
+                app: applicationtwo
+                mylabel: myapp
         spec:
             replicas: 1
             selector:
                 matchLabels:
-                    app: myapp
+                    app: applicationtwo
             template:
                 metadata:
                     labels:
-                        app: myapp
+                        app: applicationtwo
                 spec:
                     containers:
                     - name: myapp
@@ -355,7 +354,10 @@ Feature: Bind application to the secret pushed by agent app controller
                 kind: Deployment
                 selector:
                     matchLabels:
-                        app: myapp
+                        mylabel: myapp
         """
         Then On Primaza Cluster "main", ServiceBinding "application-binding" on namespace "applications" state will eventually move to "Ready"
-        And  On Primaza Cluster "main", in demo application's pod with label "myapp" running in namespace "applications" file "/bindings/application-binding/username" has content "AzureDiamond"
+        And  On Primaza Cluster "main", in demo application's pod with label "applicationone" running in namespace "applications" file "/bindings/application-binding/username" has content "AzureDiamond"
+        And  On Primaza Cluster "main", in demo application's pod with label "applicationtwo" running in namespace "applications" file "/bindings/application-binding/username" has content "AzureDiamond"
+        And  On Primaza Cluster "main", ServiceBinding "application-binding" in namespace "applications" is bound to workload "applicationone"
+        And  On Primaza Cluster "main", ServiceBinding "application-binding" in namespace "applications" is bound to workload "applicationtwo"

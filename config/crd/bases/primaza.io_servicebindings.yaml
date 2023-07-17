@@ -210,6 +210,16 @@ spec:
                   - type
                   type: object
                 type: array
+              connections:
+                description: The list of workloads the service is bound to
+                items:
+                  description: Workload the service is bound to
+                  properties:
+                    name:
+                      description: Name of the referent.
+                      type: string
+                  type: object
+                type: array
               state:
                 default: Malformed
                 description: The state of the service binding observed

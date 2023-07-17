@@ -171,3 +171,20 @@ def ensure_application_namespace_exists(
 def ensure_to_sleep_for_certain_time_interval(context, cluster_name: str, time_interval: int):
     context.cluster_provider.get_primaza_cluster(cluster_name)
     time.sleep(time_interval*60)
+
+
+@step(u'On Primaza Cluster "{cluster_name}", ServiceBinding "{service_binding}" in namespace "{namespace}" is bound to workload "{workload}"')
+def service_binding_is_bound_to_workload(context, cluster_name: str, service_binding: str, namespace: str, workload: str):
+    primaza = context.cluster_provider.get_primaza_cluster(cluster_name)  # type: PrimazaCluster
+
+    try:
+        polling2.poll(
+            target=lambda: primaza.service_binding_is_bound_to_workload(
+                namespace=namespace,
+                service_binding=service_binding,
+                name=workload),
+            ignore_exceptions=(ApiException,),
+            step=1,
+            timeout=10)
+    except polling2.TimeoutException as e:
+        raise Exception(f"ServiceBinding is not bound to workload {workload}") from e
