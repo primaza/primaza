@@ -75,6 +75,15 @@ type ServiceBindingStatus struct {
 	// The state of the service binding observed
 	// +kubebuilder:default:=Malformed
 	State string `json:"state,omitempty"`
+
+	// The list of workloads the service is bound to
+	Connections []BoundWorkload `json:"connections,omitempty"`
+}
+
+// Workload the service is bound to
+type BoundWorkload struct {
+	// Name of the referent.
+	Name string `json:"name,omitempty"`
 }
 
 // ConditionReady specifies that the resource is ready.

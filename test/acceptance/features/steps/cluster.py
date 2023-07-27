@@ -434,3 +434,14 @@ class Cluster(object):
         sec_name = f"primaza-tkn-{agent_type}-{cluster_environment}-{namespace}"
         sec = self.create_identity(tenant, sa_name, sec_name, timeout)
         return (sec, sa_name)
+
+    def service_binding_is_bound_to_workload(
+            self, namespace: str, service_binding: str, name: str) -> bool:
+        sb = self.read_custom_object(
+                namespace=namespace,
+                group="primaza.io",
+                version="v1alpha1",
+                plural="servicebindings",
+                name=service_binding)
+
+        return {"name": name} in sb["status"].get("connections", {})
