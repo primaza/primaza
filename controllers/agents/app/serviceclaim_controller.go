@@ -145,11 +145,12 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	sclaimCopy := r.createServiceClaimCopy(sclaim, deployment, remote_namespace)
 	spec := sclaimCopy.Spec
-	op, err := controllerutil.CreateOrUpdate(ctx, remote_client, sclaimCopy, func() error {
+
+	l.Info("Wrote service claim", "claim", sclaim.Name, "namespace", sclaim.Namespace)
+	if _, err := controllerutil.CreateOrUpdate(ctx, remote_client, sclaimCopy, func() error {
 		sclaimCopy.Spec = spec
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		if strings.Contains(err.Error(), "admission webhook \"vserviceclaim.kb.io\" denied the request") {
 			c := metav1.Condition{
 				LastTransitionTime: metav1.NewTime(time.Now()),
@@ -159,25 +160,19 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 				Message:            err.Error(),
 			}
 			meta.SetStatusCondition(&sclaim.Status.Conditions, c)
+			sclaim.Status.State = primazaiov1alpha1.ServiceClaimStateInvalid
 
-			sclaimCopy.Status.State = primazaiov1alpha1.ServiceClaimStateInvalid
+			if err := r.Status().Update(ctx, &sclaim); err != nil {
+				l.Error(err, "unable to update the ServiceClaim", "ServiceClaim", sclaim)
+				return ctrl.Result{}, err
+			}
+
 		} else {
-			sclaimCopy.Status.State = primazaiov1alpha1.ServiceClaimStatePending
 			l.Error(err, "Failed to create/update service claim",
 				"service", sclaim.Name,
 				"namespace", sclaim.Namespace)
+			return ctrl.Result{}, err
 		}
-
-	} else {
-		sclaimCopy.Status.State = primazaiov1alpha1.ServiceClaimStateResolved
-		l.Info("Wrote service claim", "claim", sclaim.Name, "namespace", sclaim.Namespace, "operation", op)
-	}
-	sclaim.Status.ClaimID = sclaimCopy.Status.ClaimID
-	sclaim.Status.State = sclaimCopy.Status.State
-	sclaim.Status.RegisteredService = sclaimCopy.Status.RegisteredService
-	if err := r.Status().Update(ctx, &sclaim); err != nil {
-		l.Error(err, "unable to update the ServiceClaim", "ServiceClaim", sclaim)
-		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil

@@ -40,7 +40,8 @@ func PushServiceBinding(
 	controllerruntimeClient client.Client,
 	nspace *string,
 	applicationNamespaces []string,
-	cfg *rest.Config) error {
+	cfg *rest.Config,
+) error {
 	l := log.FromContext(ctx)
 	oc := client.Options{
 		Scheme: scheme,
