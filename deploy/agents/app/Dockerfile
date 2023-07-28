@@ -14,7 +14,7 @@ RUN go mod download
 # Copy the go source
 COPY cmd/agents/app/ cmd/agents/app/
 COPY api/ api/
-COPY controllers/ controllers/
+COPY controllers/agents/app controllers/agents/app
 COPY pkg/ pkg/
 
 # Build
