@@ -28,4 +28,8 @@ const (
 	// Reasons for status condition
 	NoMatchingServiceFoundReason = "NoMatchingServiceFound"
 	ValidationErrorReason        = "ValidationError"
+
+	// ServiceBinding Annotations
+	BoundRegisteredServiceNameAnnotation = "primaza.io/registered-service-name"
+	BoundRegisteredServiceUIDAnnotation  = "primaza.io/registered-service-uid"
 )

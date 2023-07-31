@@ -124,13 +124,19 @@ def ensure_registered_service_of_service_claim(context, cluster_name: str, servi
     group = "primaza.io"
     version = "v1alpha1"
     plural = "serviceclaims"
-    polling2.poll(
-        target=lambda: cluster.read_custom_resource_status(
+
+    def check_service_claim_status() -> bool:
+        rs = cluster.read_custom_object(tenant, group, version, "registeredservices", registered_service)
+        x = cluster.read_custom_resource_status(
             group,
             version,
             plural,
             service_claim_name,
-            tenant).get("status", {}).get("registeredService", None) == registered_service,
+            tenant).get("status", {}).get("registeredService", {})
+        return x.get("uid", None) == rs["metadata"]["uid"] and x.get("name", None) == registered_service
+
+    polling2.poll(
+        target=check_service_claim_status,
         step=1,
         timeout=60)
 

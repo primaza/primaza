@@ -21,9 +21,9 @@ const (
 	ClusterEnvironmentAnnotation = "primaza.io/cluster-environment"
 
 	// RegisteredService Annotations
-	ServiceGroupAnnotation     = "primaza.io/service-group"
-	ServiceKindAnnotation      = "primaza.io/service-kind"
-	ServiceNameAnnotation      = "primaza.io/service-name"
-	ServiceNamespaceAnnotation = "primaza.io/service-namespace"
-	ServiceUIDAnnotation       = "primaza.io/service-uid"
+	ServiceAPIVersionAnnotation = "primaza.io/service-apiversion"
+	ServiceKindAnnotation       = "primaza.io/service-kind"
+	ServiceNameAnnotation       = "primaza.io/service-name"
+	ServiceNamespaceAnnotation  = "primaza.io/service-namespace"
+	ServiceUIDAnnotation        = "primaza.io/service-uid"
 )

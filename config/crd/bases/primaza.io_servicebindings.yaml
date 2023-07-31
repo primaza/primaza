@@ -20,6 +20,9 @@ spec:
       jsonPath: .status.state
       name: State
       type: string
+    - jsonPath: .metadata.annotations.primaza\.io/registered-service-name
+      name: RegisteredService
+      type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date

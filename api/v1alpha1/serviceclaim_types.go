@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -66,8 +67,8 @@ type ServiceClaimStatus struct {
 	State ServiceClaimState `json:"state"`
 	// Unique ID For the ServiceClaim
 	ClaimID string `json:"claimID,omitempty"`
-	// Name of Claimed RegisteredService
-	RegisteredService string `json:"registeredService"`
+	// Claimed RegisteredService Info
+	RegisteredService *corev1.ObjectReference `json:"registeredService,omitempty"`
 	// The status of the service binding along with reason and type
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }

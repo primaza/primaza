@@ -305,11 +305,17 @@ func (r *ServiceClaimReconciler) getServiceEndpointDefinition(
 func (r *ServiceClaimReconciler) processResolvedServiceClaim(
 	ctx context.Context,
 	sclaim primazaiov1alpha1.ServiceClaim) error {
-	l := log.FromContext(ctx)
+	l := log.FromContext(ctx).WithValues("service-claim", sclaim)
+
+	if sclaim.Status.RegisteredService == nil {
+		err := fmt.Errorf("service claim %s's registered service name is not set", sclaim.Name)
+		l.Error(err, "can not process resolved service claim")
+		return err
+	}
 
 	// retrieve already bound RegisteredService
 	var rs primazaiov1alpha1.RegisteredService
-	k := types.NamespacedName{Name: sclaim.Status.RegisteredService, Namespace: sclaim.Namespace}
+	k := types.NamespacedName{Name: sclaim.Status.RegisteredService.Name, Namespace: sclaim.Namespace}
 	if err := r.Get(ctx, k, &rs, &client.GetOptions{}); err != nil {
 		l.Info("error retrieving the RegisteredService", "error", err, "registered-service", k)
 		return err
@@ -328,6 +334,11 @@ func (r *ServiceClaimReconciler) processResolvedServiceClaim(
 		return err
 	}
 
+	sclaim.Status.State = primazaiov1alpha1.ServiceClaimStateResolved
+	sclaim.Status.RegisteredService = &corev1.ObjectReference{
+		Name: rs.Name,
+		UID:  rs.UID,
+	}
 	if err := r.pushToClusterEnvironments(ctx, sclaim, secret); err != nil {
 		l.Error(err,
 			"error pushing the ServiceBinding and secret to the cluster environments",
@@ -341,8 +352,6 @@ func (r *ServiceClaimReconciler) processResolvedServiceClaim(
 		return err
 	}
 
-	sclaim.Status.State = primazaiov1alpha1.ServiceClaimStateResolved
-	sclaim.Status.RegisteredService = rs.Name
 	if err := r.updateServiceClaimStatus(ctx, &sclaim); err != nil {
 		l.Error(err, "error updating the ServiceClaim",
 			"registered-service", rs, "service-claim", sclaim)
@@ -476,6 +485,11 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 		return err
 	}
 
+	sclaim.Status.State = primazaiov1alpha1.ServiceClaimStateResolved
+	sclaim.Status.RegisteredService = &corev1.ObjectReference{
+		Name: registeredService.Name,
+		UID:  registeredService.UID,
+	}
 	err := r.pushToClusterEnvironments(ctx, sclaim, secret)
 	if err != nil {
 		l.Error(err, "error pushing to cluster environments")
@@ -486,8 +500,6 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 		return client.IgnoreNotFound(err)
 	}
 
-	sclaim.Status.State = primazaiov1alpha1.ServiceClaimStateResolved
-	sclaim.Status.RegisteredService = registeredService.Name
 	if err := r.updateServiceClaimStatus(ctx, &sclaim); err != nil {
 		l.Error(err, "unable to update the ServiceClaim", "ServiceClaim", sclaim)
 		return err
@@ -660,7 +672,6 @@ func (r *ServiceClaimReconciler) DeleteServiceBindingsAndSecret(
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ServiceClaimReconciler) SetupWithManager(mgr ctrl.Manager) error {
-
 	genPred := predicate.GenerationChangedPredicate{}
 	reconcileOnRegisteredServiceUpdate := func(ctx context.Context, a client.Object) []reconcile.Request {
 		l := log.FromContext(ctx)
@@ -682,7 +693,8 @@ func (r *ServiceClaimReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return []reconcile.Request{}
 		}
 		for _, sc := range serviceclaims.Items {
-			if sc.Status.State == primazaiov1alpha1.ServiceClaimStateResolved && sc.Status.RegisteredService == rs.Name {
+			if sc.Status.State == primazaiov1alpha1.ServiceClaimStateResolved &&
+				sc.Status.RegisteredService != nil && sc.Status.RegisteredService.UID == rs.UID {
 				return []reconcile.Request{{NamespacedName: types.NamespacedName{
 					Namespace: sc.Namespace,
 					Name:      sc.Name,
