@@ -28,6 +28,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
 )
 
@@ -99,12 +100,15 @@ func createAgentDeployment(ctx context.Context, cli *kubernetes.Clientset, names
 	if err != nil {
 		return fmt.Errorf("unmarshal deployment error: %w", err)
 	}
+
 	dep.ObjectMeta.Namespace = namespace
 	dep.Spec.Template.Spec.Containers[0].Image = image
 	dep.ObjectMeta.Labels[constants.PrimazaClusterEnvironmentLabel] = ceName
+	dep.Spec.Template.ObjectMeta.Labels[constants.PrimazaClusterEnvironmentLabel] = ceName
 	if _, err := cli.AppsV1().Deployments(namespace).Create(ctx, &dep, metav1.CreateOptions{}); err != nil {
 		return fmt.Errorf("error creating deployment: %w", err)
 	}
+	log.FromContext(ctx).Info("agent deployment created", "cluster-environment", ceName, "agentManifest", agentManifest)
 
 	return nil
 }

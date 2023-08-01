@@ -402,7 +402,7 @@ class Cluster(object):
         appsv1 = client.AppsV1Api(api_client)
 
         dp = appsv1.read_namespaced_deployment_status(f"primaza-{agent_type}-agent", namespace)
-        return dp.status.available_replicas == dp.status.replicas
+        return dp.status.available_replicas == dp.status.replicas and dp.status.replicas == dp.status.ready_replicas
 
     def read_custom_resource_status(self, group: str, version: str, plural: str, name: str, namespace: str) -> str:
         api_client = self.get_api_client()

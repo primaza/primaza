@@ -145,17 +145,6 @@ def ensure_secret_key_has_the_right_value(context, primaza_cluster_name: str, se
         timeout=60)
 
 
-@step(u'On Primaza Cluster "{cluster_name}", Primaza Service Agent is deployed into namespace "{namespace}"')
-def service_agent_is_deployed(context, cluster_name: str, namespace: str):
-    primaza_cluster = context.cluster_provider.get_primaza_cluster(cluster_name)  # type: PrimazaCluster
-    primaza_cluster.deploy_agentsvc(namespace)
-    polling2.poll(
-        target=lambda: primaza_cluster.is_svc_agent_deployed(namespace),
-        ignore_exceptions=(ApiException,),
-        step=1,
-        timeout=60)
-
-
 @step(u'On Primaza Cluster "{cluster_name}", Primaza Application Agent is deployed into namespace "{namespace}"')
 def application_agent_is_deployed(context, cluster_name: str, namespace: str):
     primaza_cluster = context.cluster_provider.get_primaza_cluster(cluster_name)  # type: PrimazaCluster

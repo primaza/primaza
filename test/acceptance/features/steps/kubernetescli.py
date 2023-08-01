@@ -524,7 +524,20 @@ def on_cluster_apply_yaml(context, cluster):
         tf.write(kubeconfig.encode("utf-8"))
         tf.flush()
 
-        Kubernetes(kubeconfig=tf.name).apply(resource)
+        def apply():
+            try:
+                Kubernetes(kubeconfig=tf.name).apply(resource)
+            except AssertionError as e:
+                if "connection refused" in str(e):
+                    return False
+                raise e
+            return True
+
+        polling2.poll(
+            target=apply,
+            step=1,
+            timeout=10,
+        )
 
 
 @step(u'On Worker Cluster "{cluster}", "{resource_type}" named "{resource_name}" in "{namespace}" is patched')

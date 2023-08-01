@@ -242,6 +242,8 @@ func (r *ClusterEnvironmentReconciler) createUpdate(ctx context.Context, rs *pri
 	}
 
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, curs, func() error {
+		curs.Annotations = rs.Annotations
+		curs.Labels = rs.Labels
 		curs.Spec = rs.Spec
 		return nil
 	}); err != nil {

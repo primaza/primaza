@@ -18,6 +18,7 @@ spec:
         kubectl.kubernetes.io/default-container: manager
       labels:
         control-plane: primaza-app-agent
+        primaza.io/cluster-environment: ""
     spec:
       securityContext:
         runAsNonRoot: true
@@ -30,6 +31,10 @@ spec:
         imagePullPolicy: IfNotPresent
         name: manager
         env:
+          - name: PRIMAZA_CLUSTER_ENVIRONMENT
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.labels['primaza.io/cluster-environment']
           - name: WATCH_NAMESPACE
             valueFrom:
               fieldRef:

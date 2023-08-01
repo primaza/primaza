@@ -2,12 +2,26 @@ Feature: ServicesClasses can extract RegisteredService from resource-linked secr
 
     Background:
         Given Primaza Cluster "main" is running
-        And Worker Cluster "worker" for ClusterEnvironment "worker" is running
-        And Clusters "main" and "worker" can communicate
-        And On Worker Cluster "worker", service namespace "services" for ClusterEnvironment "worker" exists
-        And On Worker Cluster "worker", Primaza Service Agent is deployed into namespace "services"
-        And Resource "backend_crd.yaml" is installed on worker cluster "worker" in namespace "services"
-        And On Primaza Cluster "main", Resource is created
+        And   Worker Cluster "worker" for ClusterEnvironment "worker" is running
+        And   Clusters "main" and "worker" can communicate
+        And   On Worker Cluster "worker", service namespace "services" for ClusterEnvironment "worker" exists
+        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
+        And   On Primaza Cluster "main", Resource is created
+        """
+        apiVersion: primaza.io/v1alpha1
+        kind: ClusterEnvironment
+        metadata:
+            name: worker
+            namespace: primaza-system
+        spec:
+            environmentName: dev
+            clusterContextSecret: primaza-kw
+            serviceNamespaces:
+            - services
+        """
+        And   On Worker Cluster "worker", Primaza Service Agent exists into namespace "services"
+        And   Resource "backend_crd.yaml" is installed on worker cluster "worker" in namespace "services"
+        And   On Primaza Cluster "main", Resource is created
             """
             apiVersion: rbac.authorization.k8s.io/v1
             kind: RoleBinding

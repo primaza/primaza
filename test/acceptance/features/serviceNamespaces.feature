@@ -56,3 +56,4 @@ Feature: Register a kubernetes cluster as Primaza Worker Cluster
         And  On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "Online" has Status "True"
         And  On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ServiceNamespacePermissionsRequired" has Status "False"
         And  On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ApplicationNamespacePermissionsRequired" has Status "False"
+        # And  On Worker Cluster "worker", Service Agent Deployment in namespace "services" has cluster environment labels set to "worker"

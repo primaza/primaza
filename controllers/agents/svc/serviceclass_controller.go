@@ -381,12 +381,22 @@ func PrepareRegisteredService(
 			"gvk", data.GroupVersionKind())
 		return v1alpha1.RegisteredService{}, nil, err
 	}
+
+	gvk := data.GetObjectKind().GroupVersionKind()
 	rs := v1alpha1.RegisteredService{
 		ObjectMeta: metav1.ObjectMeta{
 			// FIXME(sadlerap): this could cause naming conflicts; we need
 			// to take into account the type of resource somehow.
 			Name:      data.GetName(),
 			Namespace: target_namespace,
+			Annotations: map[string]string{
+				constants.ServiceGroupAnnotation:       gvk.Group,
+				constants.ServiceKindAnnotation:        gvk.Kind,
+				constants.ServiceNameAnnotation:        data.GetName(),
+				constants.ServiceNamespaceAnnotation:   data.GetNamespace(),
+				constants.ServiceUIDAnnotation:         string(data.GetUID()),
+				constants.ClusterEnvironmentAnnotation: os.Getenv(constants.PrimazaClusterEnvironmentEnvVar),
+			},
 		},
 		Spec: v1alpha1.RegisteredServiceSpec{
 			ServiceEndpointDefinition: sedMappings,
@@ -596,7 +606,6 @@ func (r *ServiceClassReconciler) DeleteRegisteredService(ctx context.Context, se
 	}
 	l.Info("remote cluster", "address", config.Host)
 
-	// TODO: Deletion of Registered Services to be made dynamic
 	registeredService := v1alpha1.RegisteredService{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: serviceClass.Name,

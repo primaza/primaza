@@ -19,6 +19,7 @@ def on_primaza_cluster_check_state(context, cluster_name, ce_name, state, timeou
             namespace="primaza-system",
             plural="clusterenvironments",
             name=ce_name).get("status", {}).get("state", None),
+        ignore_exceptions=(ApiException,),
         check_success=lambda x: x is not None and x == state,
         step=1,
         timeout=timeout)
