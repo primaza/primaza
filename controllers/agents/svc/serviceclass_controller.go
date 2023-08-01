@@ -599,8 +599,7 @@ func (r *ServiceClassReconciler) DeleteRegisteredService(ctx context.Context, se
 	// TODO: Deletion of Registered Services to be made dynamic
 	registeredService := v1alpha1.RegisteredService{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      serviceClass.Name,
-			Namespace: "primaza-system",
+			Name: serviceClass.Name,
 		},
 	}
 	if err = target_client.Delete(ctx, &registeredService, &client.DeleteOptions{}); !apierrors.IsNotFound(err) {
