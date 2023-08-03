@@ -71,8 +71,8 @@ type ServiceBindingStatus struct {
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
-	// +kubebuilder:validation:Enum=Ready;Malformed
 	// The state of the service binding observed
+	// +kubebuilder:validation:Enum=Ready;Malformed
 	// +kubebuilder:default:=Malformed
 	State string `json:"state,omitempty"`
 

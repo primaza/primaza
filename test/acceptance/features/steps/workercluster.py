@@ -219,6 +219,24 @@ def ensure_status_of_service_claim(context, cluster_name: str, service_claim_nam
         timeout=60)
 
 
+@step(u'On Worker Cluster "{cluster_name}", the RegisteredService bound to the ServiceClaim "{service_claim_name}" is "{registered_service}"')
+def ensure_registered_service_of_service_claim(context, cluster_name: str, service_claim_name: str, registered_service: str):
+    cluster = context.cluster_provider.get_worker_cluster(cluster_name)
+    group = "primaza.io"
+    version = "v1alpha1"
+    plural = "serviceclaims"
+    namespace = "applications"
+    polling2.poll(
+        target=lambda: cluster.read_custom_resource_status(
+            group,
+            version,
+            plural,
+            service_claim_name,
+            namespace).get("status", {}).get("registeredService", None) == registered_service,
+        step=1,
+        timeout=60)
+
+
 @step(u'On Worker Cluster "{cluster_name}", the status of RegisteredService "{name}" is "{status}"')
 def ensure_status_of_registered_service(context, cluster_name: str, name: str, status: str):
     cluster = context.cluster_provider.get_worker_cluster(cluster_name)

@@ -1,4 +1,4 @@
-Feature: Claim from an application namespace
+Feature: Claim from an application namespace (Pull)
 
     Background:
         Given Primaza Cluster "main" is running
@@ -96,6 +96,8 @@ Feature: Claim from an application namespace
         Then On Primaza Cluster "main", ServiceClaim "sc-test" state will eventually move to "Resolved"
         And  On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
         And  On Primaza Cluster "main", ServiceCatalog "stage" will not contain RegisteredService "primaza-rsdb"
+        And  On Worker Cluster "worker", the status of ServiceClaim "sc-test" is "Resolved"
+        And  On Worker Cluster "worker", the RegisteredService bound to the ServiceClaim "sc-test" is "primaza-rsdb"
         And  On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "type" with value "psqlserver"
 
     Scenario: Delete claim with label selector from an application namespace

@@ -172,8 +172,11 @@ spec:
             description: ServiceClaimStatus defines the observed state of ServiceClaim
             properties:
               claimID:
+                description: Unique ID For the ServiceClaim
                 type: string
               conditions:
+                description: The status of the service binding along with reason and
+                  type
                 items:
                   description: "Condition contains details for one aspect of the current
                     state of this API Resource. --- This struct is intended for direct
@@ -242,9 +245,11 @@ spec:
                   type: object
                 type: array
               registeredService:
+                description: Name of Claimed RegisteredService
                 type: string
               state:
                 default: Pending
+                description: The state of the ServiceClaim observed
                 enum:
                 - Pending
                 - Resolved

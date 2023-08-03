@@ -280,9 +280,11 @@ class Cluster(object):
         sa_name = f"primaza-{tenant}-{cluster_environment}"
         sa_namespace = "kube-system"
         role_name = f"primaza:controlplane:{nstype}"
+        svc_pmz_resources = ["serviceclasses", "registeredservices"]
+        app_pmz_resources = ["servicebindings", "servicecatalogs", "serviceclaims", "serviceclaims/status"]
         pmz_rules = [client.V1PolicyRule(
             api_groups=["primaza.io"],
-            resources=["serviceclasses", "registeredservices"] if nstype == "svc" else ["servicebindings", "servicecatalogs", "serviceclaims"],
+            resources=svc_pmz_resources if nstype == "svc" else app_pmz_resources,
             verbs=["get", "list", "watch", "create", "update", "patch", "delete"])]
 
         r = client.V1Role(

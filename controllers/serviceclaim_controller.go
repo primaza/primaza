@@ -113,23 +113,26 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		}
 	}
 
-	l.Info("reconciling service claim", "service-claim", sclaim)
+	l = l.WithValues("service-claim", sclaim.Name, "state", sclaim.Status.State)
+	var err error
 	switch sclaim.Status.State {
 	case "":
 		sclaim.Status.ClaimID = uuid.New().String()
 		l.Info("reconciling new service claim")
-		return ctrl.Result{}, r.processClaim(ctx, req, sclaim)
+		err = r.processClaim(ctx, req, sclaim)
 	case primazaiov1alpha1.ServiceClaimStateResolved:
 		l.Info("reconciling Resolved service claim")
-		if err := r.processResolvedServiceClaim(ctx, sclaim); err != nil {
-			l.Error(err, "error processing Resolved ServiceClaim")
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{}, nil
+		err = r.processResolvedServiceClaim(ctx, sclaim)
 	default:
-		l.Info("reconciling Pending and marked for deletion service claim")
-		return ctrl.Result{}, r.processClaim(ctx, req, sclaim)
+		l.Info("reconciling Pending or marked for deletion service claim")
+		err = r.processClaim(ctx, req, sclaim)
 	}
+	if err != nil {
+		l.Error(err, "error processing ServiceClaim")
+		return ctrl.Result{}, err
+	}
+
+	return ctrl.Result{}, nil
 }
 
 func (r *ServiceClaimReconciler) processClaim(ctx context.Context, req ctrl.Request, sclaim primazaiov1alpha1.ServiceClaim) error {
@@ -340,9 +343,27 @@ func (r *ServiceClaimReconciler) processResolvedServiceClaim(
 
 	sclaim.Status.State = primazaiov1alpha1.ServiceClaimStateResolved
 	sclaim.Status.RegisteredService = rs.Name
-	if err := r.Status().Update(ctx, &sclaim); err != nil {
+	if err := r.updateServiceClaimStatus(ctx, &sclaim); err != nil {
 		l.Error(err, "error updating the ServiceClaim",
 			"registered-service", rs, "service-claim", sclaim)
+		return err
+	}
+
+	return nil
+}
+
+func (r *ServiceClaimReconciler) updateServiceClaimStatus(ctx context.Context, sclaim *primazaiov1alpha1.ServiceClaim) error {
+	l := log.FromContext(ctx).WithValues("service-claim", sclaim.Name, "status", sclaim.Status)
+
+	l.Info("updating service-claim status in control plane")
+	if err := r.Status().Update(ctx, sclaim); err != nil {
+		l.Error(err, "unable to update the ServiceClaim in Primaza's Control Plane")
+		return err
+	}
+
+	l.Info("updating service-claim status in remote application namespace")
+	if err := r.updateRemoteServiceClaimStatusIfNeeded(ctx, *sclaim); err != nil {
+		l.Error(err, "unable to update the ServiceClaim in Application Namespace")
 		return err
 	}
 
@@ -414,7 +435,7 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 		meta.SetStatusCondition(&sclaim.Status.Conditions, c)
 
 		sclaim.Status.State = primazaiov1alpha1.ServiceClaimStatePending
-		if err := r.Status().Update(ctx, &sclaim); err != nil {
+		if err := r.updateServiceClaimStatus(ctx, &sclaim); err != nil {
 			l.Error(err, "unable to update the ServiceClaim", "ServiceClaim", sclaim)
 			return err
 		}
@@ -435,7 +456,7 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 		meta.SetStatusCondition(&sclaim.Status.Conditions, c)
 
 		sclaim.Status.State = primazaiov1alpha1.ServiceClaimStatePending
-		if err := r.Status().Update(ctx, &sclaim); err != nil {
+		if err := r.updateServiceClaimStatus(ctx, &sclaim); err != nil {
 			l.Error(err, "unable to update the ServiceClaim", "ServiceClaim", sclaim)
 			return err
 		}
@@ -467,9 +488,68 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 
 	sclaim.Status.State = primazaiov1alpha1.ServiceClaimStateResolved
 	sclaim.Status.RegisteredService = registeredService.Name
-	if err := r.Status().Update(ctx, &sclaim); err != nil {
+	if err := r.updateServiceClaimStatus(ctx, &sclaim); err != nil {
 		l.Error(err, "unable to update the ServiceClaim", "ServiceClaim", sclaim)
 		return err
+	}
+
+	return nil
+}
+
+func (r *ServiceClaimReconciler) updateRemoteServiceClaimStatusIfNeeded(
+	ctx context.Context,
+	sclaim primazaiov1alpha1.ServiceClaim,
+) error {
+	l := log.FromContext(ctx).WithValues("service-claim", sclaim.Name)
+
+	if sclaim.Spec.ApplicationClusterContext == nil {
+		l.Info("Service claim is not Cluster-scoped, skipping status update")
+		return nil
+	}
+
+	ce, err := r.getEnvironmentFromClusterEnvironment(ctx, sclaim.Namespace, sclaim.Spec.ApplicationClusterContext.ClusterEnvironmentName)
+	if err != nil {
+		l.Info("error getting ClusterEnvironment", "error", err)
+		return err
+	}
+	l.Info("retrieved ClusterEnvironment", "cluster-environment", ce.ObjectMeta)
+
+	cfg, err := clustercontext.GetClusterRESTConfig(ctx, r.Client, ce.Namespace, ce.Spec.ClusterContextSecret)
+	if err != nil {
+		return err
+	}
+
+	oc := client.Options{
+		Scheme: r.Scheme,
+		Mapper: r.Mapper,
+	}
+	cli, err := client.New(cfg, oc)
+	if err != nil {
+		return fmt.Errorf("error creating client for cluster environment %s: %w", ce.Name, err)
+	}
+
+	ans := sclaim.Spec.ApplicationClusterContext.Namespace
+	otk := types.NamespacedName{Namespace: ans, Name: sclaim.Name}
+	rsc := primazaiov1alpha1.ServiceClaim{}
+	if err := cli.Get(ctx, otk, &rsc); err != nil {
+		return fmt.Errorf("error retrieving ServiceClaim from application namespace %s of cluster environment %s: %w", ans, ce.Name, err)
+	}
+
+	l = l.WithValues("remote-service-claim", rsc.Name, "application-namespace", rsc.Namespace)
+	l.Info("retrieved remote service claim", "status", rsc.Status)
+
+	l = l.WithValues("status", sclaim.Status)
+	if rsc.Status.RegisteredService != sclaim.Status.RegisteredService ||
+		rsc.Status.State != sclaim.Status.State {
+		rsc.Status.RegisteredService = sclaim.Status.RegisteredService
+		rsc.Status.State = sclaim.Status.State
+		if err := cli.Status().Update(ctx, &rsc); err != nil {
+			l.Error(err, "error updating serviceclaim status")
+			return fmt.Errorf("error updating ServiceClaim from application namespace %s of cluster environment %s: %w", ans, ce.Name, err)
+		}
+		l.Info("serviceclaim updated", "remote status", rsc.Status)
+	} else {
+		l.Info("no need to update serviceclaim status")
 	}
 
 	return nil

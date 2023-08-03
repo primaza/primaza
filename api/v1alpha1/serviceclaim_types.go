@@ -60,12 +60,16 @@ type ServiceClaimApplicationClusterContext struct {
 
 // ServiceClaimStatus defines the observed state of ServiceClaim
 type ServiceClaimStatus struct {
+	// The state of the ServiceClaim observed
 	//+kubebuilder:validation:Enum=Pending;Resolved;Invalid
 	//+kubebuilder:default:=Pending
-	State             ServiceClaimState  `json:"state"`
-	ClaimID           string             `json:"claimID,omitempty"`
-	RegisteredService string             `json:"registeredService"`
-	Conditions        []metav1.Condition `json:"conditions,omitempty"`
+	State ServiceClaimState `json:"state"`
+	// Unique ID For the ServiceClaim
+	ClaimID string `json:"claimID,omitempty"`
+	// Name of Claimed RegisteredService
+	RegisteredService string `json:"registeredService"`
+	// The status of the service binding along with reason and type
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 //+kubebuilder:object:root=true

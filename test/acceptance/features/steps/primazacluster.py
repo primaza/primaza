@@ -118,6 +118,23 @@ def ensure_status_of_service_claim(context, primaza_cluster_name: str, service_c
     )
 
 
+@step(u'On Primaza Cluster "{cluster_name}", the RegisteredService bound to the ServiceClaim "{service_claim_name}" is "{registered_service}"')
+def ensure_registered_service_of_service_claim(context, cluster_name: str, service_claim_name: str, registered_service: str, tenant: str = "primaza-system"):
+    cluster = context.cluster_provider.get_primaza_cluster(cluster_name)
+    group = "primaza.io"
+    version = "v1alpha1"
+    plural = "serviceclaims"
+    polling2.poll(
+        target=lambda: cluster.read_custom_resource_status(
+            group,
+            version,
+            plural,
+            service_claim_name,
+            tenant).get("status", {}).get("registeredService", None) == registered_service,
+        step=1,
+        timeout=60)
+
+
 @step(u'On Primaza Cluster "{primaza_cluster_name}", the secret "{secret_name}" in namespace "{namespace}" has the key "{key}" with value "{value}"')
 def ensure_secret_key_has_the_right_value(context, primaza_cluster_name: str, secret_name: str, namespace: str, key: str, value: str):
     primaza_cluster = context.cluster_provider.get_primaza_cluster(primaza_cluster_name)
