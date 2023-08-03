@@ -1,4 +1,4 @@
-Feature: Use ServicesClass resources to manage RegisteredService resources
+Feature: Use ServicesClass resources to manage RegisteredService resources (Pull)
 
     Background:
         Given Primaza Cluster "main" is running
@@ -24,8 +24,8 @@ Feature: Use ServicesClass resources to manage RegisteredService resources
         And On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "Online" has Status "True"
         And On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ApplicationNamespacePermissionsRequired" has Status "False"
         And On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ServiceNamespacePermissionsRequired" has Status "False"
-        And Resource "backend_crd.yaml" is installed on worker cluster "worker" in namespace "services"
         And On Worker Cluster "worker", Primaza Service Agent exists into namespace "services"
+        And Resource "backend_crd.yaml" is installed on worker cluster "worker" in namespace "services"
         And On Worker Cluster "worker", Resource is deleted
         """
         apiVersion: v1
@@ -85,6 +85,11 @@ Feature: Use ServicesClass resources to manage RegisteredService resources
         And jsonpath ".spec.serviceEndpointDefinition[0]" on "registeredservices.primaza.io/$scenario_id-1:primaza-system" in cluster main is "{"name":"host","value":"internal.db.stable.example.com"}"
         And The resource registeredservices.primaza.io/$scenario_id-2:primaza-system is available in cluster "main"
         And jsonpath ".spec.serviceEndpointDefinition[0]" on "registeredservices.primaza.io/$scenario_id-2:primaza-system" in cluster main is "{"name":"host","value":"external.db.stable.example.com"}"
+        And jsonpath ".metadata.annotations."primaza.io/service-group"" on "registeredservices.primaza.io/$scenario_id-2:primaza-system" in cluster main is "stable.example.com"
+        And jsonpath ".metadata.annotations."primaza.io/service-kind"" on "registeredservices.primaza.io/$scenario_id-2:primaza-system" in cluster main is "Backend"
+        And jsonpath ".metadata.annotations."primaza.io/service-name"" on "registeredservices.primaza.io/$scenario_id-2:primaza-system" in cluster main is "$scenario_id-2"
+        And jsonpath ".metadata.annotations."primaza.io/service-namespace"" on "registeredservices.primaza.io/$scenario_id-2:primaza-system" in cluster main is "services"
+        And jsonpath ".metadata.annotations."primaza.io/cluster-environment"" on "registeredservices.primaza.io/$scenario_id-2:primaza-system" in cluster main is "worker"
 
     Scenario: A Registered Service should not be created if the resource doesn't have the needed binding information
         Given On Worker Cluster "worker", Resource is created

@@ -119,17 +119,6 @@ def ensure_service_namespace_exists(
     worker.create_service_namespace(namespace, tenant, cluster_environment, kubeconfig)
 
 
-@step(u'On Worker Cluster "{cluster_name}", Primaza Service Agent is deployed into namespace "{namespace}"')
-def service_agent_is_deployed(context, cluster_name: str, namespace: str):
-    worker = context.cluster_provider.get_worker_cluster(cluster_name)  # type: WorkerCluster
-    worker.deploy_agentsvc(namespace)
-    polling2.poll(
-        target=lambda: worker.is_svc_agent_deployed(namespace),
-        ignore_exceptions=(ApiException,),
-        step=1,
-        timeout=60)
-
-
 @step(u'On Worker Cluster "{cluster_name}", Primaza Service Agent exists into namespace "{namespace}"')
 def service_agent_exists(context, cluster_name: str, namespace: str):
     worker = context.cluster_provider.get_worker_cluster(cluster_name)  # type: WorkerCluster

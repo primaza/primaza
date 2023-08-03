@@ -1,27 +1,45 @@
-Feature: Use ServicesClass resources to manage RegisteredService resources
+Feature: Use ServicesClass resources to manage RegisteredService resources (Push)
 
     Background:
         Given Primaza Cluster "main" is running
-        And Worker Cluster "worker" for ClusterEnvironment "worker" is running
-        And Clusters "main" and "worker" can communicate
-        And On Worker Cluster "worker", service namespace "services" for ClusterEnvironment "worker" exists
-        And On Worker Cluster "worker", Primaza Service Agent is deployed into namespace "services"
-        And Resource "backend_crd.yaml" is installed on worker cluster "worker" in namespace "services"
-        And On Primaza Cluster "main", Resource is created
-            """
-            apiVersion: rbac.authorization.k8s.io/v1
-            kind: RoleBinding
-            metadata:
-                name: primaza:reporter-svc-worker-services
-                namespace: primaza-system
-            roleRef:
-                apiGroup: rbac.authorization.k8s.io
-                kind: Role
-                name: primaza-reporter
-            subjects:
-            - kind: ServiceAccount
-              name: primaza-svc-worker-services
-            """
+        And   Worker Cluster "worker" for ClusterEnvironment "worker" is running
+        And   Clusters "main" and "worker" can communicate
+        And   On Worker Cluster "worker", service namespace "services" for ClusterEnvironment "worker" exists
+        And   On Primaza Cluster "main", Worker "worker"'s ClusterContext secret "primaza-kw" for ClusterEnvironment "worker" is published
+        And   On Primaza Cluster "main", Resource is created
+        """
+        apiVersion: primaza.io/v1alpha1
+        kind: ClusterEnvironment
+        metadata:
+            name: worker
+            namespace: primaza-system
+        spec:
+            environmentName: dev
+            clusterContextSecret: primaza-kw
+            serviceNamespaces:
+            - services
+        """
+        And   On Primaza Cluster "main", ClusterEnvironment "worker" state will eventually move to "Online"
+        And   On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "Online" has Status "True"
+        And   On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ApplicationNamespacePermissionsRequired" has Status "False"
+        And   On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ServiceNamespacePermissionsRequired" has Status "False"
+        And   On Worker Cluster "worker", Primaza Service Agent exists into namespace "services"
+        And   Resource "backend_crd.yaml" is installed on worker cluster "worker" in namespace "services"
+        And   On Primaza Cluster "main", Resource is created
+        """
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        metadata:
+            name: primaza:reporter-svc-worker-services
+            namespace: primaza-system
+        roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: Role
+            name: primaza-reporter
+        subjects:
+        - kind: ServiceAccount
+          name: primaza-svc-worker-services
+        """
 
     Scenario: A Service Class creates Registered Services as specified
         Given On Worker Cluster "worker", Resource is created
@@ -73,6 +91,11 @@ Feature: Use ServicesClass resources to manage RegisteredService resources
         And jsonpath ".spec.serviceEndpointDefinition[0]" on "registeredservices.primaza.io/$scenario_id-1:primaza-system" in cluster main is "{"name":"host","value":"internal.db.stable.example.com"}"
         And The resource registeredservices.primaza.io/$scenario_id-2:primaza-system is available in cluster "main"
         And jsonpath ".spec.serviceEndpointDefinition[0]" on "registeredservices.primaza.io/$scenario_id-2:primaza-system" in cluster main is "{"name":"host","value":"external.db.stable.example.com"}"
+        And jsonpath ".metadata.annotations."primaza.io/service-group"" on "registeredservices.primaza.io/$scenario_id-2:primaza-system" in cluster main is "stable.example.com"
+        And jsonpath ".metadata.annotations."primaza.io/service-kind"" on "registeredservices.primaza.io/$scenario_id-2:primaza-system" in cluster main is "Backend"
+        And jsonpath ".metadata.annotations."primaza.io/service-name"" on "registeredservices.primaza.io/$scenario_id-2:primaza-system" in cluster main is "$scenario_id-2"
+        And jsonpath ".metadata.annotations."primaza.io/service-namespace"" on "registeredservices.primaza.io/$scenario_id-2:primaza-system" in cluster main is "services"
+        And jsonpath ".metadata.annotations."primaza.io/cluster-environment"" on "registeredservices.primaza.io/$scenario_id-2:primaza-system" in cluster main is "worker"
 
     Scenario: A Registered Service should not be created if the resource doesn't have the needed binding information
         Given On Worker Cluster "worker", Resource is created
