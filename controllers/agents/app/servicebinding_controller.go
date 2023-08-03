@@ -192,18 +192,18 @@ func (r *ServiceBindingReconciler) GetSecret(ctx context.Context, serviceBinding
 func (r *ServiceBindingReconciler) PrepareBinding(ctx context.Context, serviceBinding *v1alpha1.ServiceBinding, psSecret *v1.Secret, applications ...unstructured.Unstructured) error {
 	l := log.FromContext(ctx)
 
+	f := false
+	p := int32(0444)
 	volumeName := serviceBinding.Name
 	mountPathDir := serviceBinding.Name
-	sp := &v1.SecretProjection{
-		LocalObjectReference: v1.LocalObjectReference{
-			Name: serviceBinding.Spec.ServiceEndpointDefinitionSecret,
-		}}
 
 	volumeProjection := &v1.Volume{
 		Name: volumeName,
 		VolumeSource: v1.VolumeSource{
-			Projected: &v1.ProjectedVolumeSource{
-				Sources: []v1.VolumeProjection{{Secret: sp}},
+			Secret: &v1.SecretVolumeSource{
+				SecretName:  serviceBinding.Spec.ServiceEndpointDefinitionSecret,
+				Optional:    &f,
+				DefaultMode: &p,
 			},
 		},
 	}
