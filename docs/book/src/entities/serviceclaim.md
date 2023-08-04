@@ -17,10 +17,11 @@ The specification contains the following properties:
 - `serviceEndpointDefinitionKeys`: An array of keys that is required for connectivity.
   The values corresponding to each of these keys will be extracted from the service.
   This property is required.
-- `application`: Fields identifies application resources through kind, apiVersion, and label selector or name.
-- `environmentTag`: A string representing one of the environment.
-- `applicationClusterContext`: A combination of ClusterEnvironment resource name and namespace.
-- `envs`: Envs allows projecting Service Endpoint Definition's data as Environment Variables in the Pod
+- `application`: identifies application resources through kind, apiVersion, and label selector or name.
+- `target`: Field that identifies the ServiceClaim target, may be an application deployed in a specific cluster or an entire environment
+    - `environmentTag`: A string representing one of the environment.
+    - `applicationClusterContext`: A combination of ClusterEnvironment resource name and namespace.
+- `envs`: allows projecting Service Endpoint Definition's data as Environment Variables in the Pod
 
 The `environmentTag` and `applicationClusterContext` are mutually exclusive.
 
@@ -48,7 +49,7 @@ There is an optional `claimID` field with a unique ID for the claim.
 ### Creation
 
 When a ServiceClaim is created, Primaza should find a RegisteredService based on `ServiceClassIdentity` and `ServiceEndpointDefinitionKeys` and create Secret and ServiceBinding resources.
-The EnvironmentVariables `envs` declared in the ServiceClaim are also added to the ServiceBinding specification.
+The Environment Variables `envs` declared in the ServiceClaim are also added to the ServiceBinding specification.
 The ServiceBinding resource will be marked as the owner for the secret.
 Then it will update the state of ServiceClaim to `Resolved`.
 The state of RegisteredService will be changed to `Claimed`.

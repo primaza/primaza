@@ -50,9 +50,10 @@ spec:
   serviceEndpointDefinitionKeys:
   - url
   - password
-  applicationClusterContext:
-    clusterEnvironmentName: worker
-    namespace: applications
+  target:
+    applicationClusterContext:
+      clusterEnvironmentName: worker
+      namespace: applications
   application:
     kind: Deployment
     apiVersion: apps/v1

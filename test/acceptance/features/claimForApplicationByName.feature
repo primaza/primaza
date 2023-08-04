@@ -64,7 +64,6 @@ Feature: Claim for an Application by Name
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Available"
 
     Scenario: Application exists with Claim for an Application by Name
-
         Given On Worker Cluster "worker", Resource is created
         """
         apiVersion: apps/v1
@@ -108,7 +107,8 @@ Feature: Claim for an Application by Name
           - user
           - password
           - database
-          environmentTag: stage
+          target:
+            environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1
@@ -116,7 +116,7 @@ Feature: Claim for an Application by Name
         """
         Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
         And On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "type" with value "psqlserver"
-        And On Worker Cluster "worker", ServiceBinding "sc-test" on namespace "applications" state will eventually move to "Ready"
+        And On Worker Cluster "worker", ServiceBinding "sc-test" in namespace "applications" state will eventually move to "Ready"
 
     Scenario: Application does not exist with Claim for an Application by Name
 
@@ -139,11 +139,14 @@ Feature: Claim for an Application by Name
           - user
           - password
           - database
-          environmentTag: stage
+          target:
+            environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1
             name: stage-app
         """
         Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
-        And jsonpath ".status.conditions[0].reason" on "servicebindings.primaza.io/sc-test:applications" in cluster worker is "NoMatchingWorkloads"
+        And jsonpath ".status.state" on "servicebindings.primaza.io/sc-test:applications" in cluster worker is "Ready"
+        And jsonpath ".status.conditions[] | select(.type=="Bound") | .status" on "servicebindings.primaza.io/sc-test:applications" in cluster worker is "False"
+        And jsonpath ".status.conditions[] | select(.type=="Bound") | .reason" on "servicebindings.primaza.io/sc-test:applications" in cluster worker is "NoMatchingWorkloads"

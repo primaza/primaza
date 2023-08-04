@@ -114,6 +114,11 @@ spec:
                 - apiVersion
                 - kind
                 type: object
+                x-kubernetes-validations:
+                - message: '`name` and `selector` can not be used at the same time'
+                  rule: '!(has(self.name) && has(self.selector))'
+                - message: one among `name` and `selector` is required
+                  rule: has(self.name) || has(self.selector)
               envs:
                 description: Envs declares environment variables based on the ServiceEndpointDefinitionSecret
                   to be projected into the application

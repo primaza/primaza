@@ -406,6 +406,11 @@ EOF"""
             f'{ctx.cli} exec $({ctx.cli} get pod -l app={label} -n {namespace} -o name) -n {namespace} -- test -f {file_path}')
         return exit_code
 
+    def logs_contain(self, deployment_name: str, namespace: str, text: str) -> bool:
+        cmd = f"kubectl logs deployments/{deployment_name} -n {namespace} | grep '{text}'"
+        _, exit_status = self.cmd.run(cmd)
+        return exit_status == 0
+
 
 # Behave steps
 
@@ -721,9 +726,10 @@ def jq_is(context, expr, resource_type, name, namespace, cluster, text):
         tf.flush()
 
         kubernetes = Kubernetes(kubeconfig=tf.name)
-        polling2.poll(lambda: kubernetes.get_resource_info_by_jq(resource_type, name, namespace, expr),
+        polling2.poll(lambda: json.loads(kubernetes.get_resource_info_by_jq(resource_type, name, namespace, expr)),
                       step=1, timeout=400,
-                      check_success=lambda x: json.loads(x) == text)
+                      check_success=lambda x: x == text,
+                      ignore_exceptions=(json.decoder.JSONDecodeError,))
 
 
 @step(u'The resource {resource_type}/{name}:{namespace} is deleted from the cluster "{cluster}"')
@@ -789,3 +795,17 @@ def restart_manager_deployment(context, cluster):
         tf.flush()
 
         Kubernetes(kubeconfig=tf.name).delete_by_labels("pod", "primaza-system", "controller-manager")
+
+
+@step(u'On Cluster "{cluster}", logs of deployment "{deployment_name}" in "{namespace}" contain')
+def deployment_logs_contain(context, cluster: str, deployment_name: str, namespace: str):
+    with tempfile.NamedTemporaryFile() as tf:
+        kubeconfig = context.cluster_provider.get_primaza_cluster(cluster).get_admin_kubeconfig()
+        tf.write(kubeconfig.encode("utf-8"))
+        tf.flush()
+
+        kubernetes = Kubernetes(kubeconfig=tf.name)
+        polling2.poll(
+            target=lambda: kubernetes.logs_contain(deployment_name, namespace, context.text),
+            step=3,
+            timeout=120)

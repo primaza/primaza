@@ -82,10 +82,11 @@ Feature: Service claim with label selector
           - user
           - password
           - database
-          environmentTag: stage
-          applicationClusterContext:
-            clusterEnvironmentName: worker
-            namespace: applications
+          target:
+            environmentTag: stage
+            applicationClusterContext:
+              clusterEnvironmentName: worker
+              namespace: applications
           application:
             kind: Deployment
             apiVersion: apps/v1
@@ -96,6 +97,38 @@ Feature: Service claim with label selector
         """
 
     Scenario: Create ServiceClaim with empty ApplicationClusterContext and EnvironmentTag
+        When On Primaza Cluster "main", Resource is not getting created
+        """
+        apiVersion: primaza.io/v1alpha1
+        kind: ServiceClaim
+        metadata:
+          name: sc-test
+          namespace: primaza-system
+        spec:
+          serviceClassIdentity:
+          - name: type
+            value: psqlserver
+          - name: provider
+            value: aws
+          serviceEndpointDefinitionKeys:
+          - host
+          - port
+          - user
+          - password
+          - database
+          target: {}
+          application:
+            kind: Deployment
+            apiVersion: apps/v1
+            selector:
+              matchLabels:
+                a: b
+                c: d
+        """
+
+    # disable until [#275](https://github.com/primaza/primaza/issues/275) is implemented
+    @disabled
+    Scenario: Create ServiceClaim without target
         When On Primaza Cluster "main", Resource is not getting created
         """
         apiVersion: primaza.io/v1alpha1
@@ -144,7 +177,8 @@ Feature: Service claim with label selector
           - user
           - password
           - database
-          environmentTag: stage
+          target:
+            environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1

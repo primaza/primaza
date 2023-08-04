@@ -79,7 +79,8 @@ Feature: Service claim with label selector
           - user
           - password
           - database
-          environmentTag: stage
+          target:
+            environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1
@@ -109,7 +110,8 @@ Feature: Service claim with label selector
           - user
           - password
           - database
-          environmentTag: stage
+          target:
+            environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1
@@ -174,7 +176,8 @@ Feature: Service claim with label selector
           - username
           - password
           - database
-          environmentTag: stage
+          target:
+            environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1
@@ -186,7 +189,7 @@ Feature: Service claim with label selector
         Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Pending"
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Available"
         And On Primaza Cluster "main", ServiceCatalog "stage" will contain RegisteredService "primaza-rsdb"
-        And jsonpath ".status.conditions[0].reason" on "serviceclaims.primaza.io/sc-test:primaza-system" in cluster main is "NoMatchingServiceFound"
+        And jsonpath ".status.conditions[] | select(.type=="Ready") | .reason" on "serviceclaims.primaza.io/sc-test:primaza-system" in cluster main is "NoMatchingServiceFound"
 
     Scenario: Create a service claim with non-matching SCI
         Given On Primaza Cluster "main", Resource is created
@@ -252,7 +255,8 @@ Feature: Service claim with label selector
           - user
           - password
           - database
-          environmentTag: stage
+          target:
+            environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1
@@ -264,4 +268,4 @@ Feature: Service claim with label selector
         Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Pending"
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Available"
         And On Primaza Cluster "main", ServiceCatalog "stage" will contain RegisteredService "primaza-rsdb"
-        And jsonpath ".status.conditions[0].reason" on "serviceclaims.primaza.io/sc-test:primaza-system" in cluster main is "NoMatchingServiceFound"
+        And jsonpath ".status.conditions[] | select(.type=="Ready") | .reason" on "serviceclaims.primaza.io/sc-test:primaza-system" in cluster main is "NoMatchingServiceFound"

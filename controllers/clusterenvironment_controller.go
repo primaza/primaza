@@ -319,9 +319,10 @@ func (r *ClusterEnvironmentReconciler) getClusterContextSecret(
 }
 
 func (r *ClusterEnvironmentReconciler) runInformers(ctx context.Context, cfg *rest.Config, ce *v1alpha1.ClusterEnvironment, fsnn, fann []string) error {
-	l := log.FromContext(ctx)
+	l := log.FromContext(ctx).WithValues("cluster-environment", ce.Name)
 	errs := []error{}
 
+	l.Info("running informers")
 	if err := r.RunSvcInformers(ctx, cfg, *ce, fsnn); err != nil {
 		l.Error(err, "error running service informers")
 		errs = append(errs, err)
@@ -478,7 +479,7 @@ func (r *ClusterEnvironmentReconciler) reconcileServiceBindingApplicationNamespa
 	}
 	var serviceclaimFilteredList []primazaiov1alpha1.ServiceClaim
 	for _, serviceclaim := range serviceclaimsList.Items {
-		if ce.Spec.EnvironmentName == serviceclaim.Spec.EnvironmentTag {
+		if ce.Spec.EnvironmentName == serviceclaim.Spec.Target.EnvironmentTag {
 			serviceclaimFilteredList = append(serviceclaimFilteredList, serviceclaim)
 		}
 	}
@@ -496,20 +497,21 @@ func (r *ClusterEnvironmentReconciler) reconcileServiceBindingApplicationNamespa
 		for _, sci := range sclaim.Spec.ServiceClassIdentity {
 			secret.StringData[sci.Name] = sci.Value
 		}
-		if sclaim.Spec.EnvironmentTag == "" {
-			if sclaim.Spec.ApplicationClusterContext != nil && ce.Name == sclaim.Spec.ApplicationClusterContext.ClusterEnvironmentName {
-				if err := controlplane.PushServiceBinding(ctx, &sclaim, secret, r.Scheme, r.Client, &sclaim.Spec.ApplicationClusterContext.Namespace, applicationNamespaces, cfg); err != nil {
+		if sclaim.Spec.Target.EnvironmentTag == "" {
+			cc := sclaim.Spec.Target.ApplicationClusterContext
+			if cc != nil && ce.Name == cc.ClusterEnvironmentName {
+				if err := controlplane.PushServiceBinding(ctx, &sclaim, secret, r.Scheme, r.Client, &cc.Namespace, applicationNamespaces, cfg); err != nil {
 					errs = append(errs, err)
 				}
 			}
 		} else {
 			// check if the ServiceClaim EnvironmentTag matches the EnvironmentName part of ClusterEnvironment
-			if ce.Spec.EnvironmentName != sclaim.Spec.EnvironmentTag {
-				l.Info("cluster environment is NOT matching environment", "cluster environment", ce, "environment tag", sclaim.Spec.EnvironmentTag)
+			if ce.Spec.EnvironmentName != sclaim.Spec.Target.EnvironmentTag {
+				l.Info("cluster environment is NOT matching environment", "cluster environment", ce, "environment tag", sclaim.Spec.Target.EnvironmentTag)
 				continue
 			}
 
-			l.Info("cluster environment is matching environment", "cluster environment", ce, "environment tag", sclaim.Spec.EnvironmentTag)
+			l.Info("cluster environment is matching environment", "cluster environment", ce, "environment tag", sclaim.Spec.Target.EnvironmentTag)
 			if err := controlplane.PushServiceBinding(ctx, &sclaim, secret, r.Scheme, r.Client, nil, applicationNamespaces, cfg); err != nil {
 				errs = append(errs, err)
 			}

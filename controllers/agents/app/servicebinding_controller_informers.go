@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/primaza/primaza/api/v1alpha1"
@@ -200,18 +201,17 @@ func (r *ServiceBindingReconciler) prepareDeleteFunc(ctx context.Context, synced
 		l := log.FromContext(ctx).WithValues("service binding", serviceBinding.Name)
 		l.Info("watched resource deleted")
 
-		applicationResource := obj.(*unstructured.Unstructured)
-		applications, _ := r.getApplication(ctx, serviceBinding)
-		if !verifyApplicationSatisfiesServiceBindingSpec(applicationResource, serviceBinding) {
+		sb := primazaiov1alpha1.ServiceBinding{}
+		k := types.NamespacedName{Namespace: serviceBinding.Namespace, Name: serviceBinding.Name}
+		if err := r.Get(ctx, k, &sb); err != nil {
+			l.Error(err, "error retrieving latest revision of ServiceBinding")
 			return
 		}
 
-		if len(applications) != 0 {
-			return
-		}
-		var sb primazaiov1alpha1.ServiceBinding
-		if err := r.Get(ctx, types.NamespacedName{Name: serviceBinding.Name, Namespace: serviceBinding.Namespace}, &sb); err != nil {
-			l.Error(err, "error updating service binding after workload is deleted")
+		applicationResource := obj.(*unstructured.Unstructured)
+		if !slices.ContainsFunc(
+			sb.Status.Connections,
+			func(w primazaiov1alpha1.BoundWorkload) bool { return w.Name == applicationResource.GetName() }) {
 			return
 		}
 
@@ -225,15 +225,16 @@ func (r *ServiceBindingReconciler) prepareDeleteFunc(ctx context.Context, synced
 		sb.Status.Connections = cc
 
 		// applications are deleted, so setting the service binding status to false and reconcile
-		if errUpdateStatus := r.setStatus(ctx,
-			sb,
-			metav1.ConditionFalse,
-			conditionGetAppsFailureReason,
-			primazaiov1alpha1.ServiceBindingStateReady,
-			"application was bound with the secret but the application got deleted",
-			primazaiov1alpha1.ServiceBindingBoundCondition); errUpdateStatus != nil {
-			l.Error(errUpdateStatus, "error on updating status")
-			return
+		s := primazaiov1alpha1.ServiceBindingStateReady
+		c := metav1.Condition{
+			LastTransitionTime: metav1.Now(),
+			Type:               primazaiov1alpha1.ServiceBindingBoundCondition,
+			Status:             metav1.ConditionFalse,
+			Reason:             conditionGetAppsFailureReason,
+			Message:            "application was bound with the secret but the application got deleted",
+		}
+		if err := r.updateServiceBindingStatus(ctx, &sb, c, s); err != nil {
+			l.Error(err, "error on updating status")
 		}
 	}
 }

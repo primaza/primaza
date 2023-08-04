@@ -35,23 +35,35 @@ type ServiceClaimSpec struct {
 	// ServiceClassIdentity defines a set of attributes that are sufficient to
 	// identify a service class.  A ServiceClaim whose ServiceClassIdentity
 	// field is a subset of a RegisteredService's keys can claim that service.
+	// +required
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Value is immutable"
 	ServiceClassIdentity []ServiceClassIdentityItem `json:"serviceClassIdentity"`
-
 	// ServiceEndpointDefinition defines a set of attributes sufficient for a
 	// client to establish a connection to the service.
+	// +required
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Value is immutable"
 	ServiceEndpointDefinitionKeys []string `json:"serviceEndpointDefinitionKeys"`
+	// Rules to match workloads to bind
+	// +required
+	Application ApplicationSelector `json:"application"`
+	// Service Claim target
+	Target *ServiceClaimTarget `json:"target,omitempty"`
+	// Envs allows projecting Service Endpoint Definition's data as Environment Variables in the Pod
+	// +optional
+	Envs []Environment `json:"envs,omitempty"`
+}
 
-	Application ApplicationSelector `json:"application,omitempty"`
+// The Service Claim target.
+// It can be an entire environment or a single application
+// +kubebuilder:validation:MaxProperties:=1
+// +kubebuilder:validation:MinProperties:=1
+type ServiceClaimTarget struct {
 	// EnvironmentTag allows the controller to search for those application cluster
 	// environments that define such EnvironmentTag
 	// +optional
 	EnvironmentTag string `json:"environmentTag,omitempty"`
 	// +optional
 	ApplicationClusterContext *ServiceClaimApplicationClusterContext `json:"applicationClusterContext,omitempty"`
-
-	// Envs allows projecting Service Endpoint Definition's data as Environment Variables in the Pod
-	// +optional
-	Envs []Environment `json:"envs,omitempty"`
 }
 
 type ServiceClaimApplicationClusterContext struct {

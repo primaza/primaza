@@ -20,7 +20,6 @@ import (
 	"context"
 	"os"
 	"strings"
-	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -153,7 +152,7 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}); err != nil {
 		if strings.Contains(err.Error(), "admission webhook \"vserviceclaim.kb.io\" denied the request") {
 			c := metav1.Condition{
-				LastTransitionTime: metav1.NewTime(time.Now()),
+				LastTransitionTime: metav1.Now(),
 				Type:               string(primazaiov1alpha1.ServiceClaimConditionReady),
 				Status:             metav1.ConditionFalse,
 				Reason:             constants.ValidationErrorReason,
@@ -180,10 +179,13 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 func (r *ServiceClaimReconciler) createServiceClaimCopy(sclaim primazaiov1alpha1.ServiceClaim, deployment appsv1.Deployment, remote_namespace string) *primazaiov1alpha1.ServiceClaim {
 	sclaimCopy := sclaim.DeepCopy()
-	sclaimCopy.Spec.EnvironmentTag = ""
-	sclaimCopy.Spec.ApplicationClusterContext = &primazaiov1alpha1.ServiceClaimApplicationClusterContext{}
-	sclaimCopy.Spec.ApplicationClusterContext.ClusterEnvironmentName = deployment.Labels["primaza.io/cluster-environment"]
-	sclaimCopy.Spec.ApplicationClusterContext.Namespace = sclaim.Namespace
+	sclaimCopy.Spec.Target = &primazaiov1alpha1.ServiceClaimTarget{
+		EnvironmentTag: "",
+		ApplicationClusterContext: &primazaiov1alpha1.ServiceClaimApplicationClusterContext{
+			ClusterEnvironmentName: deployment.Labels[constants.PrimazaClusterEnvironmentLabel],
+			Namespace:              sclaim.Namespace,
+		},
+	}
 	sclaimCopy.Namespace = remote_namespace
 	sclaimCopy.ResourceVersion = ""
 	return sclaimCopy

@@ -81,7 +81,8 @@ Feature: Application Namespaces initialization: Service Bindings
           - user
           - password
           - database
-          environmentTag: dev
+          target:
+            environmentTag: dev
           application:
             kind: Deployment
             apiVersion: apps/v1
@@ -168,7 +169,8 @@ Feature: Application Namespaces initialization: Service Bindings
           - user
           - password
           - database
-          environmentTag: dev
+          target:
+            environmentTag: dev
           application:
             kind: Deployment
             apiVersion: apps/v1
@@ -248,9 +250,10 @@ Feature: Application Namespaces initialization: Service Bindings
             - user
             - password
             - database
-          applicationClusterContext:
-            clusterEnvironmentName: worker
-            namespace: applications
+          target:
+            applicationClusterContext:
+              clusterEnvironmentName: worker
+              namespace: applications
           application:
             kind: Deployment
             apiVersion: apps/v1
@@ -329,7 +332,8 @@ Feature: Application Namespaces initialization: Service Bindings
           - user
           - password
           - database
-          environmentTag: dev
+          target:
+            environmentTag: dev
           application:
             kind: Deployment
             apiVersion: apps/v1

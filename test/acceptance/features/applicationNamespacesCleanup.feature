@@ -81,7 +81,8 @@ Feature: Cleanup application namespace
           - user
           - password
           - database
-          environmentTag: dev
+          target:
+            environmentTag: dev
           application:
             kind: Deployment
             apiVersion: apps/v1

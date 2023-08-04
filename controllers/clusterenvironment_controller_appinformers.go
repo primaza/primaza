@@ -77,12 +77,13 @@ func (r *ClusterEnvironmentReconciler) RunAppInformers(ctx context.Context, cfg 
 }
 
 func (r *ClusterEnvironmentReconciler) RunAppInformer(ctx context.Context, config *rest.Config, ce *v1alpha1.ClusterEnvironment, namespace string) error {
-	l := log.FromContext(ctx)
+	l := log.FromContext(ctx).WithValues("cluster-environment", ce.Name)
 	in := fmt.Sprintf("%s/%s", ce.Name, namespace)
 
+	l.Info("Running informer for service claims")
 	// check if informer already exists
 	if _, ok := r.appInformers[in]; ok {
-		l.Info("Informer already exists", "clusterenvironment", ce.Name, "informer", in)
+		l.Info("Informer already exists", "informer", in)
 		return nil
 	}
 
@@ -108,7 +109,7 @@ func (r *ClusterEnvironmentReconciler) RunAppInformer(ctx context.Context, confi
 	i := factory.ForResource(m.Resource).Informer()
 
 	ictx, fc := context.WithCancel(ctx)
-	li := log.FromContext(ictx)
+	li := log.FromContext(ictx).WithValues("cluster-environment", ce.Name)
 
 	parseServiceClaim := func(obj interface{}, action string) (*primazaiov1alpha1.ServiceClaim, error) {
 		u, ok := obj.(*unstructured.Unstructured)
@@ -144,7 +145,7 @@ func (r *ClusterEnvironmentReconciler) RunAppInformer(ctx context.Context, confi
 			// e.g. when primaza is creating a ServiceClaim that matches above constraints.
 			// My suggestion is to create an ApplicationServiceClaim CRD
 			// for the Claim from an Application namespace workflow
-			if sc.Spec.EnvironmentTag != "" {
+			if sc.Spec.Target != nil && sc.Spec.Target.EnvironmentTag != "" {
 				li.Info("error serviceclaim is not cluster scoped", "serviceclaim", sc)
 				return
 			}
@@ -157,9 +158,11 @@ func (r *ClusterEnvironmentReconciler) RunAppInformer(ctx context.Context, confi
 			}
 			if _, err := controllerutil.CreateOrUpdate(ictx, r.Client, csc, func() error {
 				csc.Spec = sc.Spec
-				csc.Spec.ApplicationClusterContext = &primazaiov1alpha1.ServiceClaimApplicationClusterContext{
-					ClusterEnvironmentName: ce.Name,
-					Namespace:              namespace,
+				csc.Spec.Target = &primazaiov1alpha1.ServiceClaimTarget{
+					ApplicationClusterContext: &primazaiov1alpha1.ServiceClaimApplicationClusterContext{
+						ClusterEnvironmentName: ce.Name,
+						Namespace:              namespace,
+					},
 				}
 				return nil
 			}); err != nil {

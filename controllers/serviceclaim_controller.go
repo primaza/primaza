@@ -20,8 +20,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -113,13 +113,14 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		}
 	}
 
+	if err := r.ensureServiceClaimIsInitialized(ctx, &sclaim); err != nil {
+		l.Error(err, "error initializing the ServiceClaim")
+		return ctrl.Result{}, err
+	}
+
 	l = l.WithValues("service-claim", sclaim.Name, "state", sclaim.Status.State)
 	var err error
 	switch sclaim.Status.State {
-	case "":
-		sclaim.Status.ClaimID = uuid.New().String()
-		l.Info("reconciling new service claim")
-		err = r.processClaim(ctx, req, sclaim)
 	case primazaiov1alpha1.ServiceClaimStateResolved:
 		l.Info("reconciling Resolved service claim")
 		err = r.processResolvedServiceClaim(ctx, sclaim)
@@ -133,6 +134,17 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *ServiceClaimReconciler) ensureServiceClaimIsInitialized(ctx context.Context, sc *primazaiov1alpha1.ServiceClaim) error {
+	if sc.Status.ClaimID != "" {
+		return nil
+	}
+
+	sc.Status.ClaimID = uuid.New().String()
+	sc.Status.State = primazaiov1alpha1.ServiceClaimStatePending
+
+	return r.Client.Status().Update(ctx, sc)
 }
 
 func (r *ServiceClaimReconciler) processClaim(ctx context.Context, req ctrl.Request, sclaim primazaiov1alpha1.ServiceClaim) error {
@@ -155,7 +167,6 @@ func (r *ServiceClaimReconciler) processClaim(ctx context.Context, req ctrl.Requ
 func (r *ServiceClaimReconciler) processClaimMarkedForDeletion(ctx context.Context, req ctrl.Request, sclaim primazaiov1alpha1.ServiceClaim) error {
 	l := log.FromContext(ctx)
 	errs := []error{}
-
 	var rsl primazaiov1alpha1.RegisteredServiceList
 	lo := client.ListOptions{Namespace: req.NamespacedName.Namespace}
 	if err := r.List(ctx, &rsl, &lo); err != nil {
@@ -169,7 +180,7 @@ func (r *ServiceClaimReconciler) processClaimMarkedForDeletion(ctx context.Conte
 		// ServiceClassIdentity given in the RegisteredService
 		if checkSCISubset(sclaim.Spec.ServiceClassIdentity, rs.Spec.ServiceClassIdentity) &&
 			(rs.Spec.Constraints == nil ||
-				envtag.Match(sclaim.Spec.EnvironmentTag, rs.Spec.Constraints.Environments)) {
+				envtag.Match(sclaim.Spec.Target.EnvironmentTag, rs.Spec.Constraints.Environments)) {
 			registeredServiceFound = true
 			registeredService = rs
 			break
@@ -408,16 +419,18 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 	// loop over every RegisteredService
 	registeredServiceFound := false
 	var registeredService primazaiov1alpha1.RegisteredService
-	env := sclaim.Spec.EnvironmentTag
-	if sclaim.Spec.ApplicationClusterContext != nil {
+
+	var env string
+	if sclaim.Spec.Target.ApplicationClusterContext != nil {
 		var err error
-		ce, err := r.getEnvironmentFromClusterEnvironment(ctx, sclaim.Namespace, sclaim.Spec.ApplicationClusterContext.ClusterEnvironmentName)
+		ce, err := r.getEnvironmentFromClusterEnvironment(ctx, sclaim.Namespace, sclaim.Spec.Target.ApplicationClusterContext.ClusterEnvironmentName)
 		if err != nil {
 			l.Error(err, "unable to get environment from cluster environment")
 			return err
 		}
 		env = ce.Spec.EnvironmentName
-
+	} else {
+		env = sclaim.Spec.Target.EnvironmentTag
 	}
 
 	for _, rs := range rsl.Items {
@@ -446,7 +459,7 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 
 	if !registeredServiceFound {
 		c := metav1.Condition{
-			LastTransitionTime: metav1.NewTime(time.Now()),
+			LastTransitionTime: metav1.Now(),
 			Type:               string(primazaiov1alpha1.ServiceClaimConditionReady),
 			Status:             metav1.ConditionFalse,
 			Reason:             constants.NoMatchingServiceFoundReason,
@@ -467,7 +480,7 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 	// that indicates one or more keys are missing
 	if len(sclaim.Spec.ServiceEndpointDefinitionKeys) > count {
 		c := metav1.Condition{
-			LastTransitionTime: metav1.NewTime(time.Now()),
+			LastTransitionTime: metav1.Now(),
 			Type:               string(primazaiov1alpha1.ServiceClaimConditionReady),
 			Status:             metav1.ConditionFalse,
 			Reason:             constants.NoMatchingServiceFoundReason,
@@ -535,12 +548,12 @@ func (r *ServiceClaimReconciler) updateRemoteServiceClaimStatusIfNeeded(
 ) error {
 	l := log.FromContext(ctx).WithValues("service-claim", sclaim.Name)
 
-	if sclaim.Spec.ApplicationClusterContext == nil {
+	if sclaim.Spec.Target.ApplicationClusterContext == nil {
 		l.Info("Service claim is not Cluster-scoped, skipping status update")
 		return nil
 	}
 
-	ce, err := r.getEnvironmentFromClusterEnvironment(ctx, sclaim.Namespace, sclaim.Spec.ApplicationClusterContext.ClusterEnvironmentName)
+	ce, err := r.getEnvironmentFromClusterEnvironment(ctx, sclaim.Namespace, sclaim.Spec.Target.ApplicationClusterContext.ClusterEnvironmentName)
 	if err != nil {
 		l.Info("error getting ClusterEnvironment", "error", err)
 		return err
@@ -561,7 +574,7 @@ func (r *ServiceClaimReconciler) updateRemoteServiceClaimStatusIfNeeded(
 		return fmt.Errorf("error creating client for cluster environment %s: %w", ce.Name, err)
 	}
 
-	ans := sclaim.Spec.ApplicationClusterContext.Namespace
+	ans := sclaim.Spec.Target.ApplicationClusterContext.Namespace
 	otk := types.NamespacedName{Namespace: ans, Name: sclaim.Name}
 	rsc := primazaiov1alpha1.ServiceClaim{}
 	if err := cli.Get(ctx, otk, &rsc); err != nil {
@@ -577,9 +590,11 @@ func (r *ServiceClaimReconciler) updateRemoteServiceClaimStatusIfNeeded(
 
 	l = l.WithValues("status", sclaim.Status)
 	if rsc.Status.RegisteredService != sclaim.Status.RegisteredService ||
-		rsc.Status.State != sclaim.Status.State {
+		rsc.Status.State != sclaim.Status.State ||
+		!reflect.DeepEqual(rsc.Status.Conditions, sclaim.Status.Conditions) {
 		rsc.Status.RegisteredService = sclaim.Status.RegisteredService
 		rsc.Status.State = sclaim.Status.State
+		rsc.Status.Conditions = sclaim.Status.Conditions
 		if err := cli.Status().Update(ctx, &rsc); err != nil {
 			l.Error(err, "error updating serviceclaim status")
 			return fmt.Errorf("error updating ServiceClaim from application namespace %s of cluster environment %s: %w", ans, ce.Name, err)
@@ -599,9 +614,9 @@ func (r *ServiceClaimReconciler) pushToClusterEnvironments(
 ) error {
 	l := log.FromContext(ctx)
 	errs := []error{}
-	if sclaim.Spec.ApplicationClusterContext != nil {
+	if sclaim.Spec.Target.ApplicationClusterContext != nil {
 		var err error
-		ce, err := r.getEnvironmentFromClusterEnvironment(ctx, sclaim.Namespace, sclaim.Spec.ApplicationClusterContext.ClusterEnvironmentName)
+		ce, err := r.getEnvironmentFromClusterEnvironment(ctx, sclaim.Namespace, sclaim.Spec.Target.ApplicationClusterContext.ClusterEnvironmentName)
 		if err != nil {
 			l.Info("error getting ClusterEnvironment", "error", err)
 			return err
@@ -610,7 +625,7 @@ func (r *ServiceClaimReconciler) pushToClusterEnvironments(
 		if err != nil {
 			return err
 		}
-		if err = controlplane.PushServiceBinding(ctx, &sclaim, secret, r.Scheme, r.Client, &sclaim.Spec.ApplicationClusterContext.Namespace, ce.Spec.ApplicationNamespaces, cfg); err != nil {
+		if err = controlplane.PushServiceBinding(ctx, &sclaim, secret, r.Scheme, r.Client, &sclaim.Spec.Target.ApplicationClusterContext.Namespace, ce.Spec.ApplicationNamespaces, cfg); err != nil {
 			l.Error(err, "error pushing service binding", "serviceclaim", sclaim)
 			errs = append(errs, err)
 		}
@@ -627,12 +642,12 @@ func (r *ServiceClaimReconciler) pushToClusterEnvironments(
 				return err
 			}
 			// check if the ServiceClaim EnvironmentTag matches the EnvironmentName part of ClusterEnvironment
-			if ce.Spec.EnvironmentName != sclaim.Spec.EnvironmentTag {
-				l.Info("cluster environment is NOT matching environment", "cluster environment", ce, "environment tag", sclaim.Spec.EnvironmentTag)
+			if ce.Spec.EnvironmentName != sclaim.Spec.Target.EnvironmentTag {
+				l.Info("cluster environment is NOT matching environment", "cluster environment", ce, "environment tag", sclaim.Spec.Target.EnvironmentTag)
 				continue
 			}
 
-			l.Info("cluster environment is matching environment", "cluster environment", ce, "environment tag", sclaim.Spec.EnvironmentTag)
+			l.Info("cluster environment is matching environment", "cluster environment", ce, "environment tag", sclaim.Spec.Target.EnvironmentTag)
 			if err = controlplane.PushServiceBinding(ctx, &sclaim, secret, r.Scheme, r.Client, nil, ce.Spec.ApplicationNamespaces, cfg); err != nil {
 				errs = append(errs, err)
 			}
@@ -650,12 +665,13 @@ func (r *ServiceClaimReconciler) DeleteServiceBindingsAndSecret(
 	req ctrl.Request,
 	sclaim primazaiov1alpha1.ServiceClaim,
 ) error {
-	l := log.FromContext(ctx)
+	l := log.FromContext(ctx).WithValues("service-claim", sclaim.Name)
 	errs := []error{}
+	ot := sclaim.Spec.Target
 
-	if sclaim.Spec.ApplicationClusterContext != nil {
+	if acc := ot.ApplicationClusterContext; acc != nil {
 		var err error
-		ce, err := r.getEnvironmentFromClusterEnvironment(ctx, sclaim.Namespace, sclaim.Spec.ApplicationClusterContext.ClusterEnvironmentName)
+		ce, err := r.getEnvironmentFromClusterEnvironment(ctx, sclaim.Namespace, acc.ClusterEnvironmentName)
 		if err != nil {
 			l.Info("error getting ClusterEnvironment", "error", err)
 			return err
@@ -664,7 +680,7 @@ func (r *ServiceClaimReconciler) DeleteServiceBindingsAndSecret(
 		if err != nil {
 			return err
 		}
-		ns := []string{sclaim.Spec.ApplicationClusterContext.Namespace}
+		ns := []string{acc.Namespace}
 		if err = controlplane.DeleteServiceBindingAndSecretFromNamespaces(ctx, cli, sclaim, ns); err != nil {
 			errs = append(errs, err)
 		}
@@ -681,12 +697,12 @@ func (r *ServiceClaimReconciler) DeleteServiceBindingsAndSecret(
 				return err
 			}
 			// check if the ServiceClaim EnvironmentTag matches the EnvironmentName part of ClusterEnvironment
-			if ce.Spec.EnvironmentName != sclaim.Spec.EnvironmentTag {
-				l.Info("cluster environment is NOT matching environment", "cluster environment", ce, "environment tag", sclaim.Spec.EnvironmentTag)
+			if ce.Spec.EnvironmentName != ot.EnvironmentTag {
+				l.Info("cluster environment is NOT matching environment", "cluster environment", ce, "environment tag", ot.EnvironmentTag)
 				continue
 			}
 
-			l.Info("cluster environment is matching environment", "cluster environment", ce, "environment tag", sclaim.Spec.EnvironmentTag)
+			l.Info("cluster environment is matching environment", "cluster environment", ce, "environment tag", ot.EnvironmentTag)
 			if err = controlplane.DeleteServiceBindingAndSecretFromNamespaces(ctx, cli, sclaim, ce.Spec.ApplicationNamespaces); err != nil {
 				errs = append(errs, err)
 			}

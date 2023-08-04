@@ -40,7 +40,6 @@ Feature: Claim from an application namespace (Push)
           - user
           - password
           - database
-          environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1
@@ -50,7 +49,7 @@ Feature: Claim from an application namespace (Push)
                 c: d
         """
         Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Pending"
-        And  On Worker Cluster "worker", the status of ServiceClaim "sc-test" is "Pending"
+        And  On Cluster "worker", ServiceClaim "sc-test" in namespace "applications" state will eventually move to "Pending"
 
     Scenario: Claim with label selector from an application namespace
         Given On Primaza Cluster "main", Resource is created
@@ -114,7 +113,6 @@ Feature: Claim from an application namespace (Push)
           - user
           - password
           - database
-          environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1
@@ -127,10 +125,12 @@ Feature: Claim from an application namespace (Push)
         And  On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
         And  On Primaza Cluster "main", ServiceCatalog "stage" will not contain RegisteredService "primaza-rsdb"
         And  On Primaza Cluster "main", the RegisteredService bound to the ServiceClaim "sc-test" is "primaza-rsdb"
-        And  On Worker Cluster "worker", the status of ServiceClaim "sc-test" is "Resolved"
+        And  On Cluster "worker", ServiceClaim "sc-test" in namespace "applications" state will eventually move to "Resolved"
         And  On Worker Cluster "worker", the RegisteredService bound to the ServiceClaim "sc-test" is "primaza-rsdb"
         And  On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "type" with value "psqlserver"
 
+    # disable until [#275](https://github.com/primaza/primaza/issues/275) is implemented
+    @disabled
     Scenario: Update claim with label selector from an application namespace
         Given On Primaza Cluster "main", Resource is created
         """
@@ -193,7 +193,6 @@ Feature: Claim from an application namespace (Push)
           - user
           - password
           - database
-          environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1
@@ -202,11 +201,11 @@ Feature: Claim from an application namespace (Push)
                 a: b
                 c: d
         """
-        And On Worker Cluster "worker", the status of ServiceClaim "sc-test" is "Resolved"
-        And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
-        And On Primaza Cluster "main", ServiceCatalog "stage" will not contain RegisteredService "primaza-rsdb"
-        And On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "type" with value "psqlserver"
-        And On Worker Cluster "worker", Resource is updated
+        And  On Worker Cluster "worker", the status of ServiceClaim "sc-test" is "Resolved"
+        And  On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
+        And  On Primaza Cluster "main", ServiceCatalog "stage" will not contain RegisteredService "primaza-rsdb"
+        And  On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "type" with value "psqlserver"
+        When On Worker Cluster "worker", Resource is not getting updated
         """
         apiVersion: primaza.io/v1alpha1
         kind: ServiceClaim
@@ -225,7 +224,8 @@ Feature: Claim from an application namespace (Push)
           - user
           - password
           - database
-          environmentTag: stage
+          target:
+            environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1
@@ -234,8 +234,6 @@ Feature: Claim from an application namespace (Push)
                 a: b
                 c: d
         """
-        And On Worker Cluster "worker", the status of ServiceClaim "sc-test" is "Invalid"
-        And jsonpath ".status.conditions[0].reason" on "serviceclaims.primaza.io/sc-test:applications" in cluster worker is "ValidationError"
 
     Scenario: Delete claim with label selector from an application namespace
         Given On Primaza Cluster "main", Resource is created
@@ -299,7 +297,6 @@ Feature: Claim from an application namespace (Push)
           - user
           - password
           - database
-          environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1
@@ -308,7 +305,7 @@ Feature: Claim from an application namespace (Push)
                 a: b
                 c: d
         """
-        And On Worker Cluster "worker", the status of ServiceClaim "sc-test" is "Resolved"
+        And On Cluster "worker", ServiceClaim "sc-test" in namespace "applications" state will eventually move to "Resolved"
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
         And On Primaza Cluster "main", ServiceCatalog "stage" will not contain RegisteredService "primaza-rsdb"
         And On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "type" with value "psqlserver"
