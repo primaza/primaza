@@ -17,6 +17,7 @@
     - [Service Class](./entities/serviceclass.md)
     - [Service Claim](./entities/serviceclaim.md)
     - [Service Catalog](./entities/servicecatalog.md)
+- [Monitoring](./monitoring.md)
 - [Releases](./releases.md)
 - [Tutorials](./tutorials/tutorials.md)
     - [Tenant Setup](./tutorials/tenant/intro.md)
