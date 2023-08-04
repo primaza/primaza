@@ -79,14 +79,16 @@ Feature: Service claim with label selector
           - user
           - password
           - database
-          environmentTag: stage
+          target:
+            environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1
             selector:
-              matchLabels:
-                a: b
-                c: d
+              byLabels:
+                matchLabels:
+                  a: b
+                  c: d
         """
         And On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
@@ -109,14 +111,16 @@ Feature: Service claim with label selector
           - user
           - password
           - database
-          environmentTag: stage
+          target:
+            environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1
             selector:
-              matchLabels:
-                a: b
-                c: d
+              byLabels:
+                matchLabels:
+                  a: b
+                  c: d
         """
         And On Primaza Cluster "main", ServiceCatalog "stage" will not contain RegisteredService "primaza-rsdb"
         And On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "type" with value "psqlserver"
@@ -174,19 +178,21 @@ Feature: Service claim with label selector
           - username
           - password
           - database
-          environmentTag: stage
+          target:
+            environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1
             selector:
-              matchLabels:
-                a: b
-                c: d
+              byLabels:
+                matchLabels:
+                  a: b
+                  c: d
         """
         Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Pending"
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Available"
         And On Primaza Cluster "main", ServiceCatalog "stage" will contain RegisteredService "primaza-rsdb"
-        And jsonpath ".status.conditions[0].reason" on "serviceclaims.primaza.io/sc-test:primaza-system" in cluster main is "NoMatchingServiceFound"
+        And jsonpath ".status.conditions[] | select(.type=="Ready") | .reason" on "serviceclaims.primaza.io/sc-test:primaza-system" in cluster main is "NoMatchingServiceFound"
 
     Scenario: Create a service claim with non-matching SCI
         Given On Primaza Cluster "main", Resource is created
@@ -252,16 +258,18 @@ Feature: Service claim with label selector
           - user
           - password
           - database
-          environmentTag: stage
+          target:
+            environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1
             selector:
-              matchLabels:
-                a: b
-                c: d
+              byLabels:
+                matchLabels:
+                  a: b
+                  c: d
         """
         Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Pending"
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Available"
         And On Primaza Cluster "main", ServiceCatalog "stage" will contain RegisteredService "primaza-rsdb"
-        And jsonpath ".status.conditions[0].reason" on "serviceclaims.primaza.io/sc-test:primaza-system" in cluster main is "NoMatchingServiceFound"
+        And jsonpath ".status.conditions[] | select(.type=="Ready") | .reason" on "serviceclaims.primaza.io/sc-test:primaza-system" in cluster main is "NoMatchingServiceFound"

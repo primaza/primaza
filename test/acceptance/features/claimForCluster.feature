@@ -105,17 +105,19 @@ Feature: Claim for specific cluster
           - user
           - password
           - database
-          applicationClusterContext:
-            clusterEnvironmentName: worker
-            namespace: applications
+          target:
+            applicationClusterContext:
+              clusterEnvironmentName: worker
+              namespace: applications
           application:
             kind: Deployment
             apiVersion: apps/v1
-            name: stage-app
+            selector:
+              byName: stage-app
         """
         Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
         And On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "type" with value "psqlserver"
-        And On Worker Cluster "worker", ServiceBinding "sc-test" on namespace "applications" state will eventually move to "Ready"
+        And On Worker Cluster "worker", ServiceBinding "sc-test" in namespace "applications" state will eventually move to "Ready"
 
     Scenario: Application Namespace does not exist
 
@@ -154,12 +156,14 @@ Feature: Claim for specific cluster
           - user
           - password
           - database
-          applicationClusterContext:
-            clusterEnvironmentName: worker
-            namespace: applications
+          target:
+            applicationClusterContext:
+              clusterEnvironmentName: worker
+              namespace: applications
           application:
             kind: Deployment
             apiVersion: apps/v1
-            name: stage-app
+            selector:
+              byName: stage-app
         """
         Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Pending"

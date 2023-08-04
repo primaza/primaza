@@ -44,3 +44,14 @@ func ItemContains(s []string, e string) bool {
 	}
 	return false
 }
+
+// ContainsFunc uses `f` to extract the value from elements in `ss`.
+// It returns true if at least one extraction matches `v`.
+func ContainsFunc[T1, T2 comparable](ss []T1, f func(T1) T2, v T2) bool {
+	for _, s := range ss {
+		if f(s) == v {
+			return true
+		}
+	}
+	return false
+}

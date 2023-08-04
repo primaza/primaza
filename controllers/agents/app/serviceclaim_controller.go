@@ -18,9 +18,10 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"reflect"
 	"strings"
-	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -143,6 +144,16 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, nil
 	}
 
+	{ // runtime service claim validation
+		ok, err := r.ensureServiceClaimIsValid(ctx, &sclaim)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if !ok {
+			return ctrl.Result{}, nil
+		}
+	}
+
 	sclaimCopy := r.createServiceClaimCopy(sclaim, deployment, remote_namespace)
 	spec := sclaimCopy.Spec
 
@@ -153,7 +164,7 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}); err != nil {
 		if strings.Contains(err.Error(), "admission webhook \"vserviceclaim.kb.io\" denied the request") {
 			c := metav1.Condition{
-				LastTransitionTime: metav1.NewTime(time.Now()),
+				LastTransitionTime: metav1.Now(),
 				Type:               string(primazaiov1alpha1.ServiceClaimConditionReady),
 				Status:             metav1.ConditionFalse,
 				Reason:             constants.ValidationErrorReason,
@@ -178,12 +189,76 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	return ctrl.Result{}, nil
 }
 
+func (r *ServiceClaimReconciler) ensureServiceClaimIsValid(
+	ctx context.Context,
+	sclaim *primazaiov1alpha1.ServiceClaim,
+) (bool, error) {
+	// check immutable properties
+	pp := r.getUpdatedImmutableProperties(ctx, sclaim)
+	if len(pp) > 0 {
+		c := metav1.Condition{
+			LastTransitionTime: metav1.Now(),
+			Type:               primazaiov1alpha1.TypeValidResource,
+			Status:             metav1.ConditionFalse,
+			Reason:             primazaiov1alpha1.ReasonUpdatedImmutableField,
+			Message:            fmt.Sprintf(`%s can not be updated`, strings.Join(pp, ", ")),
+		}
+		return false, r.setStatusConditionAndInvalidStateIfApplicable(ctx, sclaim, c)
+	}
+
+	// check spec.target
+	if sclaim.Spec.Target != nil {
+		c := metav1.Condition{
+			LastTransitionTime: metav1.Now(),
+			Type:               primazaiov1alpha1.TypeValidResource,
+			Status:             metav1.ConditionFalse,
+			Reason:             primazaiov1alpha1.ReasonForbiddenField,
+			Message:            `".spec.target" can not be defined in application namespace`,
+		}
+		return false, r.setStatusConditionAndInvalidStateIfApplicable(ctx, sclaim, c)
+	}
+
+	return true, nil
+}
+
+func (r *ServiceClaimReconciler) setStatusConditionAndInvalidStateIfApplicable(
+	ctx context.Context,
+	sclaim *primazaiov1alpha1.ServiceClaim,
+	condition metav1.Condition,
+) error {
+	meta.SetStatusCondition(&sclaim.Status.Conditions, condition)
+	if sclaim.Status.State == "" {
+		sclaim.Status.State = primazaiov1alpha1.ServiceClaimStateInvalid
+	}
+	return r.Client.Status().Update(ctx, sclaim)
+}
+
+func (r *ServiceClaimReconciler) getUpdatedImmutableProperties(
+	ctx context.Context,
+	sclaim *primazaiov1alpha1.ServiceClaim,
+) []string {
+	pp := []string{}
+	if sclaim.Status.OriginalServiceClassIdentity != nil &&
+		!reflect.DeepEqual(sclaim.Status.OriginalServiceClassIdentity, sclaim.Spec.ServiceClassIdentity) {
+		pp = append(pp, ".spec.serviceClassIdentity")
+	}
+
+	if sclaim.Status.OriginalServiceEndpointDefinitionKeys != nil &&
+		!reflect.DeepEqual(sclaim.Status.OriginalServiceEndpointDefinitionKeys, sclaim.Spec.ServiceEndpointDefinitionKeys) {
+		pp = append(pp, ".spec.ServiceEndpointDefinitionKeys")
+	}
+	return pp
+}
+
 func (r *ServiceClaimReconciler) createServiceClaimCopy(sclaim primazaiov1alpha1.ServiceClaim, deployment appsv1.Deployment, remote_namespace string) *primazaiov1alpha1.ServiceClaim {
 	sclaimCopy := sclaim.DeepCopy()
-	sclaimCopy.Spec.EnvironmentTag = ""
-	sclaimCopy.Spec.ApplicationClusterContext = &primazaiov1alpha1.ServiceClaimApplicationClusterContext{}
-	sclaimCopy.Spec.ApplicationClusterContext.ClusterEnvironmentName = deployment.Labels["primaza.io/cluster-environment"]
-	sclaimCopy.Spec.ApplicationClusterContext.Namespace = sclaim.Namespace
+	sclaimCopy.Spec.Target = &primazaiov1alpha1.ServiceClaimTarget{
+		EnvironmentTag: "",
+		ApplicationClusterContext: &primazaiov1alpha1.ServiceClaimApplicationClusterContext{
+			ClusterEnvironmentName: deployment.Labels["primaza.io/cluster-environment"],
+			Namespace:              sclaim.Namespace,
+		},
+	}
 	sclaimCopy.Namespace = remote_namespace
 	sclaimCopy.ResourceVersion = ""
 	return sclaimCopy

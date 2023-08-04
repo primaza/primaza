@@ -3,6 +3,7 @@ import os
 import polling2
 import tempfile
 import yaml
+from behave import step, when
 from kubernetes import client
 from kubernetes.client.rest import ApiException
 from steps.clusterprovisioner import ClusterProvisioner
@@ -447,3 +448,20 @@ class Cluster(object):
                 name=service_binding)
 
         return {"name": name} in sb["status"].get("connections", {})
+
+
+@when('Primaza Cluster "{cluster_name}" is deleted')
+@when('Worker Cluster "{cluster_name}" is deleted')
+def delete_cluster(context, cluster_name: str):
+    context.cluster_provider.delete_cluster(cluster_name)
+
+
+@step(u'On Cluster "{cluster_name}", the secret "{secret_name}" in namespace "{namespace}" has the key "{key}" with value "{value}"')
+@step(u'On Worker Cluster "{cluster_name}", the secret "{secret_name}" in namespace "{namespace}" has the key "{key}" with value "{value}"')
+@step(u'On Primaza Cluster "{cluster_name}", the secret "{secret_name}" in namespace "{namespace}" has the key "{key}" with value "{value}"')
+def ensure_secret_key_has_the_right_value(context, cluster_name: str, secret_name: str, namespace: str, key: str, value: str):
+    cluster = context.cluster_provider.get_cluster(cluster_name)
+    polling2.poll(
+        target=lambda: cluster.read_secret_resource_data(namespace, secret_name, key) == bytes(value, 'utf-8'),
+        step=1,
+        timeout=60)

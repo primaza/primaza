@@ -81,14 +81,16 @@ Feature: Application Namespaces initialization: Service Bindings
           - user
           - password
           - database
-          environmentTag: dev
+          target:
+            environmentTag: dev
           application:
             kind: Deployment
             apiVersion: apps/v1
             selector:
-              matchLabels:
-                a: b
-                c: d
+              byLabels:
+                matchLabels:
+                  a: b
+                  c: d
         """
         When On Primaza Cluster "main", Resource is updated
         """
@@ -168,14 +170,16 @@ Feature: Application Namespaces initialization: Service Bindings
           - user
           - password
           - database
-          environmentTag: dev
+          target:
+            environmentTag: dev
           application:
             kind: Deployment
             apiVersion: apps/v1
             selector:
-              matchLabels:
-                a: b
-                c: d
+              byLabels:
+                matchLabels:
+                  a: b
+                  c: d
         """
         Then On Primaza Cluster "main", ClusterEnvironment "worker" state will eventually move to "Online"
         And  On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "Online" has Status "True"
@@ -248,16 +252,18 @@ Feature: Application Namespaces initialization: Service Bindings
             - user
             - password
             - database
-          applicationClusterContext:
-            clusterEnvironmentName: worker
-            namespace: applications
+          target:
+            applicationClusterContext:
+              clusterEnvironmentName: worker
+              namespace: applications
           application:
             kind: Deployment
             apiVersion: apps/v1
             selector:
-              matchLabels:
-                a: b
-                c: d
+              byLabels:
+                matchLabels:
+                  a: b
+                  c: d
         """
         Then On Primaza Cluster "main", ClusterEnvironment "worker" state will eventually move to "Online"
         And  On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "Online" has Status "True"
@@ -329,14 +335,16 @@ Feature: Application Namespaces initialization: Service Bindings
           - user
           - password
           - database
-          environmentTag: dev
+          target:
+            environmentTag: dev
           application:
             kind: Deployment
             apiVersion: apps/v1
             selector:
-              matchLabels:
-                a: b
-                c: d
+              byLabels:
+                matchLabels:
+                  a: b
+                  c: d
         """
         Then On Primaza Cluster "main", ClusterEnvironment "worker" state will eventually move to "Online"
         And  On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "Online" has Status "True"

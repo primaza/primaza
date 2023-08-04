@@ -35,23 +35,61 @@ type ServiceClaimSpec struct {
 	// ServiceClassIdentity defines a set of attributes that are sufficient to
 	// identify a service class.  A ServiceClaim whose ServiceClassIdentity
 	// field is a subset of a RegisteredService's keys can claim that service.
+	// +required
 	ServiceClassIdentity []ServiceClassIdentityItem `json:"serviceClassIdentity"`
-
 	// ServiceEndpointDefinition defines a set of attributes sufficient for a
 	// client to establish a connection to the service.
+	// +required
 	ServiceEndpointDefinitionKeys []string `json:"serviceEndpointDefinitionKeys"`
+	// Rules to match workloads to bind
+	// +required
+	Application ServiceClaimApplicationSelector `json:"application"`
+	// Service Claim target
+	Target *ServiceClaimTarget `json:"target,omitempty"`
+	// Envs allows projecting Service Endpoint Definition's data as Environment Variables in the Pod
+	// +optional
+	Envs []Environment `json:"envs,omitempty"`
+}
 
-	Application ApplicationSelector `json:"application,omitempty"`
+// Application resource to inject the binding info.
+// It could be any process running within a container.
+type ServiceClaimApplicationSelector struct {
+	// API version of the referent.
+	//+required
+	APIVersion string `json:"apiVersion"`
+	// Kind of the referent.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	//+required
+	Kind string `json:"kind"`
+	// Rules to match a resource
+	//+required
+	Selector ApplicationMatcher `json:"selector"`
+}
+
+// +kubebuilder:validation:MaxProperties:=1
+// +kubebuilder:validation:MinProperties:=1
+// Express the rules to match a resource by name or by labels
+type ApplicationMatcher struct {
+	// Name of the referent.
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+	//+optional
+	ByName string `json:"byName,omitempty"`
+	// Selector is a query that selects the workload or workloads to bind the service to
+	//+optional
+	ByLabels *metav1.LabelSelector `json:"byLabels,omitempty"`
+}
+
+// +kubebuilder:validation:MaxProperties:=1
+// +kubebuilder:validation:MinProperties:=1
+// The Service Claim target.
+// It can be an entire environment or a single application
+type ServiceClaimTarget struct {
 	// EnvironmentTag allows the controller to search for those application cluster
 	// environments that define such EnvironmentTag
 	// +optional
 	EnvironmentTag string `json:"environmentTag,omitempty"`
 	// +optional
 	ApplicationClusterContext *ServiceClaimApplicationClusterContext `json:"applicationClusterContext,omitempty"`
-
-	// Envs allows projecting Service Endpoint Definition's data as Environment Variables in the Pod
-	// +optional
-	Envs []Environment `json:"envs,omitempty"`
 }
 
 type ServiceClaimApplicationClusterContext struct {
@@ -71,6 +109,12 @@ type ServiceClaimStatus struct {
 	RegisteredService *corev1.ObjectReference `json:"registeredService,omitempty"`
 	// The status of the service binding along with reason and type
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+	// Original ServiceClassIdentity as it was at ServiceClaim creation time
+	OriginalServiceClassIdentity []ServiceClassIdentityItem `json:"originalServiceClassIdentity,omitempty"`
+	// Original ServiceEndpointDefinitionKeys as they were at ServiceClaim creation time
+	OriginalServiceEndpointDefinitionKeys []string `json:"originalServiceEndpointDefinitionKeys,omitempty"`
+	// Original Service Claim target
+	OriginalTarget *ServiceClaimTarget `json:"originalTarget,omitempty"`
 }
 
 //+kubebuilder:object:root=true

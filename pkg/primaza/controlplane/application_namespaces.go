@@ -84,8 +84,13 @@ func pushServiceBindingToNamespace(
 		},
 		Spec: primazaiov1alpha1.ServiceBindingSpec{
 			ServiceEndpointDefinitionSecret: sc.Name,
-			Application:                     sc.Spec.Application,
-			Envs:                            sc.Spec.Envs,
+			Application: primazaiov1alpha1.ServiceBindingApplicationSelector{
+				APIVersion: sc.Spec.Application.APIVersion,
+				Kind:       sc.Spec.Application.Kind,
+				Name:       sc.Spec.Application.Selector.ByName,
+				Selector:   sc.Spec.Application.Selector.ByLabels,
+			},
+			Envs: sc.Spec.Envs,
 		},
 	}
 
@@ -99,8 +104,13 @@ func pushServiceBindingToNamespace(
 
 		sb.Spec = primazaiov1alpha1.ServiceBindingSpec{
 			ServiceEndpointDefinitionSecret: sc.Name,
-			Application:                     sc.Spec.Application,
-			Envs:                            sc.Spec.Envs,
+			Application: primazaiov1alpha1.ServiceBindingApplicationSelector{
+				APIVersion: sc.Spec.Application.APIVersion,
+				Kind:       sc.Spec.Application.Kind,
+				Name:       sc.Spec.Application.Selector.ByName,
+				Selector:   sc.Spec.Application.Selector.ByLabels,
+			},
+			Envs: sc.Spec.Envs,
 		}
 		return nil
 	})

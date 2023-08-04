@@ -20,6 +20,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	// ServiceBindingBoundCondition means the ServiceBinding has successfully
+	// projected the secret into the Workload.
+	ServiceBindingBoundCondition = "Bound"
+
+	ServiceBindingStateReady     ServiceBindingState = "Ready"
+	ServiceBindingStateMalformed ServiceBindingState = "Malformed"
+)
+
+type ServiceBindingState string
+
 // ServiceBindingSpec defines the desired state of ServiceBinding
 type ServiceBindingSpec struct {
 
@@ -36,7 +47,7 @@ type ServiceBindingSpec struct {
 	// reference by-name or by-[label selector][ls]. A name and selector
 	// **MUST NOT** be defined in the same reference.
 	// +required
-	Application ApplicationSelector `json:"application"`
+	Application ServiceBindingApplicationSelector `json:"application"`
 
 	// Envs declares environment variables based on the ServiceEndpointDefinitionSecret to be
 	// projected into the application
@@ -44,25 +55,24 @@ type ServiceBindingSpec struct {
 	Envs []Environment `json:"envs,omitempty"`
 }
 
-// Environment represents a key to Secret data keys and name of the environment variable
-type Environment struct {
-	// Name of the environment variable
-	Name string `json:"name"`
-
-	// Secret data key
-	Key string `json:"key"`
+// Application resource to inject the binding info.
+// It could be any process running within a container.
+type ServiceBindingApplicationSelector struct {
+	// API version of the referent.
+	//+required
+	APIVersion string `json:"apiVersion"`
+	// Kind of the referent.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	//+required
+	Kind string `json:"kind"`
+	// Name of the referent.
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+	//+optional
+	Name string `json:"name,omitempty"`
+	// Selector is a query that selects the workload or workloads to bind the service to
+	//+optional
+	Selector *metav1.LabelSelector `json:"selector,omitempty"`
 }
-
-// These are valid conditions of ServiceBinding.
-const (
-	// ServiceBindingBoundCondition means the ServiceBinding has successfully
-	// projected the secret into the Workload.
-	ServiceBindingBoundCondition = "Bound"
-	// ServiceBindingNotBoundCondition means the ServiceBinding has not
-	// projected the secret into the Workload.
-	// As an example, this will occur when the secret to be bound is not found
-	ServiceBindingNotBoundCondition = "NotBound"
-)
 
 // ServiceBindingStatus defines the observed state of ServiceBinding.
 // +k8s:openapi-gen=true
@@ -74,7 +84,7 @@ type ServiceBindingStatus struct {
 	// The state of the service binding observed
 	// +kubebuilder:validation:Enum=Ready;Malformed
 	// +kubebuilder:default:=Malformed
-	State string `json:"state,omitempty"`
+	State ServiceBindingState `json:"state,omitempty"`
 
 	// The list of workloads the service is bound to
 	Connections []BoundWorkload `json:"connections,omitempty"`
@@ -85,13 +95,6 @@ type BoundWorkload struct {
 	// Name of the referent.
 	Name string `json:"name,omitempty"`
 }
-
-// ConditionReady specifies that the resource is ready.
-// For long-running resources.
-const (
-	ServiceBindingStateReady     string = "Ready"
-	ServiceBindingStateMalformed string = "Malformed"
-)
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status

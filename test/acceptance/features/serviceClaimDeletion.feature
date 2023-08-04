@@ -80,14 +80,16 @@ Feature: On claim deletion, remove Bindings
           - user
           - password
           - database
-          environmentTag: stage
+          target:
+            environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1
             selector:
-              matchLabels:
-                a: b
-                c: d
+              byLabels:
+                matchLabels:
+                  a: b
+                  c: d
         """
         And  On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
         And  On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"

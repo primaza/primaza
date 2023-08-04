@@ -82,14 +82,16 @@ Feature: Service claim with label selector
           - user
           - password
           - database
-          environmentTag: stage
+          target:
+            environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1
             selector:
-              matchLabels:
-                a: b
-                c: d
+              byLabels:
+                matchLabels:
+                  a: b
+                  c: d
         """
         Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
         And  On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
@@ -145,14 +147,16 @@ Feature: Service claim with label selector
           - user
           - password
           - database
-          environmentTag: stage
+          target:
+            environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1
             selector:
-              matchLabels:
-                a: b
-                c: d
+              byLabels:
+                matchLabels:
+                  a: b
+                  c: d
         """
         Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
         And  On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
@@ -203,14 +207,16 @@ Feature: Service claim with label selector
           serviceEndpointDefinitionKeys:
           - host
           - port
-          environmentTag: stage
+          target:
+            environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1
             selector:
-              matchLabels:
-                a: b
-                c: d
+              byLabels:
+                matchLabels:
+                  a: b
+                  c: d
         """
         Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
@@ -269,14 +275,16 @@ Feature: Service claim with label selector
           - user
           - password
           - database
-          environmentTag: stage
+          target:
+            environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1
             selector:
-              matchLabels:
-                a: b
-                c: d
+              byLabels:
+                matchLabels:
+                  a: b
+                  c: d
         """
         And  On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
         And  On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"

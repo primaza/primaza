@@ -82,17 +82,19 @@ Feature: Service claim with label selector
           - user
           - password
           - database
-          environmentTag: stage
-          applicationClusterContext:
-            clusterEnvironmentName: worker
-            namespace: applications
+          target:
+            environmentTag: stage
+            applicationClusterContext:
+              clusterEnvironmentName: worker
+              namespace: applications
           application:
             kind: Deployment
             apiVersion: apps/v1
             selector:
-              matchLabels:
-                a: b
-                c: d
+              byLabels:
+                matchLabels:
+                  a: b
+                  c: d
         """
 
     Scenario: Create ServiceClaim with empty ApplicationClusterContext and EnvironmentTag
@@ -115,14 +117,47 @@ Feature: Service claim with label selector
           - user
           - password
           - database
+          target: {}
           application:
             kind: Deployment
             apiVersion: apps/v1
             selector:
-              matchLabels:
-                a: b
-                c: d
+              byLabels:
+                matchLabels:
+                  a: b
+                  c: d
         """
+
+    Scenario: Create ServiceClaim without target
+        When On Primaza Cluster "main", Resource is created
+        """
+        apiVersion: primaza.io/v1alpha1
+        kind: ServiceClaim
+        metadata:
+          name: sc-test
+          namespace: primaza-system
+        spec:
+          serviceClassIdentity:
+          - name: type
+            value: psqlserver
+          - name: provider
+            value: aws
+          serviceEndpointDefinitionKeys:
+          - host
+          - port
+          - user
+          - password
+          - database
+          application:
+            kind: Deployment
+            apiVersion: apps/v1
+            selector:
+              byLabels:
+                matchLabels:
+                  a: b
+                  c: d
+        """
+        Then jsonpath ".status.conditions[] | select(.type=="ValidResource") | .status" on "serviceclaims.primaza.io/sc-test:primaza-system" in cluster main is "False"
 
     Scenario: Create ServiceClaim with Application name and Application selector
         When On Primaza Cluster "main", Resource is not getting created
@@ -144,13 +179,15 @@ Feature: Service claim with label selector
           - user
           - password
           - database
-          environmentTag: stage
+          target:
+            environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1
-            name: some-name
             selector:
-              matchLabels:
-                a: b
-                c: d
+              byName: some-name
+              byLabels:
+                matchLabels:
+                  a: b
+                  c: d
         """

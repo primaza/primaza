@@ -29,7 +29,7 @@ Feature: Healthcheck state transitions for Registered Services
             - name: port
               value: "5432"
         """
-        Then On Primaza Cluster "main", RegisteredService "$scenario_id" state will eventually move to "<state>"
+        Then On Cluster "main", RegisteredService "$scenario_id" in namespace "primaza-system" state will move to "<state>" in "120" seconds
 
       Examples: Correct states
         | command     | state       |
@@ -63,7 +63,7 @@ Feature: Healthcheck state transitions for Registered Services
             - name: port
               value: "5432"
         """
-        And On Primaza Cluster "main", RegisteredService "$scenario_id" state will eventually move to "Unreachable"
+        And On Cluster "main", RegisteredService "$scenario_id" in namespace "primaza-system" state will move to "Unreachable" in "120" seconds
         When On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
@@ -81,7 +81,7 @@ Feature: Healthcheck state transitions for Registered Services
             - name: port
               value: "5432"
         """
-        Then On Primaza Cluster "main", RegisteredService "$scenario_id" state will eventually move to "Available"
+        Then On Cluster "main", RegisteredService "$scenario_id" in namespace "primaza-system" state will move to "Available" in "120" seconds
         And The resource cronjobs.batch/$scenario_id:primaza-system is not available in cluster "main"
 
     Scenario: Adding a healthcheck runs it before marking the service as available
@@ -102,7 +102,7 @@ Feature: Healthcheck state transitions for Registered Services
             - name: port
               value: "5432"
         """
-        And On Primaza Cluster "main", RegisteredService "$scenario_id" state will eventually move to "Available"
+        And On Cluster "main", RegisteredService "$scenario_id" in namespace "primaza-system" state will move to "Available" in "120" seconds
         When On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
@@ -128,9 +128,9 @@ Feature: Healthcheck state transitions for Registered Services
             - name: port
               value: "5432"
         """
-        Then On Primaza Cluster "main", RegisteredService "$scenario_id" state will eventually move to "Unknown"
+        Then On Cluster "main", RegisteredService "$scenario_id" in namespace "primaza-system" state will move to "Unknown" in "120" seconds
         # have polling deal with the wait here
-        And On Primaza Cluster "main", RegisteredService "$scenario_id" state will eventually move to "Available"
+        And On Cluster "main", RegisteredService "$scenario_id" in namespace "primaza-system" state will move to "Available" in "120" seconds
 
     Scenario: Changing a healthcheck runs the healthcheck before making it available
         Given On Primaza Cluster "main", Resource is created
@@ -158,7 +158,7 @@ Feature: Healthcheck state transitions for Registered Services
             - name: port
               value: "5432"
         """
-        And On Primaza Cluster "main", RegisteredService "$scenario_id" state will eventually move to "Unreachable"
+        And On Cluster "main", RegisteredService "$scenario_id" in namespace "primaza-system" state will move to "Unreachable" in "120" seconds
         When On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
@@ -184,4 +184,4 @@ Feature: Healthcheck state transitions for Registered Services
             - name: port
               value: "5432"
         """
-        Then On Primaza Cluster "main", RegisteredService "$scenario_id" state will eventually move to "Available"
+        Then On Cluster "main", RegisteredService "$scenario_id" in namespace "primaza-system" state will move to "Available" in "120" seconds

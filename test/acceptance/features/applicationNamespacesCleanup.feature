@@ -81,14 +81,16 @@ Feature: Cleanup application namespace
           - user
           - password
           - database
-          environmentTag: dev
+          target:
+            environmentTag: dev
           application:
             kind: Deployment
             apiVersion: apps/v1
             selector:
-              matchLabels:
-                a: b
-                c: d
+              byLabels:
+                matchLabels:
+                  a: b
+                  c: d
         """
         When On Primaza Cluster "main", Resource is updated
         """

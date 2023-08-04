@@ -44,8 +44,7 @@ spec:
             description: ServiceClaimSpec defines the desired state of ServiceClaim
             properties:
               application:
-                description: Application resource to inject the binding info. It could
-                  be any process running within a container.
+                description: Rules to match workloads to bind
                 properties:
                   apiVersion:
                     description: API version of the referent.
@@ -53,73 +52,67 @@ spec:
                   kind:
                     description: 'Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
                     type: string
-                  name:
-                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
-                    type: string
                   selector:
-                    description: Selector is a query that selects the workload or
-                      workloads to bind the service to
+                    description: Rules to match a resource
+                    maxProperties: 1
+                    minProperties: 1
                     properties:
-                      matchExpressions:
-                        description: matchExpressions is a list of label selector
-                          requirements. The requirements are ANDed.
-                        items:
-                          description: A label selector requirement is a selector
-                            that contains values, a key, and an operator that relates
-                            the key and values.
-                          properties:
-                            key:
-                              description: key is the label key that the selector
-                                applies to.
+                      byLabels:
+                        description: Selector is a query that selects the workload
+                          or workloads to bind the service to
+                        properties:
+                          matchExpressions:
+                            description: matchExpressions is a list of label selector
+                              requirements. The requirements are ANDed.
+                            items:
+                              description: A label selector requirement is a selector
+                                that contains values, a key, and an operator that
+                                relates the key and values.
+                              properties:
+                                key:
+                                  description: key is the label key that the selector
+                                    applies to.
+                                  type: string
+                                operator:
+                                  description: operator represents a key's relationship
+                                    to a set of values. Valid operators are In, NotIn,
+                                    Exists and DoesNotExist.
+                                  type: string
+                                values:
+                                  description: values is an array of string values.
+                                    If the operator is In or NotIn, the values array
+                                    must be non-empty. If the operator is Exists or
+                                    DoesNotExist, the values array must be empty.
+                                    This array is replaced during a strategic merge
+                                    patch.
+                                  items:
+                                    type: string
+                                  type: array
+                              required:
+                              - key
+                              - operator
+                              type: object
+                            type: array
+                          matchLabels:
+                            additionalProperties:
                               type: string
-                            operator:
-                              description: operator represents a key's relationship
-                                to a set of values. Valid operators are In, NotIn,
-                                Exists and DoesNotExist.
-                              type: string
-                            values:
-                              description: values is an array of string values. If
-                                the operator is In or NotIn, the values array must
-                                be non-empty. If the operator is Exists or DoesNotExist,
-                                the values array must be empty. This array is replaced
-                                during a strategic merge patch.
-                              items:
-                                type: string
-                              type: array
-                          required:
-                          - key
-                          - operator
-                          type: object
-                        type: array
-                      matchLabels:
-                        additionalProperties:
-                          type: string
-                        description: matchLabels is a map of {key,value} pairs. A
-                          single {key,value} in the matchLabels map is equivalent
-                          to an element of matchExpressions, whose key field is "key",
-                          the operator is "In", and the values array contains only
-                          "value". The requirements are ANDed.
+                            description: matchLabels is a map of {key,value} pairs.
+                              A single {key,value} in the matchLabels map is equivalent
+                              to an element of matchExpressions, whose key field is
+                              "key", the operator is "In", and the values array contains
+                              only "value". The requirements are ANDed.
+                            type: object
                         type: object
+                        x-kubernetes-map-type: atomic
+                      byName:
+                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                        type: string
                     type: object
-                    x-kubernetes-map-type: atomic
                 required:
                 - apiVersion
                 - kind
+                - selector
                 type: object
-              applicationClusterContext:
-                properties:
-                  clusterEnvironmentName:
-                    type: string
-                  namespace:
-                    type: string
-                required:
-                - clusterEnvironmentName
-                - namespace
-                type: object
-              environmentTag:
-                description: EnvironmentTag allows the controller to search for those
-                  application cluster environments that define such EnvironmentTag
-                type: string
               envs:
                 description: Envs allows projecting Service Endpoint Definition's
                   data as Environment Variables in the Pod
@@ -164,7 +157,28 @@ spec:
                 items:
                   type: string
                 type: array
+              target:
+                description: Service Claim target
+                maxProperties: 1
+                minProperties: 1
+                properties:
+                  applicationClusterContext:
+                    properties:
+                      clusterEnvironmentName:
+                        type: string
+                      namespace:
+                        type: string
+                    required:
+                    - clusterEnvironmentName
+                    - namespace
+                    type: object
+                  environmentTag:
+                    description: EnvironmentTag allows the controller to search for
+                      those application cluster environments that define such EnvironmentTag
+                    type: string
+                type: object
             required:
+            - application
             - serviceClassIdentity
             - serviceEndpointDefinitionKeys
             type: object
@@ -244,6 +258,50 @@ spec:
                   - type
                   type: object
                 type: array
+              originalServiceClassIdentity:
+                description: Original ServiceClassIdentity as it was at ServiceClaim
+                  creation time
+                items:
+                  description: ServiceClassIdentityItem defines an attribute that
+                    is necessary to identify a service class.
+                  properties:
+                    name:
+                      description: Name of the service class identity attribute.
+                      type: string
+                    value:
+                      description: Value of the service class identity attribute.
+                      type: string
+                  required:
+                  - name
+                  - value
+                  type: object
+                type: array
+              originalServiceEndpointDefinitionKeys:
+                description: Original ServiceEndpointDefinitionKeys as they were at
+                  ServiceClaim creation time
+                items:
+                  type: string
+                type: array
+              originalTarget:
+                description: Original Service Claim target
+                maxProperties: 1
+                minProperties: 1
+                properties:
+                  applicationClusterContext:
+                    properties:
+                      clusterEnvironmentName:
+                        type: string
+                      namespace:
+                        type: string
+                    required:
+                    - clusterEnvironmentName
+                    - namespace
+                    type: object
+                  environmentTag:
+                    description: EnvironmentTag allows the controller to search for
+                      those application cluster environments that define such EnvironmentTag
+                    type: string
+                type: object
               registeredService:
                 description: Claimed RegisteredService Info
                 properties:

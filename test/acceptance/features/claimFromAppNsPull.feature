@@ -64,8 +64,10 @@ Feature: Claim from an application namespace (Pull)
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Available"
 
     Scenario: Claim with label selector from an application namespace
-        # wait for Control Plane's informer to synchronize cache before creating the ServiceClaim
-        Given 2 seconds have passed
+        Given On Cluster "main", logs of deployment "primaza-controller-manager" in "primaza-system" contain
+        """
+        INFO\sinformer synced\s{"controller": "clusterenvironment
+        """
         And On Worker Cluster "worker", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
@@ -89,9 +91,10 @@ Feature: Claim from an application namespace (Pull)
             kind: Deployment
             apiVersion: apps/v1
             selector:
-              matchLabels:
-                a: b
-                c: d
+              byLabels:
+                matchLabels:
+                  a: b
+                  c: d
         """
         Then On Primaza Cluster "main", ServiceClaim "sc-test" state will eventually move to "Resolved"
         And  On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
@@ -124,9 +127,10 @@ Feature: Claim from an application namespace (Pull)
             kind: Deployment
             apiVersion: apps/v1
             selector:
-              matchLabels:
-                a: b
-                c: d
+              byLabels:
+                matchLabels:
+                  a: b
+                  c: d
         """
         And On Primaza Cluster "main", ServiceClaim "sc-test" state will eventually move to "Resolved"
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"

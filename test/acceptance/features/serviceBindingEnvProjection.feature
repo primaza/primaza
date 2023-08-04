@@ -89,13 +89,15 @@ Feature: Service Binding Environment Projection
             key: host
           - name: MY_PORT
             key: port
-          environmentTag: stage
+          target:
+            environmentTag: stage
           application:
             apiVersion: apps/v1
             kind: Deployment
             selector:
+              byLabels:
                 matchLabels:
-                    app: myapp
+                  app: myapp
         """
         Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
 
@@ -105,7 +107,7 @@ Feature: Service Binding Environment Projection
         And  On Primaza Cluster "main", ServiceCatalog "stage" will not contain RegisteredService "primaza-rsdb"
         And  On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "type" with value "psqlserver"
         And On Worker Cluster "worker", Service Binding "sc-test" exists in "applications"
-        And On Worker Cluster "worker", ServiceBinding "sc-test" on namespace "applications" state will eventually move to "Ready"
+        And On Worker Cluster "worker", ServiceBinding "sc-test" in namespace "applications" state will eventually move to "Ready"
 
     Scenario: Service binding resource being deleted
 
@@ -113,7 +115,7 @@ Feature: Service Binding Environment Projection
         And  On Primaza Cluster "main", ServiceCatalog "stage" will not contain RegisteredService "primaza-rsdb"
         And  On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "type" with value "psqlserver"
         And On Worker Cluster "worker", Service Binding "sc-test" exists in "applications"
-        And On Worker Cluster "worker", ServiceBinding "sc-test" on namespace "applications" state will eventually move to "Ready"
+        And On Worker Cluster "worker", ServiceBinding "sc-test" in namespace "applications" state will eventually move to "Ready"
         When On Worker Cluster "worker", Resource is deleted
         """
         apiVersion: primaza.io/v1alpha1

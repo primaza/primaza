@@ -4,3 +4,7 @@ resources:
 - ../namespace
 - ../agent
 namespace: applications
+images:
+- name: agentapp
+  newName: agentapp
+  newTag: latest
