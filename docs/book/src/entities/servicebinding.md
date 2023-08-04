@@ -47,6 +47,7 @@ The `conditions` list of the service binding contains the following properties:
   This value will be an empty string if successful.
 - `Status`: Status of service binding can be `True` or `False`.
 - `Reason`: The reason has values defined as `NoMatchingWorkloads`, `ErrorFetchSecret`, `Successful` and `Binding Failure`
+- `Connections`: The list of workloads the service is bound to
 
 ## Use Cases
 
