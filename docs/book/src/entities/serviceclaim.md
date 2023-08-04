@@ -33,7 +33,8 @@ The Status of the ServiceClaim is also defined under the [ServiceClaimCRD](../..
 It contains a mandatory property to track the state.
 
 The state could be either `Pending` or `Resolved` or `Invalid`.
-If the state is `Resolved`, there should be Secret and ServiceBinding resources created. And there is another mandatory field,`registeredService` that points to the RegisteredService.
+If the state is `Resolved`, the RegisteredService claimed is tracked in the ServiceClaim status.
+Indeed, the status field `registeredService` takes track of the `name` and `UID` of the claimed RegisteredService.
 
 The spec of a ServiceClaim is not meant to be updated.
 If a user updates the spec of a ServiceClaim then the status of ServiceClaim is updated as `Invalid` when Primaza Application Agent attempts to update the ServiceClaim on Primaza Control Plane.
