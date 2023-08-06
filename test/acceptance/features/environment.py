@@ -13,6 +13,7 @@ before_all(context), after_all(context)
 """
 
 
+import traceback
 from behave import fixture, use_fixture
 from steps.kind import KindProvider
 from steps.persistent_clusters import PersistentClusterProvider
@@ -41,7 +42,11 @@ def use_kind(context, _timeout=30, **_kwargs):
         print("wip, stop config and context.failed found: not cleaning up")
         return
 
-    context.cluster_provider.delete_clusters()
+    try:
+        context.cluster_provider.delete_clusters()
+    except Exception as e:
+        traceback.print_exception(e)
+        context._runner.aborted = True
 
 
 def before_scenario(context, _scenario):

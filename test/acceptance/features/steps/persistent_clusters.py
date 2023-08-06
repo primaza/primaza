@@ -1,10 +1,12 @@
 import os
+import polling2
 from steps.command import Command
 from steps.clusterprovider import ClusterProvider
 from steps.clusterprovisioner import ClusterProvisioner
 from steps.primazacluster import PrimazaCluster
 from steps.workercluster import WorkerCluster
 from steps.util import get_env
+from typing import List
 
 
 class PersistentClusterProvider(ClusterProvider):
@@ -105,67 +107,48 @@ class PersistentPrimazaCluster(PrimazaCluster):
         # they are.
         resource_names = ["registeredservices", "servicecatalogs", "serviceclaims", "serviceclasses", "clusterenvironments"]
         resources = list(map(lambda s: f"{s}.primaza.io", resource_names))
-        for crd in resources:
-            names, _ = cmd.run(f"kubectl get {crd} -o name -n {namespace}")
-            for resource in names.splitlines():
-                patch = '{"metadata": {"finalizers": []}}'
-                cmd.run(f'kubectl delete -n {namespace} {resource} --force --timeout=60s')
-                cmd.run(f'kubectl patch -n {namespace} {resource} -p \'{patch}\' --type=merge')
-        x = ",".join(resources)
-        out, err = cmd.run(f"kubectl delete -n {namespace} {x} --all --ignore-not-found")
-        assert err == 0, "failed to run command!"
-
-        # delete any deployments in the namespace
-        cmd.run(f"kubectl delete -n {namespace} deployments --all --ignore-not-found --timeout=30s")
-        names, _ = cmd.run(f"kubectl get deployments.apps -o name -n {namespace}")
-        for resource in names.splitlines():
-            patch = '{"metadata": {"finalizers": []}}'
-            cmd.run(f'kubectl patch -n {namespace} {resource} -p \'{patch}\' --type=merge')
+        resources.append("deployments.apps")
+        self.delete_resources(cmd, namespace, resources)
 
     def cleanup_service_namespace(self, namespace: str):
         cmd = Command().setenv("KUBECONFIG", self.__kubeconfig_path)
-
-        resourcelist = "serviceclasses.primaza.io"
-        names, _ = cmd.run(f"kubectl get {resourcelist} -o name -n {namespace}")
-        for resource in names.splitlines():
-            patch = '{"metadata": {"finalizers": []}}'
-            cmd.run(f'kubectl delete -n {namespace} {resource} --force --timeout=60s')
-            cmd.run(f'kubectl patch -n {namespace} {resource} -p \'{patch}\' --type=merge')
-        out, err = cmd.run(f"kubectl delete -n {namespace} {resourcelist} --all --ignore-not-found")
-        assert err == 0, "failed to run command!"
-
-        # delete any deployments in the namespace
-        cmd.run(f"kubectl delete -n {namespace} deployments --all --ignore-not-found --timeout=30s")
-        names, _ = cmd.run(f"kubectl get deployments.apps -o name -n {namespace}")
-        for resource in names.splitlines():
-            patch = '{"metadata": {"finalizers": []}}'
-            cmd.run(f'kubectl patch -n {namespace} {resource} -p \'{patch}\' --type=merge')
+        self.delete_resources(cmd, namespace, ["serviceclasses.primaza.io", "deployments"])
 
     def cleanup_application_namespace(self, namespace: str):
         cmd = Command().setenv("KUBECONFIG", self.__kubeconfig_path)
-
         resource_names = ["servicebindings", "servicecatalogs", "serviceclaims"]
         resources = list(map(lambda s: f"{s}.primaza.io", resource_names))
+        resources.append("deployments.apps")
+        self.delete_resources(cmd, namespace, resources)
 
+    def delete_resources(self, cmd: Command, namespace: str, resource_types: List[str]):
         # for resiliency, patch out finalizers.  There may be bugs in the
         # controller, and we don't want to rely on finalizers working correctly
         # for testing to work.
-        for crd in resources:
-            names, _ = cmd.run(f"kubectl get {crd} -o name -n {namespace}")
+        for resource_type in resource_types:
+            cmd.run(f"kubectl delete -n {namespace} {resource_type} --all --ignore-not-found --timeout=30s")
+            names, _ = cmd.run(f"kubectl get {resource_type} -o name -n {namespace}")
             for resource in names.splitlines():
                 patch = '{"metadata": {"finalizers": []}}'
-                cmd.run(f'kubectl delete -n {namespace} {resource} --force --timeout=60s')
                 cmd.run(f'kubectl patch -n {namespace} {resource} -p \'{patch}\' --type=merge')
-        resourcelist = ",".join(resources)
-        out, err = cmd.run(f"kubectl delete -n {namespace} {resourcelist} --all --ignore-not-found")
+
+        resource_list = ",".join(resource_types)
+        out, err = cmd.run(f"kubectl delete -n {namespace} {resource_list} --all --ignore-not-found --timeout=30s")
         assert err == 0, "failed to run command!"
 
-        # delete any deployments in the namespace
-        cmd.run(f"kubectl delete -n {namespace} deployments --all --ignore-not-found --timeout=30s")
-        names, _ = cmd.run(f"kubectl get deployments.apps -o name -n {namespace}")
-        for resource in names.splitlines():
-            patch = '{"metadata": {"finalizers": []}}'
-            cmd.run(f'kubectl patch -n {namespace} {resource} -p \'{patch}\' --type=merge')
+        polling2.poll(
+            target=lambda: self.are_resources_deleted(cmd, namespace, resource_types),
+            step=1,
+            timeout=60)
+
+    def are_resources_deleted(self, cmd: Command, namespace: str, resource_types: List[str]) -> bool:
+        resource_list = ",".join(resource_types)
+        o, ec = cmd.run(f"kubectl get {resource_list} -n {namespace} -o jsonpath='{{.items}}' | jq 'length'")
+        return ec == 0 and o.rstrip() == "0"
+
+    def is_resource_deleted(self, cmd: Command, namespace: str, rtype: str, rname: str) -> bool:
+        o, ec = cmd.run(f"""kubectl get {rtype} -n {namespace} -o json | jq 'any(.items[]; .metadata.name="{rname}")'""")
+        return ec == 0 and o.rstrip() == "0"
 
     def install_primaza(self):
         img = self.__controller_image
