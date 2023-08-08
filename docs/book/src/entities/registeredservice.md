@@ -45,6 +45,17 @@ Please note that exclusions have precedence over inclusions.
 For example, if the list contains `!prod` but also includes `dev`, then `dev` is considered to be in the `!prod` set of environments and therefore redundant.
 If there is a third environment stage, then `!prod` would include both `stage` and `dev` even if they are not defined in the list explicitly.
 
+## Metadata
+
+A Primaza's discovered RegisteredService has the following annotations:
+
+* `primaza.io/cluster-environment`: the name of the ClusterEnvironemnt it's part of
+* `primaza.io/service-apiversion`: the APIVersion of the resource represented by the RegisteredService
+* `primaza.io/service-kind`: the kind of the resource represented by the RegisteredService
+* `primaza.io/service-name`: the name of the resource represented by the RegisteredService
+* `primaza.io/service-namespace`: the namespace of the resource represented by the RegisteredService
+* `primaza.io/service-uid`: the UID of the resource represented by the RegisteredService
+
 ## Status
 
 The state of a RegisteredService could be one of the following:

@@ -31,6 +31,13 @@ The ServiceBinding's specification contains the following **required** propertie
 The ServiceBinding's specification also contains the following **optional** property:
 - `envs`: Envs declares environment variables based on the        ServiceEndpointDefinitionSecret to be projected into the application
 
+## Metadata
+
+Each ServiceBinding takes note of its RegisteredService in the following annotations:
+
+* `primaza.io/registered-service-name`: The RegisteredService Name
+* `primaza.io/registered-service-uid`: The RegisteredService UID
+
 ## Status
 
 The ServiceBinding's status contains the properties `state` and `conditions`.
