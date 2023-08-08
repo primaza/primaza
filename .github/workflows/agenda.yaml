@@ -1,0 +1,64 @@
+name: Agenda Generator
+
+on: # yamllint disable-line rule:truthy
+  schedule:
+    - cron: '15 12 * * 1' # run every Monday at 12:15 PM UTC
+  workflow_dispatch:
+    inputs:
+      meeting_date:
+        description: 'Meeting Date'
+        required: false
+        default: ""
+
+    branches:
+      - main
+      - agenda_workflow
+
+permissions:
+  discussions: write
+
+jobs:
+  create-discussion:
+    name: discussion-gen
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Print discussion date
+      id: meeting-date
+      run: |
+        if [ -z "${{ github.event.inputs.meeting_date }}" ]
+        then
+          meet_date=$(python3 -c 'import datetime; print((datetime.datetime.now() + datetime.timedelta(days=7)).strftime("%m/%d/%Y"))')
+        else
+          meet_date=${{ github.event.inputs.meeting_date }}
+        fi
+        echo "meetdate=$meet_date" >> $GITHUB_OUTPUT
+    - name: Create a new GitHub Discussion
+      id: create-discussion
+      uses: octokit/graphql-action@v2.x
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        query: |
+          mutation {
+            # input type: CreateDiscussionInput
+            createDiscussion(input: {
+                                      repositoryId: "${{ vars.REPO_ID }}",
+                                      categoryId: "${{ vars.CAT_ID }}",
+                                      body:
+                                        "Welcome :wave: to our community call :phone:. This call will be held on ${{ steps.meeting-date.outputs.meetdate }} at [8:30 AM EDT (UTC-4)](https://mytime.io/08:30/EDT).
+                                        Click on [Primaza Google Meet](https://meet.google.com/rag-etuk-vqe) to join us. You can also join the [Primaza Group](https://groups.google.com/g/primaza/members) to receive a recurring invite on your calendar.
+                                        Agenda Items are entered through comments. Feel free to add your agenda Items.",
+                                      title: "Community Call Agenda ${{ steps.meeting-date.outputs.meetdate }}"}) {
+              # response type: CreateDiscussionPayload
+              discussion {
+                id
+                url
+              }
+            }
+          }
+    - name: Print discussion data
+      run: |
+        cat << EOF
+        ${{ steps.create-discussion.outputs.data }}
+        EOF
