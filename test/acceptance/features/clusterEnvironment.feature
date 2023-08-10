@@ -99,4 +99,4 @@ Feature: Register a kubernetes cluster as Primaza Worker Cluster
         """
         Then On Primaza Cluster "main", ClusterEnvironment "worker" state will eventually move to "Online"
         And  On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "Online" has Status "True"
-        And  On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ExcessPermissions" has Status "True"
+        And  On Primaza Cluster "main", ClusterEnvironment "worker" status condition with Type "ExcessPermissionsInApplicationNamespaces" has Status "True"
