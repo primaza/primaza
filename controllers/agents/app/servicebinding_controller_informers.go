@@ -135,7 +135,7 @@ func (r *ServiceBindingReconciler) prepareAddFunc(ctx context.Context, synced *a
 		if !verifyApplicationSatisfiesServiceBindingSpec(applicationResource, serviceBinding) {
 			return
 		}
-		l.Info(fmt.Sprintf("application resource %v", applicationResource))
+		l.Info("application resource", "application", applicationResource.GetName())
 
 		psSecret, err := r.GetSecret(ctx, serviceBinding, *applicationResource)
 		if err != nil {
@@ -167,7 +167,7 @@ func (r *ServiceBindingReconciler) prepareUpdateFunc(ctx context.Context, synced
 
 		applicationResource := future.(*unstructured.Unstructured)
 
-		l.Info(fmt.Sprintf("application resource %v", applicationResource))
+		l.Info("application resource", "application", applicationResource.GetName())
 		if !verifyApplicationSatisfiesServiceBindingSpec(applicationResource, serviceBinding) {
 			return
 		}
