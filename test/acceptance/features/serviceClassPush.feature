@@ -91,7 +91,7 @@ Feature: Use ServicesClass resources to manage RegisteredService resources (Push
         And jsonpath ".spec.serviceEndpointDefinition[0]" on "registeredservices.primaza.io/$scenario_id-1:primaza-system" in cluster main is "{"name":"host","value":"internal.db.stable.example.com"}"
         And The resource registeredservices.primaza.io/$scenario_id-2:primaza-system is available in cluster "main"
         And jsonpath ".spec.serviceEndpointDefinition[0]" on "registeredservices.primaza.io/$scenario_id-2:primaza-system" in cluster main is "{"name":"host","value":"external.db.stable.example.com"}"
-        And jsonpath ".metadata.annotations."primaza.io/service-group"" on "registeredservices.primaza.io/$scenario_id-2:primaza-system" in cluster main is "stable.example.com"
+        And jsonpath ".metadata.annotations."primaza.io/service-apiversion"" on "registeredservices.primaza.io/$scenario_id-2:primaza-system" in cluster main is "stable.example.com/v1"
         And jsonpath ".metadata.annotations."primaza.io/service-kind"" on "registeredservices.primaza.io/$scenario_id-2:primaza-system" in cluster main is "Backend"
         And jsonpath ".metadata.annotations."primaza.io/service-name"" on "registeredservices.primaza.io/$scenario_id-2:primaza-system" in cluster main is "$scenario_id-2"
         And jsonpath ".metadata.annotations."primaza.io/service-namespace"" on "registeredservices.primaza.io/$scenario_id-2:primaza-system" in cluster main is "services"

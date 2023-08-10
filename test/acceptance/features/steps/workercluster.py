@@ -221,7 +221,7 @@ def ensure_registered_service_of_service_claim(context, cluster_name: str, servi
             version,
             plural,
             service_claim_name,
-            namespace).get("status", {}).get("registeredService", None) == registered_service,
+            namespace).get("status", {}).get("registeredService", None).get("name", None) == registered_service,
         step=1,
         timeout=60)
 

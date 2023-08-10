@@ -21,6 +21,7 @@ import (
 	"errors"
 
 	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
+	"github.com/primaza/primaza/pkg/primaza/constants"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -88,7 +89,14 @@ func pushServiceBindingToNamespace(
 		},
 	}
 
+	l.Info("pushing service binding", "service-binding", sb.Name, "service-claim-status", sc.Status)
 	op, err := controllerutil.CreateOrUpdate(ctx, cli, &sb, func() error {
+		if sb.ObjectMeta.Annotations == nil {
+			sb.ObjectMeta.Annotations = map[string]string{}
+		}
+		sb.ObjectMeta.Annotations[constants.BoundRegisteredServiceNameAnnotation] = sc.Status.RegisteredService.Name
+		sb.ObjectMeta.Annotations[constants.BoundRegisteredServiceUIDAnnotation] = string(sc.Status.RegisteredService.UID)
+
 		sb.Spec = primazaiov1alpha1.ServiceBindingSpec{
 			ServiceEndpointDefinitionSecret: sc.Name,
 			Application:                     sc.Spec.Application,

@@ -96,6 +96,7 @@ const (
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state",description="the state of the ServiceBinding"
+//+kubebuilder:printcolumn:name="RegisteredService",type="string",JSONPath=".metadata.annotations.primaza\\.io/registered-service-name"
 //+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // ServiceBinding is the Schema for the servicebindings API

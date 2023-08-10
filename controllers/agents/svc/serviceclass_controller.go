@@ -382,7 +382,6 @@ func PrepareRegisteredService(
 		return v1alpha1.RegisteredService{}, nil, err
 	}
 
-	gvk := data.GetObjectKind().GroupVersionKind()
 	rs := v1alpha1.RegisteredService{
 		ObjectMeta: metav1.ObjectMeta{
 			// FIXME(sadlerap): this could cause naming conflicts; we need
@@ -390,8 +389,8 @@ func PrepareRegisteredService(
 			Name:      data.GetName(),
 			Namespace: target_namespace,
 			Annotations: map[string]string{
-				constants.ServiceGroupAnnotation:       gvk.Group,
-				constants.ServiceKindAnnotation:        gvk.Kind,
+				constants.ServiceAPIVersionAnnotation:  serviceClass.Spec.Resource.APIVersion,
+				constants.ServiceKindAnnotation:        serviceClass.Spec.Resource.Kind,
 				constants.ServiceNameAnnotation:        data.GetName(),
 				constants.ServiceNamespaceAnnotation:   data.GetNamespace(),
 				constants.ServiceUIDAnnotation:         string(data.GetUID()),
