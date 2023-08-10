@@ -10,6 +10,10 @@ on:  # yamllint disable-line rule:truthy
         description: "Primaza release version"
         required: true
         default: "latest"
+      build-image:
+        description: "build and push image as part of release"
+        required: true
+        default: "false"
 
 permissions:
   contents: write
@@ -28,6 +32,8 @@ jobs:
     permissions:
       contents: write
       packages: write
+    env:
+      KUSTOMIZE: ${{ github.workspace }}/bin/kustomize
 
     steps:
       - name: Set up Go
@@ -73,6 +79,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 'Build and Push Images'
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.build-image == 'true' }}
         uses: ./.github/actions/push-ghcr
         with:
           registry: ${{ env.REGISTRY }}
@@ -85,12 +92,12 @@ jobs:
       - name: 'Build manifests: Primaza'
         run: |
           ( cd config/manager && \
-            kustomize edit set image primaza-controller=${IMG} && \
-            kustomize edit add configmap manager-config \
+            ${{ env.KUSTOMIZE }} edit set image primaza-controller=${IMG} && \
+            ${{ env.KUSTOMIZE }} edit add configmap manager-config \
               --behavior merge --disableNameSuffixHash \
-              --from-literal agentapp-image=$(IMG_APP) \
-              --from-literal agentsvc-image=$(IMG_SVC) )
-          kustomize build config/default > ${{ env.OUT_DIR }}/${{ env.CONTROL_PLANE_CONFIG_FILE }}
+              --from-literal agentapp-image=${IMG_APP} \
+              --from-literal agentsvc-image=${IMG_SVC} )
+          ${{ env.KUSTOMIZE }} build config/default > ${{ env.OUT_DIR }}/${{ env.CONTROL_PLANE_CONFIG_FILE }}
         env:
           IMG: ghcr.io/primaza/primaza:${{ env.VERSION }}
           IMG_APP: ghcr.io/primaza/primaza-agentapp:${{ env.VERSION }}
@@ -98,17 +105,17 @@ jobs:
 
       - name: 'Build manifests: CRDs'
         run: |
-          kustomize build config/crd > ${{ env.OUT_DIR }}/${{ env.CRDS_CONFIG_FILE }}
+          ${{ env.KUSTOMIZE }} build config/crd > ${{ env.OUT_DIR }}/${{ env.CRDS_CONFIG_FILE }}
         env:
           IMG: ghcr.io/primaza/primaza:${{ env.VERSION }}
 
       - name: 'Build manifests: Application Agent'
         run: |
-          kustomize build config/agents/app/namespace > ${{ env.OUT_DIR }}/${{ env.APPLICATION_NAMESPACE_CONFIG_FILE }}
+          ${{ env.KUSTOMIZE }} build config/agents/app/namespace > ${{ env.OUT_DIR }}/${{ env.APPLICATION_NAMESPACE_CONFIG_FILE }}
 
       - name: 'Build manifests: Service Agent'
         run: |
-          kustomize build \
+          ${{ env.KUSTOMIZE }} build \
             --load-restrictor LoadRestrictionsNone \
             config/agents/svc/namespace > ${{ env.OUT_DIR }}/${{ env.SERVICE_NAMESPACE_CONFIG_FILE }}
 
