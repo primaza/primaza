@@ -203,8 +203,8 @@ jobs:
             # we need to rewrite the server addresses so that connections from
             # both inside and outside of docker can be established using the
             # same config
-            bin/yq -i ".clusters[0].cluster.server = \"https://$(docker container inspect main-control-plane | bin/yq '.[0].NetworkSettings.Networks.kind.IPAddress'):6443\"" out/main-kubeconfig
-            bin/yq -i ".clusters[0].cluster.server = \"https://$(docker container inspect worker-control-plane | bin/yq '.[0].NetworkSettings.Networks.kind.IPAddress'):6443\"" out/worker-kubeconfig
+            bin/yq -i ".clusters[0].cluster.server = \"https://$(docker container inspect main-control-plane | bin/yq '.[0].NetworkSettings.Networks.kind.IPAddress'):6443\"" "${MAIN_KUBECONFIG}"
+            bin/yq -i ".clusters[0].cluster.server = \"https://$(docker container inspect worker-control-plane | bin/yq '.[0].NetworkSettings.Networks.kind.IPAddress'):6443\"" "${WORKER_KUBECONFIG}"
 
             kind load image-archive --name main images/primaza-controller.tar
             kind load image-archive --name main images/agentapp.tar
