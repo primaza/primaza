@@ -47,7 +47,7 @@ var AppPermissionList = []Permission{
 		ResourceNames: []string{},
 		Namespace:     "system",
 		Name:          "primaza:app:manager",
-		Verbs:         []string{"list", "get", "watch", "update"},
+		Verbs:         []string{"list", "get", "delete", "watch", "update"},
 	},
 	{
 		APIGroups:     []string{"primaza.io"},

@@ -84,6 +84,11 @@ jobs:
             git diff config
             exit 1
           fi
+          if ! git diff-index --quiet HEAD -- pkg/authz/ ; then
+            echo "the following generated permission list are not up-to-date"
+            git diff pkg/authz
+            exit 1
+          fi
 
   unit:
     name: Unit Tests
