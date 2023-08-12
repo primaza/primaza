@@ -131,7 +131,7 @@ func (r *namespacesReconciler) getOrphanNamespaces(ctx context.Context, ceName s
 		return nil, err
 	}
 
-	return slices.SubtractStr(ann, requestedNamespaces), nil
+	return slices.Subtract(ann, requestedNamespaces), nil
 }
 
 func (r *namespacesReconciler) getAuthorizedNamespaces(ctx context.Context, ceName string, namespaceType NamespaceType) ([]string, error) {

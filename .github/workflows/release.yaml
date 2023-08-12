@@ -20,7 +20,7 @@ permissions:
 
 env:
   GO111MODULE: "on"
-  GO_VERSION: "^1.20"
+  GO_VERSION: "^1.21"
   OUT_DIR: ./out/workflow
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}

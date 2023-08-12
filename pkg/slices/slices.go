@@ -16,31 +16,21 @@ limitations under the License.
 
 package slices
 
-func SubtractStr(s1, s2 []string) []string {
-	m := map[string]struct{}{}
-	for _, s := range s1 {
-		m[s] = struct{}{}
+// Subtracts from `o` the elements in `s`
+func Subtract[T ~[]E, E comparable](o T, s T) T {
+	m := map[E]struct{}{}
+	for _, e := range o {
+		m[e] = struct{}{}
 	}
-	for _, s := range s2 {
-		delete(m, s)
+	for _, e := range s {
+		delete(m, e)
 	}
 
-	rs := make([]string, len(m))
+	rs := make(T, len(m))
 	c := 0
 	for k := range m {
 		rs[c] = k
 		c++
 	}
 	return rs
-}
-
-// ItemContains return true if the slice contains
-// the given string
-func ItemContains(s []string, e string) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
-	}
-	return false
 }
