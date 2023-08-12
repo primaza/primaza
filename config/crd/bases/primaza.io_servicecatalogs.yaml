@@ -35,6 +35,92 @@ spec:
           spec:
             description: ServiceCatalogSpec defines the desired state of ServiceCatalog
             properties:
+              claimedByLabels:
+                description: ClaimedByLabels contains a list of services that are
+                  claimed by labels.
+                items:
+                  properties:
+                    labels:
+                      description: Labels labels selector for the service
+                      properties:
+                        matchExpressions:
+                          description: matchExpressions is a list of label selector
+                            requirements. The requirements are ANDed.
+                          items:
+                            description: A label selector requirement is a selector
+                              that contains values, a key, and an operator that relates
+                              the key and values.
+                            properties:
+                              key:
+                                description: key is the label key that the selector
+                                  applies to.
+                                type: string
+                              operator:
+                                description: operator represents a key's relationship
+                                  to a set of values. Valid operators are In, NotIn,
+                                  Exists and DoesNotExist.
+                                type: string
+                              values:
+                                description: values is an array of string values.
+                                  If the operator is In or NotIn, the values array
+                                  must be non-empty. If the operator is Exists or
+                                  DoesNotExist, the values array must be empty. This
+                                  array is replaced during a strategic merge patch.
+                                items:
+                                  type: string
+                                type: array
+                            required:
+                            - key
+                            - operator
+                            type: object
+                          type: array
+                        matchLabels:
+                          additionalProperties:
+                            type: string
+                          description: matchLabels is a map of {key,value} pairs.
+                            A single {key,value} in the matchLabels map is equivalent
+                            to an element of matchExpressions, whose key field is
+                            "key", the operator is "In", and the values array contains
+                            only "value". The requirements are ANDed.
+                          type: object
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    name:
+                      description: Name defines the name of the known service
+                      type: string
+                    serviceClassIdentity:
+                      description: ServiceClassIdentity defines a set of attributes
+                        that are sufficient to identify a service class.  A ServiceClaim
+                        whose ServiceClassIdentity field is a subset of a RegisteredService's
+                        keys can claim that service.
+                      items:
+                        description: ServiceClassIdentityItem defines an attribute
+                          that is necessary to identify a service class.
+                        properties:
+                          name:
+                            description: Name of the service class identity attribute.
+                            type: string
+                          value:
+                            description: Value of the service class identity attribute.
+                            type: string
+                        required:
+                        - name
+                        - value
+                        type: object
+                      type: array
+                    serviceEndpointDefinitionKeys:
+                      description: ServiceEndpointDefinitionKeys defines a set of
+                        keys listing the information this service provides to a workload.
+                      items:
+                        type: string
+                      type: array
+                  required:
+                  - labels
+                  - name
+                  - serviceClassIdentity
+                  - serviceEndpointDefinitionKeys
+                  type: object
+                type: array
               services:
                 description: Services contains a list of services that are known to
                   Primaza.
