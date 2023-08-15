@@ -447,7 +447,7 @@ func (r *ClusterEnvironmentReconciler) reconcileServiceNamespaces(ctx context.Co
 			serviceclassFilteredList = append(serviceclassFilteredList, serviceclass)
 		}
 	}
-	serviceNamespaces := slices.SubtractStr(ce.Spec.ServiceNamespaces, failedServiceNamespaces)
+	serviceNamespaces := slices.Subtract(ce.Spec.ServiceNamespaces, failedServiceNamespaces)
 
 	errs := []error{}
 	for _, serviceclass := range serviceclassFilteredList {
@@ -540,7 +540,7 @@ func (r *ClusterEnvironmentReconciler) reconcileServiceCatalogApplicationNamespa
 
 func (r *ClusterEnvironmentReconciler) reconcileApplicationNamespaces(ctx context.Context, cfg *rest.Config, ce *primazaiov1alpha1.ClusterEnvironment, failedApplicationNamespaces []string) error {
 
-	nns := slices.SubtractStr(ce.Spec.ApplicationNamespaces, failedApplicationNamespaces)
+	nns := slices.Subtract(ce.Spec.ApplicationNamespaces, failedApplicationNamespaces)
 	errcm := r.reconcileServiceBindingApplicationNamespaces(ctx, cfg, ce, nns)
 	errct := r.reconcileServiceCatalogApplicationNamespaces(ctx, cfg, ce, nns)
 	return errors.Join(errcm, errct)
@@ -656,8 +656,8 @@ func (r *ClusterEnvironmentReconciler) reconcileNamespaces(
 	cfg *rest.Config,
 	ce *primazaiov1alpha1.ClusterEnvironment,
 	failedApplicationNamespaces, failedServiceNamespaces []string) error {
-	ans := slices.SubtractStr(ce.Spec.ApplicationNamespaces, failedApplicationNamespaces)
-	sns := slices.SubtractStr(ce.Spec.ServiceNamespaces, failedServiceNamespaces)
+	ans := slices.Subtract(ce.Spec.ApplicationNamespaces, failedApplicationNamespaces)
+	sns := slices.Subtract(ce.Spec.ServiceNamespaces, failedServiceNamespaces)
 
 	s := controlplane.ClusterEnvironmentState{
 		Name:                   ce.Name,

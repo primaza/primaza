@@ -18,7 +18,7 @@ concurrency:
 
 env:
   GO111MODULE: "on"
-  GO_VERSION: "^1.20"
+  GO_VERSION: "^1.21"
   # quote this, since yaml will otherwise treat this as a float
   PYTHON_VERSION: "3.10"
   TEST_ACCEPTANCE_CLI: "kubectl"

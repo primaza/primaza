@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -42,7 +43,6 @@ import (
 	"github.com/primaza/primaza/pkg/primaza/clustercontext"
 	"github.com/primaza/primaza/pkg/primaza/constants"
 	"github.com/primaza/primaza/pkg/primaza/controlplane"
-	"github.com/primaza/primaza/pkg/slices"
 )
 
 // ServiceClaimReconciler reconciles a ServiceClaim object
@@ -225,12 +225,12 @@ func (r *ServiceClaimReconciler) extractServiceEndpointDefinition(
 		if sed.Value != "" {
 			// check if the ServiceEndpointDefinitionKeys part of ServiceClaim has the current
 			// SED name in the RegisteredService
-			if slices.ItemContains(sedKeys, sed.Name) {
+			if slices.Contains(sedKeys, sed.Name) {
 				secret.StringData[sed.Name] = sed.Value
 				count++
 			}
 		} else if k := sed.ValueFromSecret.Key; k != "" { // check value if the key is non-empty
-			if slices.ItemContains(sedKeys, sed.Name) {
+			if slices.Contains(sedKeys, sed.Name) {
 				sec := &corev1.Secret{}
 				nn := types.NamespacedName{Namespace: namespace, Name: sed.ValueFromSecret.Name}
 				if err := r.Get(ctx, nn, sec); err != nil {
