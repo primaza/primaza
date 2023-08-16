@@ -93,7 +93,7 @@ Feature: Claim from an application namespace (Pull)
                 a: b
                 c: d
         """
-        Then On Primaza Cluster "main", ServiceClaim "sc-test" state will eventually move to "Resolved"
+        Then On Primaza Cluster "main", Claim "sc-test" state will eventually move to "Resolved"
         And  On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
         And  On Primaza Cluster "main", ServiceCatalog "stage" will not contain RegisteredService "primaza-rsdb"
         And  On Worker Cluster "worker", the status of ServiceClaim "sc-test" is "Resolved"
@@ -128,9 +128,9 @@ Feature: Claim from an application namespace (Pull)
                 a: b
                 c: d
         """
-        And On Primaza Cluster "main", ServiceClaim "sc-test" state will eventually move to "Resolved"
+        And On Primaza Cluster "main", Claim "sc-test" state will eventually move to "Resolved"
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
         And On Primaza Cluster "main", ServiceCatalog "stage" will not contain RegisteredService "primaza-rsdb"
         And On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "type" with value "psqlserver"
         When The resource serviceclaims.primaza.io/sc-test:applications is deleted from the cluster "worker"
-        Then The resource serviceclaims.primaza.io/sc-test:primaza-system is not available in cluster "main"
+        Then The resource claims.primaza.io/sc-test:primaza-system is not available in cluster "main"

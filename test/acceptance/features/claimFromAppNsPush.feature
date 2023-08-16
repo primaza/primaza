@@ -49,7 +49,7 @@ Feature: Claim from an application namespace (Push)
                 a: b
                 c: d
         """
-        Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Pending"
+        Then On Primaza Cluster "main", the status of Claim "sc-test" is "Pending"
         And  On Worker Cluster "worker", the status of ServiceClaim "sc-test" is "Pending"
 
     Scenario: Claim with label selector from an application namespace
@@ -123,7 +123,7 @@ Feature: Claim from an application namespace (Push)
                 a: b
                 c: d
         """
-        Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
+        Then On Primaza Cluster "main", the status of Claim "sc-test" is "Resolved"
         And  On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
         And  On Primaza Cluster "main", ServiceCatalog "stage" will not contain RegisteredService "primaza-rsdb"
         And  On Primaza Cluster "main", the RegisteredService bound to the ServiceClaim "sc-test" is "primaza-rsdb"
@@ -313,7 +313,7 @@ Feature: Claim from an application namespace (Push)
         And On Primaza Cluster "main", ServiceCatalog "stage" will not contain RegisteredService "primaza-rsdb"
         And On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "type" with value "psqlserver"
         When The resource serviceclaims.primaza.io/sc-test:applications is deleted from the cluster "worker"
-        Then The resource serviceclaims.primaza.io/sc-test:primaza-system is not available in cluster "main"
+        Then The resource claims.primaza.io/sc-test:primaza-system is not available in cluster "main"
 
     Scenario: Service Catalog is updated with the services claimed by labels
         Given On Primaza Cluster "main", Resource is created
@@ -386,7 +386,7 @@ Feature: Claim from an application namespace (Push)
                 a: b
                 c: d
         """
-        Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
+        Then On Primaza Cluster "main", the status of Claim "sc-test" is "Resolved"
         And  On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
         And  On Primaza Cluster "main", ServiceCatalog "stage" will not contain RegisteredService "primaza-rsdb"
         And  On Primaza Cluster "main", ServiceCatalog "stage" contain RegisteredService "primaza-rsdb" in claimedByLabels

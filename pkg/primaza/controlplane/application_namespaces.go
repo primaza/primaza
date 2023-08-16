@@ -35,7 +35,7 @@ import (
 
 func PushServiceBinding(
 	ctx context.Context,
-	sc *primazaiov1alpha1.ServiceClaim,
+	sc *primazaiov1alpha1.Claim,
 	secret *corev1.Secret,
 	scheme *runtime.Scheme,
 	controllerruntimeClient client.Client,
@@ -73,7 +73,7 @@ func pushServiceBindingToNamespace(
 	ctx context.Context,
 	cli client.Client,
 	namespace string,
-	sc *primazaiov1alpha1.ServiceClaim,
+	sc *primazaiov1alpha1.Claim,
 	secret *corev1.Secret) error {
 	l := log.FromContext(ctx)
 
@@ -177,7 +177,7 @@ func PushServiceCatalogToApplicationNamespaces(ctx context.Context, sc primazaio
 	return errors.Join(errorList...)
 }
 
-func DeleteServiceBindingAndSecretFromNamespaces(ctx context.Context, cli client.Client, sc primazaiov1alpha1.ServiceClaim, namespaces []string) error {
+func DeleteServiceBindingAndSecretFromNamespaces(ctx context.Context, cli client.Client, sc primazaiov1alpha1.Claim, namespaces []string) error {
 	var errs []error
 
 	for _, ns := range namespaces {

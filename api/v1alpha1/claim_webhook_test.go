@@ -28,8 +28,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-func newServiceClaim(name, namespace string, spec ServiceClaimSpec) ServiceClaim {
-	return ServiceClaim{
+func newClaim(name, namespace string, spec ClaimSpec) Claim {
+	return Claim{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
@@ -46,19 +46,19 @@ var _ = Describe("Webhook tests", func() {
 
 	Context("When creating ServiceClaim with ApplicationClusterContext and EnvironmentTag", func() {
 		It("should an error saying the resource cannot be created", func() {
-			var validator serviceClaimValidator
+			var validator claimValidator
 			schemeBuilder, err := SchemeBuilder.Build()
 			Expect(err).NotTo(HaveOccurred())
 
-			validator = serviceClaimValidator{
+			validator = claimValidator{
 				client: fake.NewClientBuilder().
 					WithScheme(schemeBuilder).
 					WithLists(&ServiceClaimList{}).
 					Build(),
 			}
 			scacc := ServiceClaimApplicationClusterContext{}
-			serviceClaim := newServiceClaim("spam", "eggs",
-				ServiceClaimSpec{
+			serviceClaim := newClaim("spam", "eggs",
+				ClaimSpec{
 					EnvironmentTag:            "prod",
 					ApplicationClusterContext: &scacc,
 				},
@@ -79,18 +79,18 @@ var _ = Describe("Webhook tests", func() {
 
 	Context("When creating ServiceClaim with empty ApplicationClusterContext and EnvironmentTag", func() {
 		It("should an error saying the resource cannot be created", func() {
-			var validator serviceClaimValidator
+			var validator claimValidator
 			schemeBuilder, err := SchemeBuilder.Build()
 			Expect(err).NotTo(HaveOccurred())
 
-			validator = serviceClaimValidator{
+			validator = claimValidator{
 				client: fake.NewClientBuilder().
 					WithScheme(schemeBuilder).
 					WithLists(&ServiceClaimList{}).
 					Build(),
 			}
-			serviceClaim := newServiceClaim("spam", "eggs",
-				ServiceClaimSpec{
+			serviceClaim := newClaim("spam", "eggs",
+				ClaimSpec{
 					EnvironmentTag:            "",
 					ApplicationClusterContext: nil,
 				},
@@ -111,11 +111,11 @@ var _ = Describe("Webhook tests", func() {
 
 	Context("When creating ServiceClaim with Application name and Application selector", func() {
 		It("should an error saying the resource cannot be created", func() {
-			var validator serviceClaimValidator
+			var validator claimValidator
 			schemeBuilder, err := SchemeBuilder.Build()
 			Expect(err).NotTo(HaveOccurred())
 
-			validator = serviceClaimValidator{
+			validator = claimValidator{
 				client: fake.NewClientBuilder().
 					WithScheme(schemeBuilder).
 					WithLists(&ServiceClaimList{}).
@@ -125,8 +125,8 @@ var _ = Describe("Webhook tests", func() {
 				Name:     "some-name",
 				Selector: &metav1.LabelSelector{},
 			}
-			serviceClaim := newServiceClaim("spam", "eggs",
-				ServiceClaimSpec{
+			serviceClaim := newClaim("spam", "eggs",
+				ClaimSpec{
 					Application:    as,
 					EnvironmentTag: "prod",
 				},

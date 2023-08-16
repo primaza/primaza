@@ -133,8 +133,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	serviceClaimController := controllers.NewServiceClaimReconciler(mgr)
-	if err := serviceClaimController.SetupWithManager(mgr); err != nil {
+	claimController := controllers.NewClaimReconciler(mgr)
+	if err := claimController.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ServiceClaim")
 		os.Exit(1)
 	}
@@ -157,7 +157,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&primazaiov1alpha1.ServiceClaim{}).SetupWebhookWithManager(mgr); err != nil {
+	if err = (&primazaiov1alpha1.Claim{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "ServiceClaim")
 		os.Exit(1)
 	}

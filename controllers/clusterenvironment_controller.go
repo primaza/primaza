@@ -472,18 +472,18 @@ func (r *ClusterEnvironmentReconciler) reconcileServiceNamespaces(ctx context.Co
 func (r *ClusterEnvironmentReconciler) reconcileServiceBindingApplicationNamespaces(ctx context.Context, cfg *rest.Config, ce *primazaiov1alpha1.ClusterEnvironment, applicationNamespaces []string) error {
 	errs := []error{}
 	l := log.FromContext(ctx)
-	serviceclaimsList := primazaiov1alpha1.ServiceClaimList{}
-	if err := r.List(ctx, &serviceclaimsList, &client.ListOptions{Namespace: ce.Namespace}); err != nil {
+	claimsList := primazaiov1alpha1.ClaimList{}
+	if err := r.List(ctx, &claimsList, &client.ListOptions{Namespace: ce.Namespace}); err != nil {
 		return client.IgnoreNotFound(err)
 	}
-	var serviceclaimFilteredList []primazaiov1alpha1.ServiceClaim
-	for _, serviceclaim := range serviceclaimsList.Items {
+	var claimFilteredList []primazaiov1alpha1.Claim
+	for _, serviceclaim := range claimsList.Items {
 		if ce.Spec.EnvironmentName == serviceclaim.Spec.EnvironmentTag {
-			serviceclaimFilteredList = append(serviceclaimFilteredList, serviceclaim)
+			claimFilteredList = append(claimFilteredList, serviceclaim)
 		}
 	}
-	for index := range serviceclaimFilteredList {
-		sclaim := serviceclaimFilteredList[index]
+	for index := range claimFilteredList {
+		sclaim := claimFilteredList[index]
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      sclaim.Name,

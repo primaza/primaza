@@ -65,7 +65,7 @@ Feature: Application Namespaces initialization: Service Bindings
         And On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
-        kind: ServiceClaim
+        kind: Claim
         metadata:
           name: sc-test
           namespace: primaza-system
@@ -152,7 +152,7 @@ Feature: Application Namespaces initialization: Service Bindings
         When On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
-        kind: ServiceClaim
+        kind: Claim
         metadata:
           name: sc-test
           namespace: primaza-system
@@ -232,7 +232,7 @@ Feature: Application Namespaces initialization: Service Bindings
         When On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
-        kind: ServiceClaim
+        kind: Claim
         metadata:
           name: sc-test
           namespace: primaza-system
@@ -313,7 +313,7 @@ Feature: Application Namespaces initialization: Service Bindings
         When On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
-        kind: ServiceClaim
+        kind: Claim
         metadata:
           name: sc-test
           namespace: primaza-system

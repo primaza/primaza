@@ -11,9 +11,9 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-primaza-io-v1alpha1-serviceclaim
+      path: /validate-primaza-io-v1alpha1-claim
   failurePolicy: Fail
-  name: vserviceclaim.kb.io
+  name: vclaim.kb.io
   rules:
   - apiGroups:
     - primaza.io
@@ -23,7 +23,7 @@ webhooks:
     - CREATE
     - UPDATE
     resources:
-    - serviceclaims
+    - claims
   sideEffects: None
 - admissionReviewVersions:
   - v1

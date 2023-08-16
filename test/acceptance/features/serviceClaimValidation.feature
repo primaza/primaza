@@ -62,11 +62,11 @@ Feature: Service claim with label selector
         """
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Available"
 
-    Scenario: Create ServiceClaim with ApplicationClusterContext and EnvironmentTag
+    Scenario: Create Claim with ApplicationClusterContext and EnvironmentTag
         When On Primaza Cluster "main", Resource is not getting created
         """
         apiVersion: primaza.io/v1alpha1
-        kind: ServiceClaim
+        kind: Claim
         metadata:
           name: sc-test
           namespace: primaza-system
@@ -95,11 +95,11 @@ Feature: Service claim with label selector
                 c: d
         """
 
-    Scenario: Create ServiceClaim with empty ApplicationClusterContext and EnvironmentTag
+    Scenario: Create Claim with empty ApplicationClusterContext and EnvironmentTag
         When On Primaza Cluster "main", Resource is not getting created
         """
         apiVersion: primaza.io/v1alpha1
-        kind: ServiceClaim
+        kind: Claim
         metadata:
           name: sc-test
           namespace: primaza-system
@@ -124,11 +124,11 @@ Feature: Service claim with label selector
                 c: d
         """
 
-    Scenario: Create ServiceClaim with Application name and Application selector
+    Scenario: Create Claim with Application name and Application selector
         When On Primaza Cluster "main", Resource is not getting created
         """
         apiVersion: primaza.io/v1alpha1
-        kind: ServiceClaim
+        kind: Claim
         metadata:
           name: sc-test
           namespace: primaza-system

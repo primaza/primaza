@@ -140,10 +140,6 @@ func (r *ClusterEnvironmentReconciler) RunAppInformer(ctx context.Context, confi
 				return
 			}
 
-			// TODO: we may have some collision or loops here,
-			// e.g. when primaza is creating a ServiceClaim that matches above constraints.
-			// My suggestion is to create an ApplicationServiceClaim CRD
-			// for the Claim from an Application namespace workflow
 			if sc.Spec.EnvironmentTag != "" {
 				li.Info("error serviceclaim is not cluster scoped", "serviceclaim", sc)
 				return

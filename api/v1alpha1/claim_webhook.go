@@ -29,40 +29,40 @@ import (
 )
 
 // log is for logging in this package.
-var serviceclaimlog = logf.Log.WithName("serviceclaim-resource")
+var claimlog = logf.Log.WithName("claim-resource")
 
-type serviceClaimValidator struct {
+type claimValidator struct {
 	client client.Client
 }
 
-func (r *ServiceClaim) SetupWebhookWithManager(mgr ctrl.Manager) error {
+func (r *Claim) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
-		WithValidator(&serviceClaimValidator{
+		WithValidator(&claimValidator{
 			client: mgr.GetClient(),
 		}).
 		Complete()
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
-//+kubebuilder:webhook:path=/validate-primaza-io-v1alpha1-serviceclaim,mutating=false,failurePolicy=fail,sideEffects=None,groups=primaza.io,resources=serviceclaims,verbs=create;update,versions=v1alpha1,name=vserviceclaim.kb.io,admissionReviewVersions=v1
+//+kubebuilder:webhook:path=/validate-primaza-io-v1alpha1-claim,mutating=false,failurePolicy=fail,sideEffects=None,groups=primaza.io,resources=claims,verbs=create;update,versions=v1alpha1,name=vclaim.kb.io,admissionReviewVersions=v1
 
-var _ admission.CustomValidator = &serviceClaimValidator{}
+var _ admission.CustomValidator = &claimValidator{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (v *serviceClaimValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	r, ok := obj.(*ServiceClaim)
+func (v *claimValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	r, ok := obj.(*Claim)
 	if !ok {
 		err := fmt.Errorf("Object is not a Service Claim")
 		serviceclasslog.Error(err, "Attempted to validate non-ServiceClaim resource", "gvk", obj.GetObjectKind().GroupVersionKind())
 		return nil, err
 	}
 
-	serviceclaimlog.Info("validate create", "name", r.Name)
+	claimlog.Info("validate create", "name", r.Name)
 	return v.validate(r)
 }
 
-func (v *serviceClaimValidator) validate(r *ServiceClaim) (admission.Warnings, error) {
+func (v *claimValidator) validate(r *Claim) (admission.Warnings, error) {
 	if r.Spec.ApplicationClusterContext != nil && r.Spec.EnvironmentTag != "" {
 		return nil, fmt.Errorf("Both ApplicationClusterContext and EnvironmentTag cannot be used together")
 	}
@@ -75,7 +75,7 @@ func (v *serviceClaimValidator) validate(r *ServiceClaim) (admission.Warnings, e
 	return nil, nil
 }
 
-func (v *serviceClaimValidator) validateUpdate(old *ServiceClaim, new *ServiceClaim) error {
+func (v *claimValidator) validateUpdate(old *Claim, new *Claim) error {
 
 	if new.Spec.ApplicationClusterContext != nil && new.Spec.EnvironmentTag != "" {
 		return fmt.Errorf("Both ApplicationClusterContext and EnvironmentTag cannot be used together")
@@ -93,35 +93,35 @@ func (v *serviceClaimValidator) validateUpdate(old *ServiceClaim, new *ServiceCl
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (v *serviceClaimValidator) ValidateUpdate(ctx context.Context, oldObj runtime.Object, newObj runtime.Object) (admission.Warnings, error) {
-	newServiceClaim, ok := newObj.(*ServiceClaim)
+func (v *claimValidator) ValidateUpdate(ctx context.Context, oldObj runtime.Object, newObj runtime.Object) (admission.Warnings, error) {
+	newServiceClaim, ok := newObj.(*Claim)
 	if !ok {
-		err := fmt.Errorf("Object is not a Service Claim")
-		serviceclasslog.Error(err, "Attempted to validate non-ServiceClaim resource", "gvk", newObj.GetObjectKind().GroupVersionKind())
+		err := fmt.Errorf("Object is not a  Claim")
+		serviceclasslog.Error(err, "Attempted to validate non-Claim resource", "gvk", newObj.GetObjectKind().GroupVersionKind())
 		return nil, err
 	}
 
-	oldServiceClaim, ok := oldObj.(*ServiceClaim)
+	oldServiceClaim, ok := oldObj.(*Claim)
 	if !ok {
 		err := fmt.Errorf("Old Object is not a Service Claim")
 		serviceclasslog.Error(err, "Attempted to validate non-ServiceClaim resource", "gvk", oldObj.GetObjectKind().GroupVersionKind())
 		return nil, err
 	}
 
-	serviceclaimlog.Info("validate update", "name", newServiceClaim.Name)
+	claimlog.Info("validate update", "name", newServiceClaim.Name)
 	return nil, v.validateUpdate(oldServiceClaim, newServiceClaim)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (v *serviceClaimValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	r, ok := obj.(*ServiceClaim)
+func (v *claimValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	r, ok := obj.(*Claim)
 	if !ok {
 		err := fmt.Errorf("Object is not a Service Claim")
 		serviceclasslog.Error(err, "Attempted to validate non-ServiceClaim resource", "gvk", obj.GetObjectKind().GroupVersionKind())
 		return nil, err
 	}
 
-	serviceclaimlog.Info("validate delete", "name", r.Name)
+	claimlog.Info("validate delete", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object deletion.
 	return nil, nil

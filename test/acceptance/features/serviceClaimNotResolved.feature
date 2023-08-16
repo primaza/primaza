@@ -63,7 +63,7 @@ Feature: Service claim with label selector
         And On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
-        kind: ServiceClaim
+        kind: Claim
         metadata:
           name: sc-test
           namespace: primaza-system
@@ -88,12 +88,12 @@ Feature: Service claim with label selector
                 a: b
                 c: d
         """
-        And On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
+        And On Primaza Cluster "main", the status of Claim "sc-test" is "Resolved"
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
         And On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
-        kind: ServiceClaim
+        kind: Claim
         metadata:
           name: sc-test-2
           namespace: primaza-system
@@ -120,7 +120,7 @@ Feature: Service claim with label selector
         """
         And On Primaza Cluster "main", ServiceCatalog "stage" will not contain RegisteredService "primaza-rsdb"
         And On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "type" with value "psqlserver"
-        And On Primaza Cluster "main", the status of ServiceClaim "sc-test-2" is "Pending"
+        And On Primaza Cluster "main", the status of Claim "sc-test-2" is "Pending"
 
     Scenario: Create a service claim with non-existing SED key
         Given On Primaza Cluster "main", Resource is created
@@ -158,7 +158,7 @@ Feature: Service claim with label selector
         When On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
-        kind: ServiceClaim
+        kind: Claim
         metadata:
           name: sc-test
           namespace: primaza-system
@@ -183,10 +183,10 @@ Feature: Service claim with label selector
                 a: b
                 c: d
         """
-        Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Pending"
+        Then On Primaza Cluster "main", the status of Claim "sc-test" is "Pending"
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Available"
         And On Primaza Cluster "main", ServiceCatalog "stage" will contain RegisteredService "primaza-rsdb"
-        And jsonpath ".status.conditions[0].reason" on "serviceclaims.primaza.io/sc-test:primaza-system" in cluster main is "NoMatchingServiceFound"
+        And jsonpath ".status.conditions[0].reason" on "claims.primaza.io/sc-test:primaza-system" in cluster main is "NoMatchingServiceFound"
 
     Scenario: Create a service claim with non-matching SCI
         Given On Primaza Cluster "main", Resource is created
@@ -236,7 +236,7 @@ Feature: Service claim with label selector
         When On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
-        kind: ServiceClaim
+        kind: Claim
         metadata:
           name: sc-test
           namespace: primaza-system
@@ -261,7 +261,7 @@ Feature: Service claim with label selector
                 a: b
                 c: d
         """
-        Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Pending"
+        Then On Primaza Cluster "main", the status of Claim "sc-test" is "Pending"
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Available"
         And On Primaza Cluster "main", ServiceCatalog "stage" will contain RegisteredService "primaza-rsdb"
-        And jsonpath ".status.conditions[0].reason" on "serviceclaims.primaza.io/sc-test:primaza-system" in cluster main is "NoMatchingServiceFound"
+        And jsonpath ".status.conditions[0].reason" on "claims.primaza.io/sc-test:primaza-system" in cluster main is "NoMatchingServiceFound"

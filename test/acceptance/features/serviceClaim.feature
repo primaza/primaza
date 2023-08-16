@@ -66,7 +66,7 @@ Feature: Service claim with label selector
         When On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
-        kind: ServiceClaim
+        kind: Claim
         metadata:
           name: sc-test
           namespace: primaza-system
@@ -91,7 +91,7 @@ Feature: Service claim with label selector
                 a: b
                 c: d
         """
-        Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
+        Then On Primaza Cluster "main", the status of Claim "sc-test" is "Resolved"
         And  On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
         And  On Primaza Cluster "main", ServiceCatalog "stage" will not contain RegisteredService "primaza-rsdb"
         And  On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "type" with value "psqlserver"
@@ -129,7 +129,7 @@ Feature: Service claim with label selector
         When On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
-        kind: ServiceClaim
+        kind: Claim
         metadata:
           name: sc-test
           namespace: primaza-system
@@ -154,7 +154,7 @@ Feature: Service claim with label selector
                 a: b
                 c: d
         """
-        Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
+        Then On Primaza Cluster "main", the status of Claim "sc-test" is "Resolved"
         And  On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
         And  On Primaza Cluster "main", ServiceCatalog "stage" will not contain RegisteredService "primaza-rsdb"
         And  On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "type" with value "psqlserver"
@@ -192,7 +192,7 @@ Feature: Service claim with label selector
         When On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
-        kind: ServiceClaim
+        kind: Claim
         metadata:
           name: sc-test
           namespace: primaza-system
@@ -212,7 +212,7 @@ Feature: Service claim with label selector
                 a: b
                 c: d
         """
-        Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
+        Then On Primaza Cluster "main", the status of Claim "sc-test" is "Resolved"
         And On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
         And On Primaza Cluster "main", ServiceCatalog "stage" will not contain RegisteredService "primaza-rsdb"
         And  On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "type" with value "psqlserver"
@@ -253,7 +253,7 @@ Feature: Service claim with label selector
         And On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
-        kind: ServiceClaim
+        kind: Claim
         metadata:
           name: sc-test
           namespace: primaza-system
@@ -278,7 +278,7 @@ Feature: Service claim with label selector
                 a: b
                 c: d
         """
-        And  On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
+        And  On Primaza Cluster "main", the status of Claim "sc-test" is "Resolved"
         And  On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
         And  On Primaza Cluster "main", ServiceCatalog "stage" will not contain RegisteredService "primaza-rsdb"
         And  On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "user" with value "davp"
@@ -313,7 +313,7 @@ Feature: Service claim with label selector
               value: davpdata
           sla: L3
         """
-        Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
+        Then On Primaza Cluster "main", the status of Claim "sc-test" is "Resolved"
         And  On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
         And  On Primaza Cluster "main", ServiceCatalog "stage" will not contain RegisteredService "primaza-rsdb"
         And  On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "user" with value "david"
