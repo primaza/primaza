@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/primaza/primaza/api/v1alpha1"
 	primazaiov1alpha1 "github.com/primaza/primaza/api/v1alpha1"
 	"github.com/primaza/primaza/pkg/envtag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -93,7 +94,29 @@ func (r *RegisteredServiceReconciler) removeServiceFromCatalog(ctx context.Conte
 		return nil
 	}
 
+	var sclaimList primazaiov1alpha1.ServiceClaimList
+	lo := client.ListOptions{Namespace: namespace}
+	if err := r.List(ctx, &sclaimList, &lo); err != nil {
+		log.Info("Unable to retrieve ServiceClaimList", "error", err)
+		return err
+	}
+
+	var labelSelector *metav1.LabelSelector
+	for _, sclaim := range sclaimList.Items {
+		if sclaim.Status.RegisteredService != nil && sclaim.Status.RegisteredService.Name == serviceName {
+			labelSelector = sclaim.Spec.Application.Selector
+		}
+	}
+
+	s := sc.Spec.Services[si]
+	scsbl := v1alpha1.ServiceCatalogServiceByLabel{}
+	scsbl.ServiceCatalogService = s
+	scsbl.Labels = labelSelector
+
 	sc.Spec.Services = append(sc.Spec.Services[:si], sc.Spec.Services[si+1:]...)
+	if labelSelector != nil {
+		sc.Spec.ClaimedByLabels = append(sc.Spec.ClaimedByLabels, scsbl)
+	}
 	log.Info("Updating Service Catalog")
 	if err := r.Update(ctx, &sc); err != nil {
 		// Service Catalog update failed

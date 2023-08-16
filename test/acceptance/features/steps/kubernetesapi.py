@@ -139,6 +139,14 @@ def registered_service_in_catalog(rs_name, catalog):
     return False
 
 
+def registered_service_claimed_labels_in_catalog(rs_name, catalog):
+    if "spec" in catalog and "claimedByLabels" in catalog["spec"]:
+        for service in catalog["spec"]["claimedByLabels"]:
+            if service["name"] == rs_name:
+                return True
+    return False
+
+
 def catalog_is_empty(catalog):
     return "spec" not in catalog or catalog["spec"] == {}
 
@@ -194,6 +202,22 @@ def on_primaza_cluster_check_service_catalog_reduced(context, cluster_name, cata
             plural="servicecatalogs",
             name=catalog_name),
         check_success=lambda x: x is not None and not registered_service_in_catalog(rs_name, x),
+        ignore_exceptions=(ApiException,),
+        step=1,
+        timeout=60)
+
+
+@step(u'On Primaza Cluster "{cluster_name}", ServiceCatalog "{catalog_name}" contain RegisteredService "{rs_name}" in claimedByLabels')
+def on_primaza_cluster_check_service_catalog_claimed_by_labels_exists(context, cluster_name, catalog_name, rs_name):
+    cluster = context.cluster_provider.get_primaza_cluster(cluster_name)
+
+    polling2.poll(
+        target=lambda: cluster.read_primaza_custom_object(
+            version="v1alpha1",
+            namespace="primaza-system",
+            plural="servicecatalogs",
+            name=catalog_name),
+        check_success=lambda x: x is not None and registered_service_claimed_labels_in_catalog(rs_name, x),
         ignore_exceptions=(ApiException,),
         step=1,
         timeout=60)

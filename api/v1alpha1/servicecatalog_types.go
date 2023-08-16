@@ -20,6 +20,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type ServiceCatalogServiceByLabel struct {
+	// ServiceCatalogService defines the service that is claimed by labels.
+	ServiceCatalogService `json:",inline"`
+
+	// Labels labels selector for the service
+	Labels *metav1.LabelSelector `json:"labels"`
+}
+
 type ServiceCatalogService struct {
 	// Name defines the name of the known service
 	Name string `json:"name"`
@@ -38,6 +46,8 @@ type ServiceCatalogService struct {
 type ServiceCatalogSpec struct {
 	// Services contains a list of services that are known to Primaza.
 	Services []ServiceCatalogService `json:"services,omitempty"`
+	// ClaimedByLabels contains a list of services that are claimed by labels.
+	ClaimedByLabels []ServiceCatalogServiceByLabel `json:"claimedByLabels,omitempty"`
 }
 
 //+kubebuilder:object:root=true

@@ -328,6 +328,17 @@ func (r *ServiceClaimReconciler) processResolvedServiceClaim(
 		return err
 	}
 
+	sclaim.Status.State = primazaiov1alpha1.ServiceClaimStatePending
+	sclaim.Status.RegisteredService = &corev1.ObjectReference{
+		Name: rs.Name,
+		UID:  rs.UID,
+	}
+	if err := r.updateServiceClaimStatus(ctx, &sclaim); err != nil {
+		l.Error(err, "error updating the ServiceClaim",
+			"registered-service", rs, "service-claim", sclaim)
+		return err
+	}
+
 	// Update RegisteredService status to Claimed to avoid raise conditions
 	if err := r.changeServiceState(ctx, rs, primazaiov1alpha1.RegisteredServiceStateClaimed); err != nil {
 		l.Error(err, "error updating the RegisteredService", "registered-service", rs, "service-claim", sclaim)
@@ -479,6 +490,16 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 		secret.StringData[sci.Name] = sci.Value
 	}
 
+	sclaim.Status.State = primazaiov1alpha1.ServiceClaimStatePending
+	sclaim.Status.RegisteredService = &corev1.ObjectReference{
+		Name: registeredService.Name,
+		UID:  registeredService.UID,
+	}
+	if err := r.updateServiceClaimStatus(ctx, &sclaim); err != nil {
+		l.Error(err, "unable to update the ServiceClaim", "ServiceClaim", sclaim)
+		return err
+	}
+
 	// Update RegisteredService status to Claimed to avoid raise conditions
 	if err := r.changeServiceState(ctx, registeredService, primazaiov1alpha1.RegisteredServiceStateClaimed); err != nil {
 		l.Error(err, "unable to update the RegisteredService", "RegisteredService", registeredService)
@@ -544,6 +565,10 @@ func (r *ServiceClaimReconciler) updateRemoteServiceClaimStatusIfNeeded(
 	otk := types.NamespacedName{Namespace: ans, Name: sclaim.Name}
 	rsc := primazaiov1alpha1.ServiceClaim{}
 	if err := cli.Get(ctx, otk, &rsc); err != nil {
+		if sclaim.Status.State == primazaiov1alpha1.ServiceClaimStatePending {
+			l.Info("not updating service-claim status in remote application namespace as the claim is pending")
+			return nil
+		}
 		return fmt.Errorf("error retrieving ServiceClaim from application namespace %s of cluster environment %s: %w", ans, ce.Name, err)
 	}
 
