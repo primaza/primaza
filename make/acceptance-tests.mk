@@ -26,7 +26,7 @@ ifneq ($(CLUSTER_PROVIDER), kind)
 TEST_ACCEPTANCE_TAGS_ARG += --tags=~@kind
 endif
 
-ACCEPTANCE_TEST_TARGETS := test-acceptance test-acceptance-dr test-acceptance-x test-acceptance-wip test-acceptance-wip-x
+ACCEPTANCE_TEST_TARGETS := test-acceptance test-acceptance-x test-acceptance-wip test-acceptance-wip-x
 
 $(ACCEPTANCE_TEST_TARGETS): ensure-agentsvc-image ensure-agentapp-image ensure-controller-image
 
