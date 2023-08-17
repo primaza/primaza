@@ -1,5 +1,5 @@
 import polling2
-from behave import given, step, when
+from behave import given, step
 from kubernetes.client.rest import ApiException
 from steps.cluster import Cluster
 from steps.util import substitute_scenario_id
@@ -29,12 +29,6 @@ def ensure_worker_cluster_running_with_primaza(
     worker_cluster.start()
 
     worker_cluster.create_primaza_user(tenant=tenant, cluster_environment=ce_name, timeout=timeout)
-
-
-@when('Primaza Cluster "{cluster_name}" is deleted')
-@when('Worker Cluster "{cluster_name}" is deleted')
-def delete_cluster(context, cluster_name: str):
-    context.cluster_provider.delete_cluster(cluster_name)
 
 
 @given('On Worker Cluster "{cluster_name}", a ServiceAccount for ClusterEnvironment "{cluster_environment}" exists')
@@ -166,15 +160,6 @@ def service_agent_does_not_exist(context, cluster_name: str, namespace: str):
 def ensure_worker_cluster_is_running(context, cluster_name: str, version: str = None):
     worker_cluster = context.cluster_provider.create_worker_cluster(cluster_name, version)
     worker_cluster.start()
-
-
-@step(u'On Worker Cluster "{cluster_name}", the secret "{secret_name}" in namespace "{namespace}" has the key "{key}" with value "{value}"')
-def ensure_secret_key_has_the_right_value(context, cluster_name: str, secret_name: str, namespace: str, key: str, value: str):
-    primaza_cluster = context.cluster_provider.get_worker_cluster(cluster_name)
-    polling2.poll(
-        target=lambda: primaza_cluster.read_secret_resource_data(namespace, secret_name, key) == bytes(value, 'utf-8'),
-        step=1,
-        timeout=60)
 
 
 @step(u'On Worker Cluster "{cluster_name}", the secret "{secret_name}" does not exist in namespace "{namespace}"')

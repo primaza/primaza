@@ -141,16 +141,6 @@ def ensure_registered_service_of_service_claim(context, cluster_name: str, servi
         timeout=60)
 
 
-@step(u'On Primaza Cluster "{primaza_cluster_name}", the secret "{secret_name}" in namespace "{namespace}" has the key "{key}" with value "{value}"')
-def ensure_secret_key_has_the_right_value(context, primaza_cluster_name: str, secret_name: str, namespace: str, key: str, value: str):
-    primaza_cluster = context.cluster_provider.get_primaza_cluster(primaza_cluster_name)
-    polling2.poll(
-        target=lambda: primaza_cluster.read_secret_resource_data(namespace, secret_name, key) == bytes(value, 'utf-8'),
-        ignore_exceptions=(ApiException,),
-        step=1,
-        timeout=60)
-
-
 @step(u'On Primaza Cluster "{cluster_name}", Primaza Application Agent is deployed into namespace "{namespace}"')
 def application_agent_is_deployed(context, cluster_name: str, namespace: str):
     primaza_cluster = context.cluster_provider.get_primaza_cluster(cluster_name)  # type: PrimazaCluster

@@ -80,7 +80,8 @@ Feature: On claim deletion, remove Bindings
           - user
           - password
           - database
-          environmentTag: stage
+          target:
+            environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1

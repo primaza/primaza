@@ -30,16 +30,22 @@ type ServiceClassIdentityItem struct {
 
 // Application resource to inject the binding info.
 // It could be any process running within a container.
+// +kubebuilder:validation:XValidation:rule="!(has(self.name) && has(self.selector))",message="`name` and `selector` can not be used at the same time"
+// +kubebuilder:validation:XValidation:rule="has(self.name) || has(self.selector)",message="one among `name` and `selector` is required"
 type ApplicationSelector struct {
 	// API version of the referent.
+	//+required
 	APIVersion string `json:"apiVersion"`
 	// Kind of the referent.
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	//+required
 	Kind string `json:"kind"`
 	// Name of the referent.
 	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+	//+optional
 	Name string `json:"name,omitempty"`
 	// Selector is a query that selects the workload or workloads to bind the service to
+	//+optional
 	Selector *metav1.LabelSelector `json:"selector,omitempty"`
 }
 
@@ -49,6 +55,15 @@ type EnvironmentConstraints struct {
 	// Environments defines the environments that the RegisteredService may be
 	// used in.
 	Environments []string `json:"environments,omitempty"`
+}
+
+// Environment represents a key to Secret data keys and name of the environment variable
+type Environment struct {
+	// Name of the environment variable
+	Name string `json:"name"`
+
+	// Secret data key
+	Key string `json:"key"`
 }
 
 // HealthCheckContainer defines the container information to be used to

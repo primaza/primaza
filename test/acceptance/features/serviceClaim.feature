@@ -82,7 +82,8 @@ Feature: Service claim with label selector
           - user
           - password
           - database
-          environmentTag: stage
+          target:
+            environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1
@@ -145,7 +146,8 @@ Feature: Service claim with label selector
           - user
           - password
           - database
-          environmentTag: stage
+          target:
+            environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1
@@ -203,7 +205,8 @@ Feature: Service claim with label selector
           serviceEndpointDefinitionKeys:
           - host
           - port
-          environmentTag: stage
+          target:
+            environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1
@@ -269,7 +272,8 @@ Feature: Service claim with label selector
           - user
           - password
           - database
-          environmentTag: stage
+          target:
+            environmentTag: stage
           application:
             kind: Deployment
             apiVersion: apps/v1

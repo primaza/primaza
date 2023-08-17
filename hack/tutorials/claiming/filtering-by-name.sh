@@ -50,7 +50,8 @@ spec:
   serviceEndpointDefinitionKeys:
   - url
   - password
-  environmentTag: demo
+  target:
+    environmentTag: demo
   application:
     kind: Deployment
     apiVersion: apps/v1

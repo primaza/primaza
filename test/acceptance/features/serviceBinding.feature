@@ -30,7 +30,7 @@ Feature: Bind application to the secret pushed by agent app controller
                 apiVersion: apps/v1
                 kind: Deployment
         """
-        Then On Primaza Cluster "main", ServiceBinding "newapp-binding" on namespace "applications" state will eventually move to "Ready"
+        Then On Primaza Cluster "main", ServiceBinding "newapp-binding" in namespace "applications" state will eventually move to "Ready"
         And  On Primaza Cluster "main", in demo application's pod with label "myapp" running in namespace "applications" file "/bindings/newapp-binding/username" has content "AzureDiamond"
 
     Scenario: Agents bind application on Worker Cluster
@@ -79,7 +79,7 @@ Feature: Bind application to the secret pushed by agent app controller
                 apiVersion: apps/v1
                 kind: Deployment
         """
-        Then On Worker Cluster "worker", ServiceBinding "app-binding" on namespace "applications" state will eventually move to "Ready"
+        Then On Worker Cluster "worker", ServiceBinding "app-binding" in namespace "applications" state will eventually move to "Ready"
         And  On Worker Cluster "worker", in demo application's pod with label "myapp" running in namespace "applications" file "/bindings/app-binding/username" has content "AzureDiamond"
         And  On Worker Cluster "worker", in demo application's pod with label "myapp" running in namespace "applications" file "/bindings/app-binding/password" has content "pass"
 
@@ -116,7 +116,7 @@ Feature: Bind application to the secret pushed by agent app controller
                     matchLabels:
                         app: myapp
         """
-        Then On Primaza Cluster "main", ServiceBinding "application-binding" on namespace "applications" state will eventually move to "Ready"
+        Then On Primaza Cluster "main", ServiceBinding "application-binding" in namespace "applications" state will eventually move to "Ready"
         And  On Primaza Cluster "main", in demo application's pod with label "myapp" running in namespace "applications" file "/bindings/application-binding/username" has content "AzureDiamond"
 
     Scenario: Service binding resource being deleted
@@ -149,8 +149,8 @@ Feature: Bind application to the secret pushed by agent app controller
                 apiVersion: apps/v1
                 kind: Deployment
         """
-        And  On Primaza Cluster "main", ServiceBinding "newapp-binding" on namespace "applications" state will eventually move to "Ready"
-        Then On Primaza Cluster "main", Resource is deleted
+        And  On Primaza Cluster "main", ServiceBinding "newapp-binding" in namespace "applications" state will eventually move to "Ready"
+        When On Primaza Cluster "main", Resource is deleted
         """
         apiVersion: primaza.io/v1alpha1
         kind: ServiceBinding
@@ -164,7 +164,7 @@ Feature: Bind application to the secret pushed by agent app controller
                 apiVersion: apps/v1
                 kind: Deployment
         """
-        And On Primaza Cluster "main", file "/bindings/newapp-binding/username" is unavailable in application pod with label "myapp" running in namespace "applications"
+        Then On Primaza Cluster "main", file "/bindings/newapp-binding/username" is unavailable in application pod with label "myapp" running in namespace "applications"
 
     Scenario: Application Agent watches ServiceBindings' resources and projection works for application created after ServiceBinding creation
 
@@ -198,7 +198,7 @@ Feature: Bind application to the secret pushed by agent app controller
                         app: myapp
         """
         When On Primaza Cluster "main", test application "applicationone" with label "myapp" is running in namespace "applications"
-        Then On Primaza Cluster "main", ServiceBinding "application-binding" on namespace "applications" state will eventually move to "Ready"
+        Then On Primaza Cluster "main", ServiceBinding "application-binding" in namespace "applications" state will eventually move to "Ready"
         And On Primaza Cluster "main", in demo application's pod with label "myapp" running in namespace "applications" file "/bindings/application-binding/username" has content "AzureDiamond"
 
     Scenario: Service binding status updated when application is deleted
@@ -233,11 +233,11 @@ Feature: Bind application to the secret pushed by agent app controller
                         app: myapp
         """
         And On Primaza Cluster "main", test application "applicationone" with label "myapp" is running in namespace "applications"
-        And On Primaza Cluster "main", ServiceBinding "application-binding" on namespace "applications" state will eventually move to "Ready"
+        And On Primaza Cluster "main", ServiceBinding "application-binding" in namespace "applications" state will eventually move to "Ready"
         And On Primaza Cluster "main", in demo application's pod with label "myapp" running in namespace "applications" file "/bindings/application-binding/username" has content "AzureDiamond"
         When The resource deployments/applicationone:applications is deleted from the cluster "main"
-        Then jsonpath ".status.conditions[0].reason" on "servicebindings.primaza.io/application-binding:applications" in cluster main is "NoMatchingWorkloads"
-        And On Primaza Cluster "main", ServiceBinding "application-binding" on namespace "applications" state will eventually move to "Ready"
+        Then jsonpath ".status.conditions[] | select(.type=="Bound") | .reason" on "servicebindings.primaza.io/application-binding:applications" in cluster main is "NoMatchingWorkloads"
+        And On Primaza Cluster "main", ServiceBinding "application-binding" in namespace "applications" state will eventually move to "Ready"
 
     Scenario: ServiceBinding by label is not mounted for non matching label value
 
@@ -273,7 +273,7 @@ Feature: Bind application to the secret pushed by agent app controller
                         app: myapp
         """
         And  On Primaza Cluster "main", test application "applicationthree" with label "myapplication" is running in namespace "applications"
-        Then On Primaza Cluster "main", ServiceBinding "application-binding" on namespace "applications" state will eventually move to "Ready"
+        Then On Primaza Cluster "main", ServiceBinding "application-binding" in namespace "applications" state will eventually move to "Ready"
         And  On Primaza Cluster "main", in demo application's pod with label "myapp" running in namespace "applications" file "/bindings/application-binding/username" has content "AzureDiamond"
         And On Primaza Cluster "main", file "/bindings/application-binding/username" is unavailable in application pod with label "myapplication" running in namespace "applications"
 
@@ -356,8 +356,38 @@ Feature: Bind application to the secret pushed by agent app controller
                     matchLabels:
                         mylabel: myapp
         """
-        Then On Primaza Cluster "main", ServiceBinding "application-binding" on namespace "applications" state will eventually move to "Ready"
+        Then On Primaza Cluster "main", ServiceBinding "application-binding" in namespace "applications" state will eventually move to "Ready"
         And  On Primaza Cluster "main", in demo application's pod with label "applicationone" running in namespace "applications" file "/bindings/application-binding/username" has content "AzureDiamond"
         And  On Primaza Cluster "main", in demo application's pod with label "applicationtwo" running in namespace "applications" file "/bindings/application-binding/username" has content "AzureDiamond"
         And  On Primaza Cluster "main", ServiceBinding "application-binding" in namespace "applications" is bound to workload "applicationone"
         And  On Primaza Cluster "main", ServiceBinding "application-binding" in namespace "applications" is bound to workload "applicationtwo"
+
+    Scenario: Service Binding without application name and labels selector
+
+        Given Primaza Cluster "main" is running
+        And   On Primaza Cluster "main", application namespace "applications" for ClusterEnvironment "worker" exists
+        And   On Primaza Cluster "main", Primaza Application Agent is deployed into namespace "applications"
+        And   On Primaza Cluster "main", test application "newapp" with label "myapp" is running in namespace "applications"
+        And   On Primaza Cluster "main", Resource is created
+        """
+        apiVersion: v1
+        kind: Secret
+        metadata:
+            name: demo
+            namespace: applications
+        stringData:
+            username: AzureDiamond
+        """
+        When On Primaza Cluster "main", Resource is not getting created
+        """
+        apiVersion: primaza.io/v1alpha1
+        kind: ServiceBinding
+        metadata:
+            name: newapp-binding
+            namespace: applications
+        spec:
+            serviceEndpointDefinitionSecret: demo
+            application:
+                apiVersion: apps/v1
+                kind: Deployment
+        """

@@ -6,36 +6,48 @@ from kubernetes.client.rest import ApiException
 from steps.util import substitute_scenario_id
 
 
-@step(u'On Primaza Cluster "{cluster_name}", ClusterEnvironment "{ce_name}" state will eventually move to "{state}"')
-@step(u'On Primaza Cluster "{cluster_name}", ClusterEnvironment "{ce_name}" state will move to "{state}" in "{timeout}" seconds')
-def on_primaza_cluster_check_state(context, cluster_name, ce_name, state, timeout=60):
-    api_client = context.cluster_provider.get_primaza_cluster(cluster_name).get_api_client()
+@step(u'On Cluster "{cluster_name}", {r_type} "{r_name}" in namespace "{ns}" state will eventually move to "{state}"')
+@step(u'On Cluster "{cluster_name}", {r_type} "{r_name}" in namespace "{ns}" state will move to "{state}" in "{timeout:g}" seconds')
+@step(u'On Primaza Cluster "{cluster_name}", {r_type} "{r_name}" state will eventually move to "{state}"')
+@step(u'On Primaza Cluster "{cluster_name}", {r_type} "{r_name}" state will move to "{state}" in "{timeout:g}" seconds')
+@step(u'On Primaza Cluster "{cluster_name}", {r_type} "{r_name}" in namespace "{ns}" state will eventually move to "{state}"')
+@step(u'On Primaza Cluster "{cluster_name}", {r_type} "{r_name}" in namespace "{ns}" state will move to "{state}" in "{timeout:g}" seconds')
+@step(u'On Worker Cluster "{cluster_name}", {r_type} "{r_name}" in namespace "{ns}" state will eventually move to "{state}"')
+@step(u'On Worker Cluster "{cluster_name}", {r_type} "{r_name}" in namespace "{ns}" state will move to "{state}" in "{timeout:g}" seconds')
+def on_cluster_check_state(context, cluster_name: str, r_type: str, r_name: str, state: str, ns: str = "primaza-system", timeout: float = 60):
+    api_client = context.cluster_provider.get_cluster(cluster_name).get_api_client()
     cobj = client.CustomObjectsApi(api_client)
+    name = substitute_scenario_id(context, r_name)
+    namespace = substitute_scenario_id(context, ns)
 
     polling2.poll(
         target=lambda: cobj.get_namespaced_custom_object_status(
             group="primaza.io",
             version="v1alpha1",
-            namespace="primaza-system",
-            plural="clusterenvironments",
-            name=ce_name).get("status", {}).get("state", None),
+            namespace=namespace,
+            plural=get_resource(r_type),
+            name=name).get("status", {}).get("state", None),
         ignore_exceptions=(ApiException,),
         check_success=lambda x: x is not None and x == state,
         step=1,
-        timeout=timeout)
+        timeout=float(timeout))
 
 
-@then(u'On Primaza Cluster "{cluster_name}", ClusterEnvironment "{ce_name}" last status condition has Type "{ctype}"')
-def on_primaza_cluster_check_last_status_condition(context, cluster_name, ce_name, ctype):
-    api_client = context.cluster_provider.get_primaza_cluster(cluster_name).get_api_client()
+@then(u'On {_type} Cluster "{cluster_name}", {r_type} "{r_name}" last status condition has Type "{ctype}"')
+@then(u'On {_type} Cluster "{cluster_name}", {r_type} "{r_name}" last status condition has Type "{ctype}"')
+@then(u'On {_type} Cluster "{cluster_name}", {r_type} "{r_name}" in namespace "{ns}" last status condition has Type "{ctype}"')
+def on_cluster_check_last_status_condition(context, _type: str, cluster_name: str, r_type: str, r_name: str, ctype: str, ns: str = "primaza-system"):
+    api_client = context.cluster_provider.get_cluster(cluster_name).get_api_client()
     cobj = client.CustomObjectsApi(api_client)
+    name = substitute_scenario_id(context, r_name)
+    namespace = substitute_scenario_id(context, ns)
 
     ce_status = cobj.get_namespaced_custom_object_status(
         group="primaza.io",
         version="v1alpha1",
-        namespace="primaza-system",
-        plural="clusterenvironments",
-        name=ce_name)
+        namespace=namespace,
+        plural=get_resource(r_type),
+        name=name)
     ce_conditions = ce_status.get("status", {}).get("conditions", None)
     assert ce_conditions is not None and len(ce_conditions) > 0, "Cluster Environment status conditions are empty or not defined"
 
@@ -49,17 +61,20 @@ def on_primaza_cluster_check_last_status_condition(context, cluster_name, ce_nam
     assert last_applied["type"] == ctype, f'Cluster Environment last condition type is not matching: wanted "{ctype}", found "{last_applied["type"]}"'
 
 
-@step(u'On Primaza Cluster "{cluster_name}", ClusterEnvironment "{ce_name}" status condition with Type "{ctype}" has Status "{cstatus}"')
-def on_primaza_cluster_check_status_condition(context, cluster_name: str, ce_name: str, ctype: str, cstatus: str):
-    api_client = context.cluster_provider.get_primaza_cluster(cluster_name).get_api_client()
+@step(u'On {_type} Cluster "{cluster_name}", {r_type} "{r_name}" status condition with Type "{ctype}" has Status "{cstatus}"')
+@step(u'On {_type} Cluster "{cluster_name}", {r_type} "{r_name}" in namespace "{ns}" status condition with Type "{ctype}" has Status "{cstatus}"')
+def on_cluster_check_status_condition(context, _type: str, cluster_name: str, r_type: str, r_name: str, ctype: str, cstatus: str, ns: str = "primaza-system"):
+    api_client = context.cluster_provider.get_cluster(cluster_name).get_api_client()
     cobj = client.CustomObjectsApi(api_client)
+    name = substitute_scenario_id(context, r_name)
+    namespace = substitute_scenario_id(context, ns)
 
     ce_status = cobj.get_namespaced_custom_object_status(
         group="primaza.io",
         version="v1alpha1",
-        namespace="primaza-system",
-        plural="clusterenvironments",
-        name=ce_name)
+        namespace=namespace,
+        plural=get_resource(r_type),
+        name=name)
     ce_conditions = ce_status.get("status", {}).get("conditions", None)
     assert ce_conditions is not None and len(ce_conditions) > 0, "Cluster Environment status conditions are empty or not defined"
 
@@ -71,19 +86,23 @@ def on_primaza_cluster_check_status_condition(context, cluster_name: str, ce_nam
     assert False, f"Cluster Environment does not have a condition with type {ctype}: {ce_conditions}"
 
 
-@step(u'On Primaza Cluster "{cluster_name}", ClusterEnvironment "{ce_name}" status condition with Type "{ctype}" has Reason "{creason}"')
-def on_primaza_cluster_check_status_condition_reason(context, cluster_name: str, ce_name: str, ctype: str, creason: str):
-    api_client = context.cluster_provider.get_primaza_cluster(cluster_name).get_api_client()
+@step(u'On {_type} Cluster "{cluster_name}", {r_type} "{r_name}" status condition with Type "{ctype}" has Reason "{creason}"')
+@step(u'On {_type} Cluster "{cluster_name}", {r_type} "{r_name}" in namespace "{ns}" status condition with Type "{ctype}" has Reason "{creason}"')
+def on_cluster_check_status_condition_reason(
+        context, _type: str, cluster_name: str, r_type: str, r_name: str, ctype: str, creason: str, ns: str = "primaza-system"):
+    api_client = context.cluster_provider.get_cluster(cluster_name).get_api_client()
     cobj = client.CustomObjectsApi(api_client)
+    name = substitute_scenario_id(context, r_name)
+    namespace = substitute_scenario_id(context, ns)
 
     try:
         polling2.poll(
             target=lambda: cobj.get_namespaced_custom_object_status(
                 group="primaza.io",
                 version="v1alpha1",
-                namespace="primaza-system",
-                plural="clusterenvironments",
-                name=ce_name),
+                namespace=namespace,
+                plural=get_resource(r_type),
+                name=name),
             check_success=lambda x: len([i for i in x.get("status", {}).get("conditions", {}) if i.get("type")
                                         and i["type"] == ctype and i.get("reason") and i["reason"] == creason]) == 1,
             step=1,
@@ -92,8 +111,23 @@ def on_primaza_cluster_check_status_condition_reason(context, cluster_name: str,
         pass
 
 
+def get_resource(res: str) -> str:
+    if res == "ClusterEnvironment":
+        return "clusterenvironments"
+    if res == "ServiceClaim":
+        return "serviceclaims"
+    if res == "ServiceClass":
+        return "serviceclasses"
+    if res == "ServiceBinding":
+        return "servicebindings"
+    if res == "RegisteredService":
+        return "registeredservices"
+
+    raise Exception(f"Resource {res} not known")
+
+
 @then(u'On Primaza Cluster "{cluster_name}", ClusterEnvironment "{ce_name}" in namespace "{namespace}" state remains not present')
-def on_primaza_cluster_check_state_not_change(context, cluster_name, ce_name,  namespace="primaza-system", timeout=60):
+def on_primaza_cluster_check_state_not_change(context, cluster_name, ce_name, namespace="primaza-system", timeout=60):
     api_client = context.cluster_provider.get_primaza_cluster(cluster_name).get_api_client()
     cobj = client.CustomObjectsApi(api_client)
 
@@ -111,24 +145,6 @@ def on_primaza_cluster_check_state_not_change(context, cluster_name, ce_name,  n
         assert state is not None, f'Cluster Environment state is defined {state}, wanted undefined'
     except polling2.TimeoutException:
         pass
-
-
-@step(u'On Primaza Cluster "{cluster_name}", RegisteredService "{rs_name}" state will eventually move to "{state}"')
-def on_primaza_cluster_check_registered_service_status(context, cluster_name, rs_name, state):
-    rs_name = substitute_scenario_id(context, rs_name)
-    api_client = context.cluster_provider.get_primaza_cluster(cluster_name).get_api_client()
-    cobj = client.CustomObjectsApi(api_client)
-
-    polling2.poll(
-        target=lambda: cobj.get_namespaced_custom_object_status(
-            group="primaza.io",
-            version="v1alpha1",
-            namespace="primaza-system",
-            plural="registeredservices",
-            name=rs_name).get("status", {}).get("state", None),
-        check_success=lambda x: x is not None and x == state,
-        step=1,
-        timeout=300)
 
 
 def registered_service_in_catalog(rs_name, catalog):
@@ -162,16 +178,21 @@ def registered_service_in_catalog_contains_service_class_identity(rs_name, sci, 
     return False
 
 
-@step(u'On Primaza Cluster "{primaza_cluster}", RegisteredService "{primaza_rs}" state moves to "{state}"')
-def on_primaza_cluster_claim_registered_service(context, primaza_cluster, primaza_rs, state):
-    api_client = context.cluster_provider.get_primaza_cluster(primaza_cluster).get_api_client()
+@step(u'On {_type} Cluster "{cluster_name}", {r_type} "{r_name}" state moves to "{state}"')
+@step(u'On {_type} Cluster "{cluster_name}", {r_type} "{r_name}" in namespace "{ns}" state moves to "{state}"')
+def on_cluster_claim_registered_service(
+        context, _type: str, cluster_name: str, r_type: str, r_name: str, state: str, ns: str = "primaza-system"):
+    api_client = context.cluster_provider.get_cluster(cluster_name).get_api_client()
     cobj = client.CustomObjectsApi(api_client)
+    name = substitute_scenario_id(context, r_name)
+    namespace = substitute_scenario_id(context, ns)
+
     cobj.patch_namespaced_custom_object_status(
         group="primaza.io",
         version="v1alpha1",
-        namespace="primaza-system",
-        plural="registeredservices",
-        name=primaza_rs,
+        namespace=namespace,
+        plural=get_resource(r_type),
+        name=name,
         body={"status": {"state": state}})
 
 
@@ -223,55 +244,9 @@ def on_primaza_cluster_check_service_catalog_claimed_by_labels_exists(context, c
         timeout=60)
 
 
-@step(u'On Primaza Cluster "{cluster_name}", ServiceClaim "{name}" state will eventually move to "{state}"')
-@step(u'On Primaza Cluster "{cluster_name}", ServiceClaim "{name}" on namespace "{namespace}" state will eventually move to "{state}"')
-def on_primaza_cluster_check_service_claim_status(
-        context, cluster_name: str, name: str, state: str, namespace: str = "primaza-system", timeout=120):
-    cluster = context.cluster_provider.get_primaza_cluster(cluster_name)
-    return on_cluster_cluster_check_service_claim_status(cluster, name, namespace, state, timeout)
-
-
-def on_cluster_cluster_check_service_claim_status(cluster, name, namespace, state, timeout):
-    polling2.poll(
-        target=lambda: cluster.read_primaza_custom_object(
-            version="v1alpha1",
-            namespace=namespace,
-            plural="serviceclaims",
-            name=name).get("status", {}).get("state", None),
-        check_success=lambda x: x is not None and x == state,
-        ignore_exceptions=(ApiException,),
-        step=1,
-        timeout=timeout)
-
-
-@step(u'On Primaza Cluster "{cluster_name}", ServiceBinding "{name}" on namespace "{namespace}" state will eventually move to "{state}"')
-def on_primaza_cluster_check_service_binding_status(context, cluster_name, name, namespace, state, timeout=120):
-    cluster = context.cluster_provider.get_primaza_cluster(cluster_name)
-    return on_cluster_cluster_check_service_binding_status(cluster, name, namespace, state, timeout)
-
-
-@step(u'On Worker Cluster "{cluster_name}", ServiceBinding "{name}" on namespace "{namespace}" state will eventually move to "{state}"')
-def on_worker_cluster_check_service_binding_status(context, cluster_name, name, namespace, state, timeout=60):
-    cluster = context.cluster_provider.get_worker_cluster(cluster_name)
-    return on_cluster_cluster_check_service_binding_status(cluster, name, namespace, state, timeout)
-
-
-def on_cluster_cluster_check_service_binding_status(cluster, name, namespace, state, timeout):
-    polling2.poll(
-        target=lambda: cluster.read_primaza_custom_object(
-            version="v1alpha1",
-            namespace=namespace,
-            plural="servicebindings",
-            name=name).get("status", {}).get("state", None),
-        check_success=lambda x: x is not None and x == state,
-        ignore_exceptions=(ApiException,),
-        step=1,
-        timeout=timeout)
-
-
-@step(u'On Worker Cluster "{cluster_name}", Service Class "{sc_class}" exists in "{serviceclass_namespace}"')
-def on_worker_cluster_check_service_class_exists_on_serviceclass_namespace(context, cluster_name, sc_class, serviceclass_namespace):
-    cluster = context.cluster_provider.get_worker_cluster(cluster_name)
+@step(u'On {_type} Cluster "{cluster_name}", Service Class "{sc_class}" exists in "{serviceclass_namespace}"')
+def on_cluster_check_service_class_exists_in_serviceclass_namespace(context, _type: str, cluster_name: str, sc_class: str, serviceclass_namespace: str):
+    cluster = context.cluster_provider.get_cluster(cluster_name)
     name = substitute_scenario_id(context, sc_class)
 
     polling2.poll(
@@ -284,22 +259,22 @@ def on_worker_cluster_check_service_class_exists_on_serviceclass_namespace(conte
         timeout=60)
 
 
-@step(u'On Worker Cluster "{cluster_name}", Service Binding "{service_binding}" exists in "{application_namespace}"')
-def on_worker_cluster_check_service_bindings_exists_on_application_namespace(context, cluster_name, service_binding, application_namespace):
-    cluster = context.cluster_provider.get_worker_cluster(cluster_name)
+@step(u'On {_type} Cluster "{cluster_name}", Service Binding "{service_binding}" exists in "{app_namespace}"')
+def on_cluster_check_service_binding_exists_in_application_namespace(context, _type: str, cluster_name: str, service_binding: str, app_namespace: str):
+    cluster = context.cluster_provider.get_cluster(cluster_name)
     polling2.poll(
         target=lambda: cluster.primaza_custom_object_exists(
             version="v1alpha1",
-            namespace=application_namespace,
+            namespace=app_namespace,
             plural="servicebindings",
             name=service_binding),
         step=1,
         timeout=60)
 
 
-@step(u'On Worker Cluster "{cluster_name}", Service Binding "{service_binding}" does not exist in "{namespace}"')
-def on_worker_cluster_check_service_bindings_not_exists_in_application_namespace(context, cluster_name, service_binding, namespace):
-    cluster = context.cluster_provider.get_worker_cluster(cluster_name)
+@step(u'On {_type} Cluster "{cluster_name}", Service Binding "{service_binding}" does not exist in "{namespace}"')
+def on_cluster_check_service_bindings_not_exists_in_application_namespace(context, _type: str, cluster_name: str, service_binding: str, namespace: str):
+    cluster = context.cluster_provider.get_cluster(cluster_name)
 
     polling2.poll(
         target=lambda: not cluster.primaza_custom_object_exists(

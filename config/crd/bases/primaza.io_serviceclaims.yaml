@@ -44,8 +44,7 @@ spec:
             description: ServiceClaimSpec defines the desired state of ServiceClaim
             properties:
               application:
-                description: Application resource to inject the binding info. It could
-                  be any process running within a container.
+                description: Rules to match workloads to bind
                 properties:
                   apiVersion:
                     description: API version of the referent.
@@ -106,20 +105,11 @@ spec:
                 - apiVersion
                 - kind
                 type: object
-              applicationClusterContext:
-                properties:
-                  clusterEnvironmentName:
-                    type: string
-                  namespace:
-                    type: string
-                required:
-                - clusterEnvironmentName
-                - namespace
-                type: object
-              environmentTag:
-                description: EnvironmentTag allows the controller to search for those
-                  application cluster environments that define such EnvironmentTag
-                type: string
+                x-kubernetes-validations:
+                - message: '`name` and `selector` can not be used at the same time'
+                  rule: '!(has(self.name) && has(self.selector))'
+                - message: one among `name` and `selector` is required
+                  rule: has(self.name) || has(self.selector)
               envs:
                 description: Envs allows projecting Service Endpoint Definition's
                   data as Environment Variables in the Pod
@@ -158,13 +148,40 @@ spec:
                   - value
                   type: object
                 type: array
+                x-kubernetes-validations:
+                - message: Value is immutable
+                  rule: self == oldSelf
               serviceEndpointDefinitionKeys:
                 description: ServiceEndpointDefinition defines a set of attributes
                   sufficient for a client to establish a connection to the service.
                 items:
                   type: string
                 type: array
+                x-kubernetes-validations:
+                - message: Value is immutable
+                  rule: self == oldSelf
+              target:
+                description: Service Claim target
+                maxProperties: 1
+                minProperties: 1
+                properties:
+                  applicationClusterContext:
+                    properties:
+                      clusterEnvironmentName:
+                        type: string
+                      namespace:
+                        type: string
+                    required:
+                    - clusterEnvironmentName
+                    - namespace
+                    type: object
+                  environmentTag:
+                    description: EnvironmentTag allows the controller to search for
+                      those application cluster environments that define such EnvironmentTag
+                    type: string
+                type: object
             required:
+            - application
             - serviceClassIdentity
             - serviceEndpointDefinitionKeys
             type: object
