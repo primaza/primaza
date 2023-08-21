@@ -64,7 +64,7 @@ Feature: On claim deletion, remove Bindings
         And On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
-        kind: ServiceClaim
+        kind: ControlPlaneServiceClaim
         metadata:
           name: sc-test
           namespace: primaza-system
@@ -90,13 +90,13 @@ Feature: On claim deletion, remove Bindings
                 a: b
                 c: d
         """
-        And  On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
+        And  On Primaza Cluster "main", the status of ControlPlaneServiceClaim "sc-test" is "Resolved"
         And  On Primaza Cluster "main", RegisteredService "primaza-rsdb" state will eventually move to "Claimed"
         And  On Worker Cluster "worker", Service Binding "sc-test" exists in "applications"
         When On Primaza Cluster "main", Resource is deleted
         """
         apiVersion: primaza.io/v1alpha1
-        kind: ServiceClaim
+        kind: ControlPlaneServiceClaim
         metadata:
           name: sc-test
           namespace: primaza-system

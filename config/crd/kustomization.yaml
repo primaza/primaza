@@ -6,7 +6,8 @@ resources:
 - bases/primaza.io_registeredservices.yaml
 - bases/primaza.io_servicebindings.yaml
 - bases/primaza.io_servicecatalogs.yaml
-- bases/primaza.io_serviceclaims.yaml
+- bases/primaza.io_controlplaneserviceclaims.yaml
+- bases/primaza.io_applicationserviceclaims.yaml
 - bases/primaza.io_serviceclasses.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
@@ -17,7 +18,7 @@ patchesStrategicMerge:
 #- patches/webhook_in_registeredservices.yaml
 #- patches/webhook_in_servicebindings.yaml
 #- patches/webhook_in_servicecatalogs.yaml
-#- patches/webhook_in_serviceclaims.yaml
+#- patches/webhook_in_controlplaneserviceclaims.yaml
 #- patches/webhook_in_serviceclasses.yaml
 #+kubebuilder:scaffold:crdkustomizewebhookpatch
 
@@ -27,7 +28,7 @@ patchesStrategicMerge:
 #- patches/cainjection_in_registeredservices.yaml
 #- patches/cainjection_in_servicebindings.yaml
 #- patches/cainjection_in_servicecatalogs.yaml
-#- patches/cainjection_in_serviceclaims.yaml
+#- patches/cainjection_in_controlplaneserviceclaims.yaml
 #- patches/cainjection_in_serviceclasses.yaml
 #+kubebuilder:scaffold:crdkustomizecainjectionpatch
 

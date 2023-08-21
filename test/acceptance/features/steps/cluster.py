@@ -282,7 +282,7 @@ class Cluster(object):
         sa_namespace = "kube-system"
         role_name = f"primaza:controlplane:{nstype}"
         svc_pmz_resources = ["serviceclasses", "registeredservices"]
-        app_pmz_resources = ["servicebindings", "servicecatalogs", "serviceclaims", "serviceclaims/status"]
+        app_pmz_resources = ["servicebindings", "servicecatalogs", "controlplaneserviceclaims", "controlplaneserviceclaims/status", "applicationserviceclaims", "applicationserviceclaims/status"]  # noqa: E501
         pmz_rules = [client.V1PolicyRule(
             api_groups=["primaza.io"],
             resources=svc_pmz_resources if nstype == "svc" else app_pmz_resources,

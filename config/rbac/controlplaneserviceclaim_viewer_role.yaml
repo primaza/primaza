@@ -9,12 +9,12 @@ metadata:
     app.kubernetes.io/created-by: primaza
     app.kubernetes.io/part-of: primaza
     app.kubernetes.io/managed-by: kustomize
-  name: serviceclaim-viewer-role
+  name: controlplaneserviceclaim-viewer-role
 rules:
 - apiGroups:
   - primaza.io
   resources:
-  - serviceclaims
+  - controlplaneserviceclaims
   verbs:
   - get
   - list
@@ -22,6 +22,6 @@ rules:
 - apiGroups:
   - primaza.io
   resources:
-  - serviceclaims/status
+  - controlplaneserviceclaims/status
   verbs:
   - get

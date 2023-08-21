@@ -114,8 +114,8 @@ def on_cluster_check_status_condition_reason(
 def get_resource(res: str) -> str:
     if res == "ClusterEnvironment":
         return "clusterenvironments"
-    if res == "ServiceClaim":
-        return "serviceclaims"
+    if res == "ControlPlaneServiceClaim":
+        return "controlplaneserviceclaims"
     if res == "ServiceClass":
         return "serviceclasses"
     if res == "ServiceBinding":

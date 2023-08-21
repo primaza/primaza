@@ -86,6 +86,32 @@ rules:
 - apiGroups:
   - primaza.io
   resources:
+  - controlplaneserviceclaims
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - primaza.io
+  resources:
+  - controlplaneserviceclaims/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - primaza.io
+  resources:
+  - controlplaneserviceclaims/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - primaza.io
+  resources:
   - registeredservices
   verbs:
   - create
@@ -131,32 +157,6 @@ rules:
   - primaza.io
   resources:
   - servicecatalogs/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - primaza.io
-  resources:
-  - serviceclaims
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - primaza.io
-  resources:
-  - serviceclaims/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - primaza.io
-  resources:
-  - serviceclaims/status
   verbs:
   - get
   - patch

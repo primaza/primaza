@@ -45,26 +45,26 @@ import (
 	"github.com/primaza/primaza/pkg/primaza/controlplane"
 )
 
-// ServiceClaimReconciler reconciles a ServiceClaim object
-type ServiceClaimReconciler struct {
+// ControlPlaneServiceClaimReconciler reconciles a ControlPlaneServiceClaim object
+type ControlPlaneServiceClaimReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 	Mapper meta.RESTMapper
 }
 
-const ServiceClaimFinalizer = "serviceclaims.primaza.io/finalizer"
+const ControlPlaneServiceClaimFinalizer = "controlplaneserviceclaims.primaza.io/finalizer"
 
-func NewServiceClaimReconciler(mgr ctrl.Manager) *ServiceClaimReconciler {
-	return &ServiceClaimReconciler{
+func NewControlPlaneServiceClaimReconciler(mgr ctrl.Manager) *ControlPlaneServiceClaimReconciler {
+	return &ControlPlaneServiceClaimReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 		Mapper: mgr.GetRESTMapper(),
 	}
 }
 
-//+kubebuilder:rbac:groups=primaza.io,namespace=system,resources=serviceclaims,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=primaza.io,namespace=system,resources=serviceclaims/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=primaza.io,namespace=system,resources=serviceclaims/finalizers,verbs=update
+//+kubebuilder:rbac:groups=primaza.io,namespace=system,resources=controlplaneserviceclaims,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=primaza.io,namespace=system,resources=controlplaneserviceclaims/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=primaza.io,namespace=system,resources=controlplaneserviceclaims/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -75,13 +75,13 @@ func NewServiceClaimReconciler(mgr ctrl.Manager) *ServiceClaimReconciler {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
-func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *ControlPlaneServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	l := log.FromContext(ctx)
 
 	l.Info("starting  service claim reconciliation")
 	defer l.Info("reconciliation ended")
 
-	var sclaim primazaiov1alpha1.ServiceClaim
+	var sclaim primazaiov1alpha1.ControlPlaneServiceClaim
 	if err := r.Get(ctx, req.NamespacedName, &sclaim); err != nil {
 		l.Info("unable to retrieve ServiceClaim", "error", err)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -89,12 +89,12 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	l.Info("Check if Service Claim is marked for deletion")
 	if sclaim.HasDeletionTimestamp() {
-		if controllerutil.ContainsFinalizer(&sclaim, ServiceClaimFinalizer) {
+		if controllerutil.ContainsFinalizer(&sclaim, ControlPlaneServiceClaimFinalizer) {
 			if err := r.processClaimMarkedForDeletion(ctx, req, sclaim); err != nil {
 				return ctrl.Result{}, err
 			}
 			// Remove finalizer from service binding
-			if finalizerBool := controllerutil.RemoveFinalizer(&sclaim, ServiceClaimFinalizer); !finalizerBool {
+			if finalizerBool := controllerutil.RemoveFinalizer(&sclaim, ControlPlaneServiceClaimFinalizer); !finalizerBool {
 				l.Error(errors.New("Finalizer not removed for service claim"), "Finalizer not removed for service claim")
 				return ctrl.Result{}, errors.New("Finalizer not removed for service claim")
 			}
@@ -107,7 +107,7 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	// add finalizer if needed
 	l.Info("Add Finalizer if needed")
-	if controllerutil.AddFinalizer(&sclaim, ServiceClaimFinalizer) {
+	if controllerutil.AddFinalizer(&sclaim, ControlPlaneServiceClaimFinalizer) {
 		if err := r.Update(ctx, &sclaim); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -121,7 +121,7 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	l = l.WithValues("service-claim", sclaim.Name, "state", sclaim.Status.State)
 	var err error
 	switch sclaim.Status.State {
-	case primazaiov1alpha1.ServiceClaimStateResolved:
+	case primazaiov1alpha1.ControlPlaneServiceClaimStateResolved:
 		l.Info("reconciling Resolved service claim")
 		err = r.processResolvedServiceClaim(ctx, sclaim)
 	default:
@@ -136,18 +136,18 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	return ctrl.Result{}, nil
 }
 
-func (r *ServiceClaimReconciler) ensureServiceClaimIsInitialized(ctx context.Context, sc *primazaiov1alpha1.ServiceClaim) error {
+func (r *ControlPlaneServiceClaimReconciler) ensureServiceClaimIsInitialized(ctx context.Context, sc *primazaiov1alpha1.ControlPlaneServiceClaim) error {
 	if sc.Status.ClaimID != "" {
 		return nil
 	}
 
 	sc.Status.ClaimID = uuid.New().String()
-	sc.Status.State = primazaiov1alpha1.ServiceClaimStatePending
+	sc.Status.State = primazaiov1alpha1.ControlPlaneServiceClaimStatePending
 
 	return r.Client.Status().Update(ctx, sc)
 }
 
-func (r *ServiceClaimReconciler) processClaim(ctx context.Context, req ctrl.Request, sclaim primazaiov1alpha1.ServiceClaim) error {
+func (r *ControlPlaneServiceClaimReconciler) processClaim(ctx context.Context, req ctrl.Request, sclaim primazaiov1alpha1.ControlPlaneServiceClaim) error {
 	l := log.FromContext(ctx)
 
 	var rsl primazaiov1alpha1.RegisteredServiceList
@@ -164,7 +164,7 @@ func (r *ServiceClaimReconciler) processClaim(ctx context.Context, req ctrl.Requ
 	return nil
 }
 
-func (r *ServiceClaimReconciler) processClaimMarkedForDeletion(ctx context.Context, req ctrl.Request, sclaim primazaiov1alpha1.ServiceClaim) error {
+func (r *ControlPlaneServiceClaimReconciler) processClaimMarkedForDeletion(ctx context.Context, req ctrl.Request, sclaim primazaiov1alpha1.ControlPlaneServiceClaim) error {
 	l := log.FromContext(ctx)
 	errs := []error{}
 	var rsl primazaiov1alpha1.RegisteredServiceList
@@ -221,7 +221,7 @@ func checkSCISubset(serviceClaim, registeredService []v1alpha1.ServiceClassIdent
 	return true
 }
 
-func (r *ServiceClaimReconciler) extractServiceEndpointDefinition(
+func (r *ControlPlaneServiceClaimReconciler) extractServiceEndpointDefinition(
 	ctx context.Context,
 	namespace string,
 	rs v1alpha1.RegisteredService,
@@ -257,7 +257,7 @@ func (r *ServiceClaimReconciler) extractServiceEndpointDefinition(
 	return count, nil
 }
 
-func (r *ServiceClaimReconciler) changeServiceState(ctx context.Context, rs primazaiov1alpha1.RegisteredService, state primazaiov1alpha1.RegisteredServiceState) error {
+func (r *ControlPlaneServiceClaimReconciler) changeServiceState(ctx context.Context, rs primazaiov1alpha1.RegisteredService, state primazaiov1alpha1.RegisteredServiceState) error {
 	rs.Status.State = state
 	if err := r.Status().Update(ctx, &rs); err != nil {
 		return err
@@ -266,7 +266,7 @@ func (r *ServiceClaimReconciler) changeServiceState(ctx context.Context, rs prim
 	return nil
 }
 
-func (r *ServiceClaimReconciler) getEnvironmentFromClusterEnvironment(
+func (r *ControlPlaneServiceClaimReconciler) getEnvironmentFromClusterEnvironment(
 	ctx context.Context,
 	namespace string,
 	clusterEnvironmentName string) (*primazaiov1alpha1.ClusterEnvironment, error) {
@@ -281,9 +281,9 @@ func (r *ServiceClaimReconciler) getEnvironmentFromClusterEnvironment(
 	return ce, nil
 }
 
-func (r *ServiceClaimReconciler) getServiceEndpointDefinition(
+func (r *ControlPlaneServiceClaimReconciler) getServiceEndpointDefinition(
 	ctx context.Context,
-	sclaim primazaiov1alpha1.ServiceClaim,
+	sclaim primazaiov1alpha1.ControlPlaneServiceClaim,
 	rs primazaiov1alpha1.RegisteredService,
 ) (*corev1.Secret, error) {
 	l := log.FromContext(ctx)
@@ -313,9 +313,9 @@ func (r *ServiceClaimReconciler) getServiceEndpointDefinition(
 	return &secret, nil
 }
 
-func (r *ServiceClaimReconciler) processResolvedServiceClaim(
+func (r *ControlPlaneServiceClaimReconciler) processResolvedServiceClaim(
 	ctx context.Context,
-	sclaim primazaiov1alpha1.ServiceClaim) error {
+	sclaim primazaiov1alpha1.ControlPlaneServiceClaim) error {
 	l := log.FromContext(ctx).WithValues("service-claim", sclaim)
 
 	if sclaim.Status.RegisteredService == nil {
@@ -339,7 +339,7 @@ func (r *ServiceClaimReconciler) processResolvedServiceClaim(
 		return err
 	}
 
-	sclaim.Status.State = primazaiov1alpha1.ServiceClaimStatePending
+	sclaim.Status.State = primazaiov1alpha1.ControlPlaneServiceClaimStatePending
 	sclaim.Status.RegisteredService = &corev1.ObjectReference{
 		Name: rs.Name,
 		UID:  rs.UID,
@@ -356,7 +356,7 @@ func (r *ServiceClaimReconciler) processResolvedServiceClaim(
 		return err
 	}
 
-	sclaim.Status.State = primazaiov1alpha1.ServiceClaimStateResolved
+	sclaim.Status.State = primazaiov1alpha1.ControlPlaneServiceClaimStateResolved
 	sclaim.Status.RegisteredService = &corev1.ObjectReference{
 		Name: rs.Name,
 		UID:  rs.UID,
@@ -383,7 +383,7 @@ func (r *ServiceClaimReconciler) processResolvedServiceClaim(
 	return nil
 }
 
-func (r *ServiceClaimReconciler) updateServiceClaimStatus(ctx context.Context, sclaim *primazaiov1alpha1.ServiceClaim) error {
+func (r *ControlPlaneServiceClaimReconciler) updateServiceClaimStatus(ctx context.Context, sclaim *primazaiov1alpha1.ControlPlaneServiceClaim) error {
 	l := log.FromContext(ctx).WithValues("service-claim", sclaim.Name, "status", sclaim.Status)
 
 	l.Info("updating service-claim status in control plane")
@@ -401,10 +401,10 @@ func (r *ServiceClaimReconciler) updateServiceClaimStatus(ctx context.Context, s
 	return nil
 }
 
-func (r *ServiceClaimReconciler) processServiceClaim(
+func (r *ControlPlaneServiceClaimReconciler) processServiceClaim(
 	ctx context.Context,
 	rsl primazaiov1alpha1.RegisteredServiceList,
-	sclaim primazaiov1alpha1.ServiceClaim) error {
+	sclaim primazaiov1alpha1.ControlPlaneServiceClaim) error {
 	l := log.FromContext(ctx)
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -460,14 +460,14 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 	if !registeredServiceFound {
 		c := metav1.Condition{
 			LastTransitionTime: metav1.Now(),
-			Type:               string(primazaiov1alpha1.ServiceClaimConditionReady),
+			Type:               string(primazaiov1alpha1.ControlPlaneServiceClaimStateReady),
 			Status:             metav1.ConditionFalse,
 			Reason:             constants.NoMatchingServiceFoundReason,
 			Message:            "SCI is not matched",
 		}
 		meta.SetStatusCondition(&sclaim.Status.Conditions, c)
 
-		sclaim.Status.State = primazaiov1alpha1.ServiceClaimStatePending
+		sclaim.Status.State = primazaiov1alpha1.ControlPlaneServiceClaimStatePending
 		if err := r.updateServiceClaimStatus(ctx, &sclaim); err != nil {
 			l.Error(err, "unable to update the ServiceClaim", "ServiceClaim", sclaim)
 			return err
@@ -481,14 +481,14 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 	if len(sclaim.Spec.ServiceEndpointDefinitionKeys) > count {
 		c := metav1.Condition{
 			LastTransitionTime: metav1.Now(),
-			Type:               string(primazaiov1alpha1.ServiceClaimConditionReady),
+			Type:               string(primazaiov1alpha1.ControlPlaneServiceClaimStateReady),
 			Status:             metav1.ConditionFalse,
 			Reason:             constants.NoMatchingServiceFoundReason,
 			Message:            "key not available in the list of SEDs",
 		}
 		meta.SetStatusCondition(&sclaim.Status.Conditions, c)
 
-		sclaim.Status.State = primazaiov1alpha1.ServiceClaimStatePending
+		sclaim.Status.State = primazaiov1alpha1.ControlPlaneServiceClaimStatePending
 		if err := r.updateServiceClaimStatus(ctx, &sclaim); err != nil {
 			l.Error(err, "unable to update the ServiceClaim", "ServiceClaim", sclaim)
 			return err
@@ -503,7 +503,7 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 		secret.StringData[sci.Name] = sci.Value
 	}
 
-	sclaim.Status.State = primazaiov1alpha1.ServiceClaimStatePending
+	sclaim.Status.State = primazaiov1alpha1.ControlPlaneServiceClaimStatePending
 	sclaim.Status.RegisteredService = &corev1.ObjectReference{
 		Name: registeredService.Name,
 		UID:  registeredService.UID,
@@ -519,7 +519,7 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 		return err
 	}
 
-	sclaim.Status.State = primazaiov1alpha1.ServiceClaimStateResolved
+	sclaim.Status.State = primazaiov1alpha1.ControlPlaneServiceClaimStateResolved
 	sclaim.Status.RegisteredService = &corev1.ObjectReference{
 		Name: registeredService.Name,
 		UID:  registeredService.UID,
@@ -542,9 +542,9 @@ func (r *ServiceClaimReconciler) processServiceClaim(
 	return nil
 }
 
-func (r *ServiceClaimReconciler) updateRemoteServiceClaimStatusIfNeeded(
+func (r *ControlPlaneServiceClaimReconciler) updateRemoteServiceClaimStatusIfNeeded(
 	ctx context.Context,
-	sclaim primazaiov1alpha1.ServiceClaim,
+	sclaim primazaiov1alpha1.ControlPlaneServiceClaim,
 ) error {
 	l := log.FromContext(ctx).WithValues("service-claim", sclaim.Name)
 
@@ -576,9 +576,9 @@ func (r *ServiceClaimReconciler) updateRemoteServiceClaimStatusIfNeeded(
 
 	ans := sclaim.Spec.Target.ApplicationClusterContext.Namespace
 	otk := types.NamespacedName{Namespace: ans, Name: sclaim.Name}
-	rsc := primazaiov1alpha1.ServiceClaim{}
+	rsc := primazaiov1alpha1.ApplicationServiceClaim{}
 	if err := cli.Get(ctx, otk, &rsc); err != nil {
-		if sclaim.Status.State == primazaiov1alpha1.ServiceClaimStatePending {
+		if sclaim.Status.State == primazaiov1alpha1.ControlPlaneServiceClaimStatePending {
 			l.Info("not updating service-claim status in remote application namespace as the claim is pending")
 			return nil
 		}
@@ -607,9 +607,9 @@ func (r *ServiceClaimReconciler) updateRemoteServiceClaimStatusIfNeeded(
 	return nil
 }
 
-func (r *ServiceClaimReconciler) pushToClusterEnvironments(
+func (r *ControlPlaneServiceClaimReconciler) pushToClusterEnvironments(
 	ctx context.Context,
-	sclaim primazaiov1alpha1.ServiceClaim,
+	sclaim primazaiov1alpha1.ControlPlaneServiceClaim,
 	secret *corev1.Secret,
 ) error {
 	l := log.FromContext(ctx)
@@ -660,10 +660,10 @@ func (r *ServiceClaimReconciler) pushToClusterEnvironments(
 	return nil
 }
 
-func (r *ServiceClaimReconciler) DeleteServiceBindingsAndSecret(
+func (r *ControlPlaneServiceClaimReconciler) DeleteServiceBindingsAndSecret(
 	ctx context.Context,
 	req ctrl.Request,
-	sclaim primazaiov1alpha1.ServiceClaim,
+	sclaim primazaiov1alpha1.ControlPlaneServiceClaim,
 ) error {
 	l := log.FromContext(ctx).WithValues("service-claim", sclaim.Name)
 	errs := []error{}
@@ -712,7 +712,7 @@ func (r *ServiceClaimReconciler) DeleteServiceBindingsAndSecret(
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ServiceClaimReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ControlPlaneServiceClaimReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	genPred := predicate.GenerationChangedPredicate{}
 	reconcileOnRegisteredServiceUpdate := func(ctx context.Context, a client.Object) []reconcile.Request {
 		l := log.FromContext(ctx)
@@ -725,7 +725,7 @@ func (r *ServiceClaimReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			l.Info("Registered service is unclaimed, no service claim to reconcile", "registered-service", rs.Name)
 			return []reconcile.Request{}
 		}
-		serviceclaims := &v1alpha1.ServiceClaimList{}
+		serviceclaims := &v1alpha1.ControlPlaneServiceClaimList{}
 		opts := &client.ListOptions{}
 		if err := r.List(ctx, serviceclaims, opts); err != nil {
 			l.Error(err,
@@ -734,7 +734,7 @@ func (r *ServiceClaimReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return []reconcile.Request{}
 		}
 		for _, sc := range serviceclaims.Items {
-			if sc.Status.State == primazaiov1alpha1.ServiceClaimStateResolved &&
+			if sc.Status.State == primazaiov1alpha1.ControlPlaneServiceClaimStateResolved &&
 				sc.Status.RegisteredService != nil && sc.Status.RegisteredService.UID == rs.UID {
 				return []reconcile.Request{{NamespacedName: types.NamespacedName{
 					Namespace: sc.Namespace,
@@ -745,7 +745,7 @@ func (r *ServiceClaimReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return []reconcile.Request{}
 	}
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&primazaiov1alpha1.ServiceClaim{}).
+		For(&primazaiov1alpha1.ControlPlaneServiceClaim{}).
 		Watches(&primazaiov1alpha1.RegisteredService{}, handler.EnqueueRequestsFromMapFunc(reconcileOnRegisteredServiceUpdate)).
 		WithEventFilter(genPred).
 		Complete(r)

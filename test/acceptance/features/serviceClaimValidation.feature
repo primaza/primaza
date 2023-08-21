@@ -66,7 +66,7 @@ Feature: Service claim with label selector
         When On Primaza Cluster "main", Resource is not getting created
         """
         apiVersion: primaza.io/v1alpha1
-        kind: ServiceClaim
+        kind: ControlPlaneServiceClaim
         metadata:
           name: sc-test
           namespace: primaza-system
@@ -100,7 +100,7 @@ Feature: Service claim with label selector
         When On Primaza Cluster "main", Resource is not getting created
         """
         apiVersion: primaza.io/v1alpha1
-        kind: ServiceClaim
+        kind: ControlPlaneServiceClaim
         metadata:
           name: sc-test
           namespace: primaza-system
@@ -132,7 +132,7 @@ Feature: Service claim with label selector
         When On Primaza Cluster "main", Resource is not getting created
         """
         apiVersion: primaza.io/v1alpha1
-        kind: ServiceClaim
+        kind: ControlPlaneServiceClaim
         metadata:
           name: sc-test
           namespace: primaza-system
@@ -161,7 +161,7 @@ Feature: Service claim with label selector
         When On Primaza Cluster "main", Resource is not getting created
         """
         apiVersion: primaza.io/v1alpha1
-        kind: ServiceClaim
+        kind: ControlPlaneServiceClaim
         metadata:
           name: sc-test
           namespace: primaza-system

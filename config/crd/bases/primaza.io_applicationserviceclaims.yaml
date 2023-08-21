@@ -5,14 +5,14 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.11.3
   creationTimestamp: null
-  name: serviceclaims.primaza.io
+  name: applicationserviceclaims.primaza.io
 spec:
   group: primaza.io
   names:
-    kind: ServiceClaim
-    listKind: ServiceClaimList
-    plural: serviceclaims
-    singular: serviceclaim
+    kind: ApplicationServiceClaim
+    listKind: ApplicationServiceClaimList
+    plural: applicationserviceclaims
+    singular: applicationserviceclaim
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -26,7 +26,8 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ServiceClaim is the Schema for the serviceclaims API
+        description: ApplicationServiceClaim is the Schema for the applicationserviceclaims
+          API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -41,7 +42,8 @@ spec:
           metadata:
             type: object
           spec:
-            description: ServiceClaimSpec defines the desired state of ServiceClaim
+            description: ControlPlaneServiceClaimSpec defines the desired state of
+              ControlPlaneServiceClaim
             properties:
               application:
                 description: Rules to match workloads to bind
@@ -130,8 +132,8 @@ spec:
                 type: array
               serviceClassIdentity:
                 description: ServiceClassIdentity defines a set of attributes that
-                  are sufficient to identify a service class.  A ServiceClaim whose
-                  ServiceClassIdentity field is a subset of a RegisteredService's
+                  are sufficient to identify a service class.  A ControlPlaneServiceClaim
+                  whose ServiceClassIdentity field is a subset of a RegisteredService's
                   keys can claim that service.
                 items:
                   description: ServiceClassIdentityItem defines an attribute that
@@ -161,7 +163,7 @@ spec:
                 - message: Value is immutable
                   rule: self == oldSelf
               target:
-                description: Service Claim target
+                description: Control Plane Service Claim target
                 maxProperties: 1
                 minProperties: 1
                 properties:
@@ -186,7 +188,8 @@ spec:
             - serviceEndpointDefinitionKeys
             type: object
           status:
-            description: ServiceClaimStatus defines the observed state of ServiceClaim
+            description: ControlPlaneServiceClaimStatus defines the observed state
+              of ControlPlaneServiceClaim
             properties:
               claimID:
                 description: Unique ID For the ServiceClaim
@@ -300,7 +303,7 @@ spec:
                 x-kubernetes-map-type: atomic
               state:
                 default: Pending
-                description: The state of the ServiceClaim observed
+                description: The state of the ControlPlaneServiceClaim observed
                 enum:
                 - Pending
                 - Resolved

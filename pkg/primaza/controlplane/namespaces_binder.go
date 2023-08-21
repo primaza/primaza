@@ -114,7 +114,7 @@ func (b *namespacesBinder) BindNamespaces(ctx context.Context, ceName string, ce
 
 func (b *namespacesBinder) bindNamespace(ctx context.Context, ceName, ceNamespace string, namespace string) error {
 	if err := b.createRoleBindings(ctx, ceName, ceNamespace, namespace); err != nil {
-		return err
+		return fmt.Errorf("error on creating role binding: %v", err)
 	}
 
 	if err := b.pushAgent(
@@ -127,7 +127,7 @@ func (b *namespacesBinder) bindNamespace(ctx context.Context, ceName, ceNamespac
 		b.agentConfig,
 		b.strategy,
 	); err != nil {
-		return err
+		return fmt.Errorf("error pushing agent: %v", err)
 	}
 
 	return nil

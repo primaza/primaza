@@ -105,7 +105,7 @@ class PersistentPrimazaCluster(PrimazaCluster):
         # cluster environments need to come last, since the other resource
         # controllers can fall over if cluster environments are removed before
         # they are.
-        resource_names = ["registeredservices", "servicecatalogs", "serviceclaims", "serviceclasses", "clusterenvironments"]
+        resource_names = ["registeredservices", "servicecatalogs", "controlplaneserviceclaims", "applicationserviceclaims", "serviceclasses", "clusterenvironments"]  # noqa: E501
         resources = list(map(lambda s: f"{s}.primaza.io", resource_names))
         resources.append("deployments.apps")
         self.delete_resources(cmd, namespace, resources)
@@ -116,7 +116,7 @@ class PersistentPrimazaCluster(PrimazaCluster):
 
     def cleanup_application_namespace(self, namespace: str):
         cmd = Command().setenv("KUBECONFIG", self.__kubeconfig_path)
-        resource_names = ["servicebindings", "servicecatalogs", "serviceclaims"]
+        resource_names = ["servicebindings", "servicecatalogs", "applicationserviceclaims"]
         resources = list(map(lambda s: f"{s}.primaza.io", resource_names))
         resources.append("deployments.apps")
         self.delete_resources(cmd, namespace, resources)
@@ -283,7 +283,7 @@ class PersistentWorkerCluster(WorkerCluster):
     def cleanup_application_namespace(self, namespace: str):
         cmd = Command().setenv("KUBECONFIG", self.__kubeconfig_path)
 
-        resource_names = ["servicebindings", "servicecatalogs", "serviceclaims"]
+        resource_names = ["servicebindings", "servicecatalogs", "applicationserviceclaims"]
         resources = list(map(lambda s: f"{s}.primaza.io", resource_names))
 
         # for resiliency, patch out finalizers.  There may be bugs in the

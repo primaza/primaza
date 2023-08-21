@@ -133,8 +133,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	serviceClaimController := controllers.NewServiceClaimReconciler(mgr)
-	if err := serviceClaimController.SetupWithManager(mgr); err != nil {
+	controlPlaneServiceClaimController := controllers.NewControlPlaneServiceClaimReconciler(mgr)
+	if err := controlPlaneServiceClaimController.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ServiceClaim")
 		os.Exit(1)
 	}

@@ -101,12 +101,12 @@ def ensure_primaza_cluster_has_clustercontext(context, primaza_cluster_name: str
     primaza_cluster.create_clustercontext_secret(secret_name, cc_kubeconfig)
 
 
-@step(u'On Primaza Cluster "{primaza_cluster_name}", the status of ServiceClaim "{service_claim_name}" is "{status}"')
+@step(u'On Primaza Cluster "{primaza_cluster_name}", the status of ControlPlaneServiceClaim "{service_claim_name}" is "{status}"')
 def ensure_status_of_service_claim(context, primaza_cluster_name: str, service_claim_name: str, status: str, tenant: str = "primaza-system"):
     primaza_cluster = context.cluster_provider.get_primaza_cluster(primaza_cluster_name)  # type: PrimazaCluster
     group = "primaza.io"
     version = "v1alpha1"
-    plural = "serviceclaims"
+    plural = "controlplaneserviceclaims"
     polling2.poll(
         target=lambda: primaza_cluster.read_custom_resource_status(group, version, plural, service_claim_name, tenant),
         ignore_exceptions=(ApiException,),
@@ -118,12 +118,12 @@ def ensure_status_of_service_claim(context, primaza_cluster_name: str, service_c
     )
 
 
-@step(u'On Primaza Cluster "{cluster_name}", the RegisteredService bound to the ServiceClaim "{service_claim_name}" is "{registered_service}"')
+@step(u'On Primaza Cluster "{cluster_name}", the RegisteredService bound to the ControlPlaneServiceClaim "{service_claim_name}" is "{registered_service}"')
 def ensure_registered_service_of_service_claim(context, cluster_name: str, service_claim_name: str, registered_service: str, tenant: str = "primaza-system"):
     cluster = context.cluster_provider.get_primaza_cluster(cluster_name)
     group = "primaza.io"
     version = "v1alpha1"
-    plural = "serviceclaims"
+    plural = "controlplaneserviceclaims"
 
     def check_service_claim_status() -> bool:
         rs = cluster.read_custom_object(tenant, group, version, "registeredservices", registered_service)
