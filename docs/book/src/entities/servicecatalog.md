@@ -9,9 +9,9 @@ The ServiceCatalog can then be advertised to the application developers.
 ## Specification
 
 The definition of a ServiceCatalog can be obtained directly from our [ServiceCatalog CRD](https://github.com/primaza/primaza/blob/main/config/crd/bases/primaza.io_servicecatalogs.yaml).
-The specification contains a list of `ServiceCatalogService`.
+The specification contains a list of `services` and `claimedByLabels`.
 
-The ServiceCatalogService contains the following fields:
+The `services` contains the following fields:
 
 - `name`: Name defines the name of the known service
 - `serviceClassIdentity`: A set of key/value pairs that identify the service class.
@@ -20,6 +20,17 @@ The ServiceCatalogService contains the following fields:
 - `serviceEndpointDefinitionKeys`: An array of keys that is required for connectivity.
   The values corresponding to each of these keys will be extracted from the service.
   This property is required.
+
+The `claimedByLabels` contains the following fields:
+
+- `name`: Name defines the name of the known service
+- `serviceClassIdentity`: A set of key/value pairs that identify the service class.
+  Examples of service class identity keys include type of service, and provider of service.
+  This property is required.
+- `serviceEndpointDefinitionKeys`: An array of keys that is required for connectivity.
+  The values corresponding to each of these keys will be extracted from the service.
+  This property is required.
+- `labels`: Labels used to claim the service.
 
 ## Use Cases
 
