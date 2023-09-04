@@ -1,6 +1,6 @@
 # Multi-Cluster Setup
 
-In this tutorial we create the following Multi-Cluster environment using [primazactl](https://github.com/primaza/primazactl)
+In this tutorial you will create the following Multi-Cluster environment using [primazactl](https://github.com/primaza/primazactl)
 
 ![image](../../imgs/tenant-view.png)
 

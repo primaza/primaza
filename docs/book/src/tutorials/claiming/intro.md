@@ -1,7 +1,7 @@
 # Claiming
 
 Once you have a RegisteredService, you can claim it for one or more workloads.
-In the following examples we will use the service from the [Manual Registration tutorial](../discovery/manual-registration.md).
+The following examples uses the service from the [Manual Registration tutorial](../discovery/manual-registration.md).
 
 A ServiceClaim can select the workload to use filtering by [name](./application-name.md) or [labels](./labels.md).
 
@@ -15,7 +15,7 @@ Finally, you can claim from the Control Plane or from an Application Namespace.
 
 ## Control Plane Workflow
 
-If you create the ServiceClaim in the Control Plane you can define whether it applies to all the Application Namespaces in the Environment or it is just for one specific namespace.
+If you create the ServiceClaim in the Control Plane you can define whether it applies to all the Application Namespaces in the Environment or it's just for one specific namespace.
 This filter is implemented by the mean of the Claim's property `applicationClusterContext`.
 
 For examples refer to [Filtering by Name](./filtering-by-name.md) or [Filtering by Labels](./filtering-by-labels.md) tutorials for Environment wide ServiceClaim examples, and to [Application Namespace Scoped](./application-namespace-scoped.md) tutorial.

@@ -1,6 +1,6 @@
 # In-cluster Service Discovery
 
-In this tutorial we will configure the Primaza's Service Discovery mechanism to automatically discover services for us.
+In this tutorial you will configure the Primaza's Service Discovery mechanism to automatically discover services for you.
 
 ## Tutorial
 

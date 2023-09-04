@@ -1,8 +1,8 @@
 ## Service Agent
 
 Service Agents are installed into ClusterEnvironment's Service Namespaces.
-Target namespaces need to be already configured to allow agents to run properly.
-Service Agents just need to access resources in the namespace they are published into.
+Target namespaces need to be already configured to allow agents to run.
+Service Agents just need to access resources in the namespace they're published into.
 
 More specifically, a Service agent requires the following resources to exists into the namespace:
 
@@ -13,7 +13,7 @@ More specifically, a Service agent requires the following resources to exists in
 * A RoleBinding that binds the ServiceAccount to the Role
 * A Secret with the kubeconfig to communicate back with Primaza's Control Plane
 
-To easily prepare Service Namespaces you can use [primazactl](https://github.com/primaza/primazactl).
+To prepare Service Namespaces you can use [primazactl](https://github.com/primaza/primazactl).
 
 When a ServiceClass is created, the Service Agent looks for resources matching its specification.
 

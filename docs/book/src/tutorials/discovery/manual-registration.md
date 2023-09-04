@@ -1,6 +1,6 @@
 # Manual Registration of a Registered Service
 
-To manually register a service we need to create the RegisteredService and, if needed, a Secret containing service's secret data.
+To manually register a service you need to create the RegisteredService and, if needed, a Secret containing service's secret data.
 
 ## Tutorial
 

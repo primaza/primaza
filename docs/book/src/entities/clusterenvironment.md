@@ -1,6 +1,6 @@
 # ClusterEnvironment
 
-A ClusterEnvironment represents a development environment on a kubernetes Cluster.
+A ClusterEnvironment represents a development environment on a Kubernetes Cluster.
 Examples of environments are 'app1-prod','app1-dev', or 'app1-uat'.
 
 ClusterEnvironments contain connection information and the namespaces in which Primaza should operate.
@@ -11,7 +11,7 @@ Please refer to the [Architecture section](../architecture/agents.md) for more i
 
 ## Specification
 
-The definition of ClusterEnvironments can be obtained directly from our [ClusterEnvironment CRD](https://github.com/primaza/primaza/blob/main/config/crd/bases/primaza.io_clusterenvironments.yaml).
+The definition of ClusterEnvironments can be obtained directly from [ClusterEnvironment CRD](https://github.com/primaza/primaza/blob/main/config/crd/bases/primaza.io_clusterenvironments.yaml).
 
 The ClusterEnvironment's specification contains the following **required** properties:
 
@@ -23,7 +23,7 @@ The ClusterEnvironment's specification contains the following **required** prope
 
 A ClusterEnvironment also defines the following **optional** properties:
 
-- `contactInfo` Cluster Admin's contact information
+- `contactInfo` Cluster Admin contact information
 - `description`: Description of the ClusterEnvironment
 
 ## Status
@@ -33,10 +33,10 @@ The ClusterEnvironment's status can have one of the following values:
 - `Partial`
 - `Offline`
 
-An `Online` ClusterEnvironment is reachable by Primaza, whereas an `Offline` one is not reachable.
+An `Online` ClusterEnvironment is reachable by Primaza, whereas an `Offline` one isn't reachable.
 
-A `Partial` ClusterEnvironment is also reachable, but not configured properly.
-This can happen if Primaza does not have the required permissions on this namespaces.
+A `Partial` ClusterEnvironment is also reachable, but not configured correctly.
+This can happen if Primaza doesn't have the required permissions on this namespaces.
 More details can be found in the ClusterEnvironment's status conditions.
 
 <!-- TODO: Add conditions description -->

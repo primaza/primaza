@@ -46,7 +46,7 @@ Resources created in the Primaza Tenant namespace when a Service Namespace is co
 
 ## Remote Cluster
 
-Resources created in the Remote Cluster when it is joined to the Primaza Tenant:
+Resources created in the Remote Cluster when it's joined to the Primaza Tenant:
 
 * ClusterEnvironment's Service Account in namespace `kube-system`: `pmz-<tenant>-<cluster environment name>`
 * Access Token Secret for ClusterEnvironment's Service Account in namespace `kube-system`: `tkn-pmz-<tenant>-<cluster environment name>`

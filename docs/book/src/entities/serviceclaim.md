@@ -7,14 +7,14 @@ LabelSelector can match more than one resource.
 
 ## Specification
 
-The definition of a ServiceClaim can be obtained directly from our [ServiceClaim CRD](https://github.com/primaza/primaza/blob/main/config/crd/bases/primaza.io_serviceclaims.yaml).
+The definition of a ServiceClaim can be obtained directly from [ServiceClaim CRD](https://github.com/primaza/primaza/blob/main/config/crd/bases/primaza.io_serviceclaims.yaml).
 
 The specification contains the following properties:
 
 - `serviceClassIdentity`: A set of key/value pairs that identify the service class.
   Examples of service class identity keys include type of service, and provider of service.
   This property is required.
-- `serviceEndpointDefinitionKeys`: An array of keys that is required for connectivity.
+- `serviceEndpointDefinitionKeys`: An array of keys that's required for connectivity.
   The values corresponding to each of these keys will be extracted from the service.
   This property is required.
 - `application`: identifies application resources through kind, apiVersion, and label selector or name.
@@ -37,7 +37,7 @@ The state could be either `Pending` or `Resolved` or `Invalid`.
 If the state is `Resolved`, the RegisteredService claimed is tracked in the ServiceClaim status.
 Indeed, the status field `registeredService` takes track of the `name` and `UID` of the claimed RegisteredService.
 
-The spec of a ServiceClaim is not meant to be updated.
+The spec of a ServiceClaim isn't meant to be updated.
 If a user updates the spec of a ServiceClaim then the status of ServiceClaim is updated as `Invalid` when Primaza Application Agent attempts to update the ServiceClaim on Primaza Control Plane.
 
 There is an optional `claimID` field with a unique ID for the claim.

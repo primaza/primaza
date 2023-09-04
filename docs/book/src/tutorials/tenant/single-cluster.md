@@ -1,6 +1,6 @@
 # Single Cluster Setup
 
-In this tutorial we create the following Single Cluster Primaza setup using [primazactl](https://github.com/primaza/primazactl)
+In this tutorial you will create the following Single Cluster Primaza setup using [primazactl](https://github.com/primaza/primazactl)
 
 ![image](../../imgs/tenant-single-cluster-view.png)
 

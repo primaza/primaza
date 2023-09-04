@@ -8,7 +8,7 @@ The Primaza environment will push these resources to worker environments, where 
 
 ## Specification
 
-The definition of ServiceClasses can be obtained directly from our [ServiceClass CRD](https://github.com/primaza/primaza/blob/main/config/crd/bases/primaza.io_serviceclasses.yaml).
+The definition of ServiceClasses can be obtained directly from [ServiceClass CRD](https://github.com/primaza/primaza/blob/main/config/crd/bases/primaza.io_serviceclasses.yaml).
 
 Within a Service Class, there are two required properties:
 - `resource` defines the APIVersion and Kind of the resources to look for.
@@ -18,13 +18,13 @@ Within a Service Class, there are two required properties:
   This field is copied to the generated registered services.
 
 A Service Class also contains two optional properties, `constraints` and `healthCheck`.
-Both of these fields correspond exactly to their identically-named properties within the Registered Service resource.
+Both of these fields correspond exactly to their identically named properties within the Registered Service resource.
 For more information on how to use these properties, refer to the [Registered Service documentation](./registeredservices.md)
 
 ### `resource` field
 
-The `resource`'s ServiceClass field contains all the information needed for identifying the resources it refers to, i.e. `apiVersion` and `kind`.
-It also contains the rules for extracting the Service Endpoint Definition secret data, i.e. `serviceEndpointDefinitionMappings`.
+The `resource`'s ServiceClass field contains all the information needed for identifying the resources it refers to, that's `apiVersion` and `kind`.
+It also contains the rules for extracting the Service Endpoint Definition secret data, that's `serviceEndpointDefinitionMappings`.
 
 Mapping rules apply to the resource specification (`resourceFields`) or to a secret (`secretRefFields`).
 

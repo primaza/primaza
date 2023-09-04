@@ -9,9 +9,9 @@ SHELLCHECK=$(LOCALBIN)/shellcheck
 SHELLCHECK_VERSION ?= v0.9.0
 
 .PHONY: lint
-lint: setup-venv lint-go lint-yaml lint-python lint-feature-files lint-conflicts lint-shell ## Runs all linters
+lint: setup-venv lint-go lint-yaml lint-python lint-feature-files lint-conflicts lint-shell lint-docs ## Runs all linters
 
-YAML_FILES := $(shell find . -path ./vendor -prune -o -path ./config -prune -o -path ./out -prune -o -path ./test/performance -prune -o -type f -regex ".*\.y[a]?ml" -print)
+YAML_FILES := $(shell find . -path ./vendor -prune -o -path ./config -prune -o -path ./docs -prune -o -path ./out -prune -o -path ./test/performance -prune -o -type f -regex ".*\.y[a]?ml" -print)
 .PHONY: lint-yaml
 lint-yaml: setup-venv ${YAML_FILES} ## Checks all yaml files
 	$(Q)$(PYTHON_VENV_DIR)/bin/pip install yamllint==$(YAMLLINT_VERSION)
@@ -66,3 +66,13 @@ lint-shell: $(SHELLCHECK) ## Check shell scripts
 .PHONY: lint-shell-fix
 lint-shell-fix: $(SHELLCHECK)
 	find * -name vendor -prune -o -name '*.sh' -type f -print | xargs -I@ sh -c "$(SHELLCHECK) -f diff @ | git apply"
+
+VALE_VERSION := v2.28.1
+
+.PHONY: lint-docs-sync
+lint-doc-sync:
+	docker run --rm -v $(PWD)/docs:/docs -w /docs jdkato/vale:$(VALE_VERSION) sync
+
+.PHONY: lint-docs
+lint-docs:
+	docker run --rm -v $(PWD)/docs:/docs -w /docs jdkato/vale:$(VALE_VERSION) /docs/book/src/

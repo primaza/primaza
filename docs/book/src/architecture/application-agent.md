@@ -1,9 +1,9 @@
 ## Application Agent
 
 Application Agents are installed into ClusterEnvironment's Application Namespaces.
-Target namespaces need to be already configured to allow agents to run properly.
+Target namespaces need to be already configured to allow agents to run.
 
-Application Agents need to access resources in the namespace they are published into.
+Application Agents need to access resources in the namespace they're published into.
 More specifically, an Application Agent requires the following resources to exists into the namespace:
 
 * A Role granting
@@ -15,7 +15,7 @@ More specifically, an Application Agent requires the following resources to exis
 * A RoleBinding that binds the ServiceAccount to the Role
 * A Secret with the kubeconfig to communicate back with Primaza's Control Plane
 
-To easily prepare Application Namespaces you can use [primazactl](https://github.com/primaza/primazactl).
+To prepare Application Namespaces you can use [primazactl](https://github.com/primaza/primazactl).
 
 When a ServiceBinding is created in an Application Namespace, the Application Agent looks for resources mentioned in its specification.
 
@@ -42,7 +42,7 @@ Please refer to https://github.com/servicebinding/spec#reconciler-implementation
 
 When a ServiceClaim is created in Primaza's Control Plane's Namespace, Primaza builds the ServiceBinding and Service Endpoint Definition Secrets and pushes them resources to all the application namespaces of matching ClusterEnvironments.
 The ServiceClaim controller in Primaza Control Plane watches RegisteredService resources.
-Any change made to `ServiceEndpointDefinition` values in RegisteredService are propogated to the secret and ServiceBinding resource in application namespace by Primaza.
+Any change made to `ServiceEndpointDefinition` values in RegisteredService are propagated to the secret and ServiceBinding resource in application namespace by Primaza.
 
 #### Claiming from Application Namespace
 

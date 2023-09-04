@@ -17,7 +17,7 @@ Please refer to https://github.com/servicebinding/spec#reconciler-implementation
 
 ## Specification
 
-The definition of ServiceBindings can be obtained directly from our [ServiceBinding CRD](https://github.com/primaza/primaza/blob/main/config/crd/bases/primaza.io_servicebindings.yaml).
+The definition of ServiceBindings can be obtained directly from [ServiceBinding CRD](https://github.com/primaza/primaza/blob/main/config/crd/bases/primaza.io_servicebindings.yaml).
 
 The ServiceBinding's specification contains the following **required** properties:
 
@@ -29,7 +29,7 @@ The ServiceBinding's specification contains the following **required** propertie
   Name and label selector are mutually exclusive.
 
 The ServiceBinding's specification also contains the following **optional** property:
-- `envs`: Envs declares environment variables based on the        ServiceEndpointDefinitionSecret to be projected into the application
+- `envs`: `Envs` declares environment variables based on the        ServiceEndpointDefinitionSecret to be projected into the application
 
 ## Metadata
 
@@ -48,8 +48,8 @@ The default value of service binding state is `Malformed`.
 The `conditions` list of the service binding contains the following properties:
 - `Type`: The service binding condition type is `Bound` or `NotBound`.
     - `Bound` means that the secret is projected into the application.
-    - `NotBound` denotes that the secret is not projected into the application.
-       This can only occur if the secret is not found in the application namespace.
+    - `NotBound` denotes that the secret isn't projected into the application.
+       This can only occur if the secret isn't found in the application namespace.
 - `Message`: This contains the error logs for the service binding resources.
   This value will be an empty string if successful.
 - `Status`: Status of service binding can be `True` or `False`.
