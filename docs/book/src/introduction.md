@@ -17,7 +17,7 @@
 
 ### The Solution
 
-- Separated logical environments that can span across different kubernetes clusters
+- Separated logical environments that can span <!-- vale off -->across<!-- vale on --> different Kubernetes clusters
 - An automatically collated Catalog that appropriately exposes available Services to Applications
 - Leverages industry best practices to securely deliver service endpoint data to applications
 - A platform that enables hybrid cloud services consumption in a portable, secured and scalable way
@@ -35,8 +35,8 @@
 - Popular Service Classes delivered by Primaza out of the box
 
 ### Benefits to Developer
-- Service Catalog makes it easy to discover new services and see what is available in the environment
-- Developers can automatically and easily claim services from the catalog
+- Service Catalog makes it easy to discover new services and see what's available in the environment
+- Developers can automatically and <!-- vale off -->easily<!-- vale on --> claim services from the catalog
 - Claims can be requested for multiple environments (CI/CD capable)
 - Developers can discover/learn via provided sandbox
 
@@ -52,7 +52,7 @@
 Primaza defines the following entities and controllers to provide the above described features.
 
 Entities:
-* [Cluster Environment](./entities/clusterenvironment.md): represents an development environment on a kubernetes Cluster.
+* [Cluster Environment](./entities/clusterenvironment.md): represents an development environment on a Kubernetes Cluster.
 * [Registered Service](./entities/registeredservice.md): represents running instance of a software service.
 * [Service Binding](./entities/servicebinding.md): projects secrets referenced by ServiceBinding resources to application compute resources.
 * [Service Class](./entities/serviceclass.md): defines how a registered service can be automatically generated from a service

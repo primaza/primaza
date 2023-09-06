@@ -18,8 +18,11 @@ jobs:
     name: Code Quality
     runs-on: ubuntu-20.04
     steps:
-      - name: Skip Code Quality
-        run: 'echo "No code quality checks required"'
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Lint Docs
+        run: make lint-docs
 
   unit:
     name: Unit Tests

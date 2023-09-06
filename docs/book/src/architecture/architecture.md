@@ -5,13 +5,13 @@ Primaza's architecture is composed by the following elements:
 - Application agents: binds applications to services
 - Service agents: discover services
 
-To better describe the Primaza architecture we can introduce the following three concepts:
+To better describe the Primaza architecture the following three concepts need to be introduced:
 - Primaza's Control Plane Namespace: a namespace where Primaza is installed
 - Application Namespace: a namespace configured to host the Primaza's Application Agent
 - Service Namespace: a namespace configured to host the Primaza's Service Agent
 
 For how Primaza is designed, these three concepts may apply at the same time to a single namespace.
-In other words, we can install Primaza, Primaza's Application Agent, and Primaza's Service Agent in the same kubernetes namespace.
+In other words, you can install Primaza, Primaza's Application Agent, and Primaza's Service Agent in the same Kubernetes namespace.
 
 In the following picture you find a simplified diagrams of the agents-based architecture.
 

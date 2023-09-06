@@ -1,0 +1,16 @@
+[pP]rimaza
+ServiceBinding
+ServiceClass
+ServiceClaim
+ServiceCatalog
+RegisteredService
+[nN]amespace
+[nN]amespaces
+[aA]gent
+[kK]ubeconfig
+API[s]
+CR[D][s]
+APIVersion
+JSONPath
+ghcr
+GitHub

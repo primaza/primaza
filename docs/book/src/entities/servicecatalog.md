@@ -8,7 +8,7 @@ The ServiceCatalog can then be advertised to the application developers.
 
 ## Specification
 
-The definition of a ServiceCatalog can be obtained directly from our [ServiceCatalog CRD](https://github.com/primaza/primaza/blob/main/config/crd/bases/primaza.io_servicecatalogs.yaml).
+The definition of a ServiceCatalog can be obtained directly from [ServiceCatalog CRD](https://github.com/primaza/primaza/blob/main/config/crd/bases/primaza.io_servicecatalogs.yaml).
 The specification contains a list of `services` and `claimedByLabels`.
 
 The `services` contains the following fields:
@@ -17,7 +17,7 @@ The `services` contains the following fields:
 - `serviceClassIdentity`: A set of key/value pairs that identify the service class.
   Examples of service class identity keys include type of service, and provider of service.
   This property is required.
-- `serviceEndpointDefinitionKeys`: An array of keys that is required for connectivity.
+- `serviceEndpointDefinitionKeys`: An array of keys that's required for connectivity.
   The values corresponding to each of these keys will be extracted from the service.
   This property is required.
 
@@ -27,7 +27,7 @@ The `claimedByLabels` contains the following fields:
 - `serviceClassIdentity`: A set of key/value pairs that identify the service class.
   Examples of service class identity keys include type of service, and provider of service.
   This property is required.
-- `serviceEndpointDefinitionKeys`: An array of keys that is required for connectivity.
+- `serviceEndpointDefinitionKeys`: An array of keys that's required for connectivity.
   The values corresponding to each of these keys will be extracted from the service.
   This property is required.
 - `labels`: Labels used to claim the service.
@@ -50,5 +50,5 @@ When a RegisteredService is updated, the appropriate ServiceCatalog will get upd
 The updated ServiceCatalog will be made available to all the Application Namespaces of matching ClusterEnvironments by Primaza.
 
 The ServiceCatalog for each ClusterEnvironment will get updated with a service change if either the service has no constraints or the service has a constraint that matches the environment tag of the cluster environment.
-Matching means the environment is either included explicitly or it is not excluded.
+Matching means the environment is either included explicitly or it's not excluded.
 For more details look at the [Constraints section](./registeredservice.md#constraints) in the RegisteredService page.

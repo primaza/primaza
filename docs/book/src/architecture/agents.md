@@ -24,7 +24,7 @@ This ConfigMap consists of following keys:
 * `agentapp-manifest`: Application agent manifest
 * `agentsvc-manifest`: Service agent manifest
 
-By default the config map is populated using the make target `agents-configmap` executed at runtime.
+By default the ConfigMap is populated using the make target `agents-configmap` executed at runtime.
 This ConfigMap is used in `primaza-controller-manager` deployment as environment variables.
 An user can modify the values of `primaza-manager-config` and then delete the `primaza-controller-manager` pod in Primaza's Control Plane namespace.
 This would reset the environment variables defined in  `primaza-manager-config` deployment.

@@ -1,6 +1,6 @@
-# ACK Service Discovery
+# Amazon Web Services Controllers for Kubernetes Service Discovery
 
-In this tutorial we use the AWS Controllers for Kubernetes to create an RDS Database and we will configure the Primaza's Service Discovery mechanism to automatically discover the service for us.
+In this tutorial you will use the AWS Controllers for Kubernetes to create an RDS Database and you will configure the Primaza's Service Discovery mechanism to automatically discover the service for you.
 
 ## Tutorial
 

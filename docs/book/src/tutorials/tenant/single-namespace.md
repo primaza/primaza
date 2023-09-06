@@ -1,6 +1,6 @@
 # Single-Namespace
 
-In this tutorial we create the following Single-Namespace Primaza setup using [primazactl](https://github.com/primaza/primazactl)
+In this tutorial you will create the following Single-Namespace Primaza setup using [primazactl](https://github.com/primaza/primazactl)
 
 ![image](../../imgs/tenant-single-namespace-view.png)
 
