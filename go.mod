@@ -6,7 +6,7 @@ require (
 	github.com/go-logr/logr v1.2.4
 	github.com/google/uuid v1.3.1
 	github.com/onsi/ginkgo/v2 v2.12.1
-	github.com/onsi/gomega v1.27.10
+	github.com/onsi/gomega v1.28.0
 	go.uber.org/atomic v1.11.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.28.0
