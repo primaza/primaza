@@ -196,5 +196,14 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
+    - name: Trigger nightly release
+      uses: peter-evans/repository-dispatch@v2
+      with:
+        token: ${{ secrets.BOT_TOKEN }}
+        repository: mmulholla/primaza
+        event-type: primaza-release
+        client-payload: '{"version": "nightly"}'
+
     - name: None
+      if: always()
       run: exit 0
