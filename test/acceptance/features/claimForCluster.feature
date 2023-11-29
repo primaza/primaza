@@ -89,7 +89,7 @@ Feature: Claim for specific cluster
         When On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
-        kind: ServiceClaim
+        kind: ControlPlaneServiceClaim
         metadata:
           name: sc-test
           namespace: primaza-system
@@ -114,7 +114,7 @@ Feature: Claim for specific cluster
             apiVersion: apps/v1
             name: stage-app
         """
-        Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
+        Then On Primaza Cluster "main", the status of ControlPlaneServiceClaim "sc-test" is "Resolved"
         And On Worker Cluster "worker", the secret "sc-test" in namespace "applications" has the key "type" with value "psqlserver"
         And On Worker Cluster "worker", ServiceBinding "sc-test" in namespace "applications" state will eventually move to "Ready"
 
@@ -139,7 +139,7 @@ Feature: Claim for specific cluster
         When On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
-        kind: ServiceClaim
+        kind: ControlPlaneServiceClaim
         metadata:
           name: sc-test
           namespace: primaza-system
@@ -164,4 +164,4 @@ Feature: Claim for specific cluster
             apiVersion: apps/v1
             name: stage-app
         """
-        Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Pending"
+        Then On Primaza Cluster "main", the status of ControlPlaneServiceClaim "sc-test" is "Pending"

@@ -3,7 +3,7 @@ package authz
 var AppPermissionList = []Permission{
 	{
 		APIGroups:     []string{"primaza.io"},
-		Resources:     []string{"servicebindings", "serviceclaims", "servicecatalogs"},
+		Resources:     []string{"servicebindings", "applicationserviceclaims", "servicecatalogs"},
 		ResourceNames: []string{},
 		Namespace:     "system",
 		Name:          "primaza:app:manager",
@@ -11,7 +11,7 @@ var AppPermissionList = []Permission{
 	},
 	{
 		APIGroups:     []string{"primaza.io"},
-		Resources:     []string{"serviceclaims/status"},
+		Resources:     []string{"applicationserviceclaims/status"},
 		ResourceNames: []string{},
 		Namespace:     "system",
 		Name:          "primaza:app:manager",

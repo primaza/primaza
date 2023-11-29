@@ -94,7 +94,7 @@ func (r *RegisteredServiceReconciler) removeServiceFromCatalog(ctx context.Conte
 		return nil
 	}
 
-	var sclaimList primazaiov1alpha1.ServiceClaimList
+	var sclaimList primazaiov1alpha1.ControlPlaneServiceClaimList
 	lo := client.ListOptions{Namespace: namespace}
 	if err := r.List(ctx, &sclaimList, &lo); err != nil {
 		log.Info("Unable to retrieve ServiceClaimList", "error", err)

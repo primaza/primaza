@@ -66,7 +66,7 @@ Feature: Service Binding Environment Projection
         When On Primaza Cluster "main", Resource is created
         """
         apiVersion: primaza.io/v1alpha1
-        kind: ServiceClaim
+        kind: ControlPlaneServiceClaim
         metadata:
           name: sc-test
           namespace: primaza-system
@@ -98,7 +98,7 @@ Feature: Service Binding Environment Projection
               matchLabels:
                 app: myapp
         """
-        Then On Primaza Cluster "main", the status of ServiceClaim "sc-test" is "Resolved"
+        Then On Primaza Cluster "main", the status of ControlPlaneServiceClaim "sc-test" is "Resolved"
 
     Scenario: Create a service binding with environment projection
 

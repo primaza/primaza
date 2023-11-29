@@ -21,19 +21,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type ServiceClaimState string
+type ControlPlaneServiceClaimState string
 
 const (
-	ServiceClaimConditionReady ServiceClaimState = "Ready"
-	ServiceClaimStatePending   ServiceClaimState = "Pending"
-	ServiceClaimStateResolved  ServiceClaimState = "Resolved"
-	ServiceClaimStateInvalid   ServiceClaimState = "Invalid"
+	ControlPlaneServiceClaimStateReady    ControlPlaneServiceClaimState = "Ready"
+	ControlPlaneServiceClaimStatePending  ControlPlaneServiceClaimState = "Pending"
+	ControlPlaneServiceClaimStateResolved ControlPlaneServiceClaimState = "Resolved"
+	ControlPlaneServiceClaimStateInvalid  ControlPlaneServiceClaimState = "Invalid"
 )
 
-// ServiceClaimSpec defines the desired state of ServiceClaim
-type ServiceClaimSpec struct {
+// ControlPlaneServiceClaimSpec defines the desired state of ControlPlaneServiceClaim
+type ControlPlaneServiceClaimSpec struct {
 	// ServiceClassIdentity defines a set of attributes that are sufficient to
-	// identify a service class.  A ServiceClaim whose ServiceClassIdentity
+	// identify a service class.  A ControlPlaneServiceClaim whose ServiceClassIdentity
 	// field is a subset of a RegisteredService's keys can claim that service.
 	// +required
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Value is immutable"
@@ -46,18 +46,18 @@ type ServiceClaimSpec struct {
 	// Rules to match workloads to bind
 	// +required
 	Application ApplicationSelector `json:"application"`
-	// Service Claim target
-	Target *ServiceClaimTarget `json:"target,omitempty"`
+	// Control Plane Service Claim target
+	Target *ControlPlaneServiceClaimTarget `json:"target,omitempty"`
 	// Envs allows projecting Service Endpoint Definition's data as Environment Variables in the Pod
 	// +optional
 	Envs []Environment `json:"envs,omitempty"`
 }
 
-// The Service Claim target.
+// The Control Plane Service Claim target.
 // It can be an entire environment or a single application
 // +kubebuilder:validation:MaxProperties:=1
 // +kubebuilder:validation:MinProperties:=1
-type ServiceClaimTarget struct {
+type ControlPlaneServiceClaimTarget struct {
 	// EnvironmentTag allows the controller to search for those application cluster
 	// environments that define such EnvironmentTag
 	// +optional
@@ -71,12 +71,12 @@ type ServiceClaimApplicationClusterContext struct {
 	Namespace              string `json:"namespace"`
 }
 
-// ServiceClaimStatus defines the observed state of ServiceClaim
-type ServiceClaimStatus struct {
-	// The state of the ServiceClaim observed
+// ControlPlaneServiceClaimStatus defines the observed state of ControlPlaneServiceClaim
+type ControlPlaneServiceClaimStatus struct {
+	// The state of the ControlPlaneServiceClaim observed
 	//+kubebuilder:validation:Enum=Pending;Resolved;Invalid
 	//+kubebuilder:default:=Pending
-	State ServiceClaimState `json:"state"`
+	State ControlPlaneServiceClaimState `json:"state"`
 	// Unique ID For the ServiceClaim
 	ClaimID string `json:"claimID,omitempty"`
 	// Claimed RegisteredService Info
@@ -90,28 +90,28 @@ type ServiceClaimStatus struct {
 //+kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state",description="the state of the ServiceClaim"
 //+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
-// ServiceClaim is the Schema for the serviceclaims API
-type ServiceClaim struct {
+// ControlPlaneServiceClaim is the Schema for the controlplaneserviceclaims API
+type ControlPlaneServiceClaim struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ServiceClaimSpec   `json:"spec,omitempty"`
-	Status ServiceClaimStatus `json:"status,omitempty"`
+	Spec   ControlPlaneServiceClaimSpec   `json:"spec,omitempty"`
+	Status ControlPlaneServiceClaimStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// ServiceClaimList contains a list of ServiceClaim
-type ServiceClaimList struct {
+// ControlPlaneServiceClaimList contains a list of ControlPlaneServiceClaim
+type ControlPlaneServiceClaimList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ServiceClaim `json:"items"`
+	Items           []ControlPlaneServiceClaim `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&ServiceClaim{}, &ServiceClaimList{})
+	SchemeBuilder.Register(&ControlPlaneServiceClaim{}, &ControlPlaneServiceClaimList{})
 }
 
-func (sc *ServiceClaim) HasDeletionTimestamp() bool {
+func (sc *ControlPlaneServiceClaim) HasDeletionTimestamp() bool {
 	return !sc.DeletionTimestamp.IsZero()
 }

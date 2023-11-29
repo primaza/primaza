@@ -93,7 +93,7 @@ func (r *ClusterEnvironmentReconciler) RunAppInformer(ctx context.Context, confi
 		return err
 	}
 
-	gvk, err := apiutil.GVKForObject(&primazaiov1alpha1.ServiceClaim{}, r.Scheme)
+	gvk, err := apiutil.GVKForObject(&primazaiov1alpha1.ControlPlaneServiceClaim{}, r.Scheme)
 	if err != nil {
 		l.Info("error getting ServiceClaim GroupVersionKind", "error", err)
 		return err
@@ -111,14 +111,14 @@ func (r *ClusterEnvironmentReconciler) RunAppInformer(ctx context.Context, confi
 	ictx, fc := context.WithCancel(ctx)
 	li := log.FromContext(ictx).WithValues("cluster-environment", ce.Name)
 
-	parseServiceClaim := func(obj interface{}, action string) (*primazaiov1alpha1.ServiceClaim, error) {
+	parseServiceClaim := func(obj interface{}, action string) (*primazaiov1alpha1.ControlPlaneServiceClaim, error) {
 		u, ok := obj.(*unstructured.Unstructured)
 		if !ok {
 			li.Info("'obj' is not an instance of unstructured.Unstructured", "event", action, "obj", obj)
 			return nil, fmt.Errorf("obj is not an instance of unstructured.Unstructured")
 		}
 
-		rs := primazaiov1alpha1.ServiceClaim{}
+		rs := primazaiov1alpha1.ControlPlaneServiceClaim{}
 		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.UnstructuredContent(), &rs); err != nil {
 			li.Info("'obj' is not a registered service", "event", action, "unstructured", u, "error", err)
 			return nil, err
@@ -150,7 +150,7 @@ func (r *ClusterEnvironmentReconciler) RunAppInformer(ctx context.Context, confi
 				return
 			}
 
-			csc := &primazaiov1alpha1.ServiceClaim{
+			csc := &primazaiov1alpha1.ControlPlaneServiceClaim{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: ce.Namespace,
 					Name:      sc.Name,
@@ -158,7 +158,7 @@ func (r *ClusterEnvironmentReconciler) RunAppInformer(ctx context.Context, confi
 			}
 			if _, err := controllerutil.CreateOrUpdate(ictx, r.Client, csc, func() error {
 				csc.Spec = sc.Spec
-				csc.Spec.Target = &primazaiov1alpha1.ServiceClaimTarget{
+				csc.Spec.Target = &primazaiov1alpha1.ControlPlaneServiceClaimTarget{
 					ApplicationClusterContext: &primazaiov1alpha1.ServiceClaimApplicationClusterContext{
 						ClusterEnvironmentName: ce.Name,
 						Namespace:              namespace,
@@ -187,7 +187,7 @@ func (r *ClusterEnvironmentReconciler) RunAppInformer(ctx context.Context, confi
 				return
 			}
 
-			csc := &primazaiov1alpha1.ServiceClaim{
+			csc := &primazaiov1alpha1.ControlPlaneServiceClaim{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: ce.Namespace,
 					Name:      sc.Name,

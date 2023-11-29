@@ -114,8 +114,8 @@ func main() {
 	}
 
 	if *s == primazaiov1alpha1.SynchronizationStrategyPush {
-		serviceClaimController := controllers.NewServiceClaimReconciler(mgr)
-		if err = serviceClaimController.SetupWithManager(mgr); err != nil {
+		applicationServiceClaimController := controllers.NewApplicationServiceClaimReconciler(mgr)
+		if err = applicationServiceClaimController.SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "ServiceClaim")
 			os.Exit(1)
 		}

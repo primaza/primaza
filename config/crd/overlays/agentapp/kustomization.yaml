@@ -1,5 +1,5 @@
 resources:
 - ../../bases/primaza.io_servicebindings.yaml
-- ../../bases/primaza.io_serviceclaims.yaml
+- ../../bases/primaza.io_applicationserviceclaims.yaml
 - ../../bases/primaza.io_servicecatalogs.yaml
 

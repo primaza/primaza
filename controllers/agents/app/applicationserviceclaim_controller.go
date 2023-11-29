@@ -36,17 +36,17 @@ import (
 	"github.com/primaza/primaza/pkg/primaza/workercluster"
 )
 
-const ServiceClaimFinalizer = "serviceclaims.primaza.io/finalizer"
+const ServiceClaimFinalizer = "applicationserviceclaims.primaza.io/finalizer"
 
-// ServiceClaimReconciler reconciles a ServiceClaim object
-type ServiceClaimReconciler struct {
+// ApplicationServiceClaimReconciler reconciles a ApplicationServiceClaim object
+type ApplicationServiceClaimReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 	Mapper meta.RESTMapper
 }
 
-func NewServiceClaimReconciler(mgr ctrl.Manager) *ServiceClaimReconciler {
-	return &ServiceClaimReconciler{
+func NewApplicationServiceClaimReconciler(mgr ctrl.Manager) *ApplicationServiceClaimReconciler {
+	return &ApplicationServiceClaimReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 		Mapper: mgr.GetRESTMapper(),
@@ -62,11 +62,11 @@ func NewServiceClaimReconciler(mgr ctrl.Manager) *ServiceClaimReconciler {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
-func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *ApplicationServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	l := log.FromContext(ctx).WithValues("namespace", req.Namespace, "name", req.Name)
 	l.Info("Reconciling service claim")
 
-	var sclaim primazaiov1alpha1.ServiceClaim
+	var sclaim primazaiov1alpha1.ApplicationServiceClaim
 	if err := r.Get(ctx, req.NamespacedName, &sclaim); err != nil {
 		l.Error(err, "Failed to retrieve ServiceClaim")
 		if apierrors.IsNotFound(err) {
@@ -153,13 +153,13 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		if strings.Contains(err.Error(), "admission webhook \"vserviceclaim.kb.io\" denied the request") {
 			c := metav1.Condition{
 				LastTransitionTime: metav1.Now(),
-				Type:               string(primazaiov1alpha1.ServiceClaimConditionReady),
+				Type:               string(primazaiov1alpha1.ApplicationServiceClaimStateReady),
 				Status:             metav1.ConditionFalse,
 				Reason:             constants.ValidationErrorReason,
 				Message:            err.Error(),
 			}
 			meta.SetStatusCondition(&sclaim.Status.Conditions, c)
-			sclaim.Status.State = primazaiov1alpha1.ServiceClaimStateInvalid
+			sclaim.Status.State = primazaiov1alpha1.ControlPlaneServiceClaimState(primazaiov1alpha1.ApplicationServiceClaimStateInvalid)
 
 			if err := r.Status().Update(ctx, &sclaim); err != nil {
 				l.Error(err, "unable to update the ServiceClaim", "ServiceClaim", sclaim)
@@ -177,9 +177,10 @@ func (r *ServiceClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	return ctrl.Result{}, nil
 }
 
-func (r *ServiceClaimReconciler) createServiceClaimCopy(sclaim primazaiov1alpha1.ServiceClaim, deployment appsv1.Deployment, remote_namespace string) *primazaiov1alpha1.ServiceClaim {
-	sclaimCopy := sclaim.DeepCopy()
-	sclaimCopy.Spec.Target = &primazaiov1alpha1.ServiceClaimTarget{
+func (r *ApplicationServiceClaimReconciler) createServiceClaimCopy(sclaim primazaiov1alpha1.ApplicationServiceClaim, deployment appsv1.Deployment, remote_namespace string) *primazaiov1alpha1.ControlPlaneServiceClaim {
+	var sclaimCopy primazaiov1alpha1.ControlPlaneServiceClaim
+	sclaimCopy.Name = sclaim.Name
+	sclaimCopy.Spec.Target = &primazaiov1alpha1.ControlPlaneServiceClaimTarget{
 		EnvironmentTag: "",
 		ApplicationClusterContext: &primazaiov1alpha1.ServiceClaimApplicationClusterContext{
 			ClusterEnvironmentName: deployment.Labels[constants.PrimazaClusterEnvironmentLabel],
@@ -188,10 +189,10 @@ func (r *ServiceClaimReconciler) createServiceClaimCopy(sclaim primazaiov1alpha1
 	}
 	sclaimCopy.Namespace = remote_namespace
 	sclaimCopy.ResourceVersion = ""
-	return sclaimCopy
+	return &sclaimCopy
 }
 
-func (r *ServiceClaimReconciler) deleteExternalResources(ctx context.Context, sclaim *primazaiov1alpha1.ServiceClaim, cli client.Client) error {
+func (r *ApplicationServiceClaimReconciler) deleteExternalResources(ctx context.Context, sclaim *primazaiov1alpha1.ControlPlaneServiceClaim, cli client.Client) error {
 	if err := cli.Delete(ctx, sclaim); err != nil {
 		return err
 	}
@@ -199,8 +200,8 @@ func (r *ServiceClaimReconciler) deleteExternalResources(ctx context.Context, sc
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ServiceClaimReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ApplicationServiceClaimReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&primazaiov1alpha1.ServiceClaim{}).
+		For(&primazaiov1alpha1.ApplicationServiceClaim{}).
 		Complete(r)
 }

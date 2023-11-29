@@ -473,11 +473,11 @@ func (r *ClusterEnvironmentReconciler) reconcileServiceNamespaces(ctx context.Co
 func (r *ClusterEnvironmentReconciler) reconcileServiceBindingApplicationNamespaces(ctx context.Context, cfg *rest.Config, ce *primazaiov1alpha1.ClusterEnvironment, applicationNamespaces []string) error {
 	errs := []error{}
 	l := log.FromContext(ctx)
-	serviceclaimsList := primazaiov1alpha1.ServiceClaimList{}
+	serviceclaimsList := primazaiov1alpha1.ControlPlaneServiceClaimList{}
 	if err := r.List(ctx, &serviceclaimsList, &client.ListOptions{Namespace: ce.Namespace}); err != nil {
 		return client.IgnoreNotFound(err)
 	}
-	var serviceclaimFilteredList []primazaiov1alpha1.ServiceClaim
+	var serviceclaimFilteredList []primazaiov1alpha1.ControlPlaneServiceClaim
 	for _, serviceclaim := range serviceclaimsList.Items {
 		if ce.Spec.EnvironmentName == serviceclaim.Spec.Target.EnvironmentTag {
 			serviceclaimFilteredList = append(serviceclaimFilteredList, serviceclaim)

@@ -14,7 +14,7 @@ rules:
 - apiGroups:
   - primaza.io
   resources:
-  - serviceclaims
+  - controlplaneserviceclaims
   verbs:
   - get
   - list
